@@ -1,76 +1,137 @@
 :root {
-  /* Surface and Background Colors */
-  --color-bg-app: #0b0f17;
-  --color-bg-surface: #141c2b;
-  --color-bg-surface-elevated: #1e293b;
-  --color-bg-surface-hover: #26354a;
-  --color-border: #2e3d54;
-  --color-border-subtle: #1e293b;
+  /* ==========================================================================
+     Evertz VIP / SDVN Design System Tokens
+     ========================================================================== */
+
+  /* Surfaces & Canvas */
+  --ev-bg-canvas: #141414;
+  --ev-bg-sidebar: #202020;
+  --ev-bg-sidebar-hover: #292929;
+  --ev-bg-sidebar-active: #283648;
+  --ev-bg-panel: #262626;
+  --ev-bg-panel-header: #2f2f2f;
+  --ev-bg-control: #343434;
+  --ev-bg-control-hover: #424242;
+  --ev-bg-card: #000000;
+  --ev-bg-card-surface: #0c0c0c;
+  --ev-bg-card-available: #181818;
+
+  /* Evertz Brand Blue & Command Bar */
+  --ev-blue: #2864a3;
+  --ev-blue-hover: #3378c2;
+  --ev-blue-dark: #162b42;
+  --ev-blue-navy: #101c2b;
+  --ev-blue-subtle: rgba(40, 100, 163, 0.25);
+  --ev-blue-highlight: #38bdf8;
+
+  /* Borders & Dividers */
+  --ev-border: #565656;
+  --ev-border-dark: #333333;
+  --ev-border-light: #777777;
+  --ev-border-card: #484848;
 
   /* Typography Colors */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-inverse: #0b0f17;
+  --ev-text-primary: #f4f4f4;
+  --ev-text-secondary: #b8b8b8;
+  --ev-text-muted: #858585;
+  --ev-text-dim: #5c5c5c;
+  --ev-text-gold: #f59e0b;
 
-  /* Operational Accent and Brand */
-  --color-accent-amber: #f59e0b;
-  --color-accent-amber-hover: #d97706;
-  --color-accent-amber-subtle: rgba(245, 158, 11, 0.12);
+  /* Operational Tracking Status Colors */
+  --ev-status-ok: #54d54a;
+  --ev-status-warning: #e2b93b;
+  --ev-status-error: #d84c4c;
+  --ev-status-locked: #a855f7;
 
-  /* Operational Status Tokens */
-  --color-status-assigned-bg: rgba(59, 130, 246, 0.15);
-  --color-status-assigned-text: #60a5fa;
-  --color-status-assigned-border: #2563eb;
+  /* Typography Stack: Utilitarian, compact sans-serif */
+  --ev-font: Arial, Helvetica, 'Segoe UI', sans-serif;
+  --ev-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
-  --color-status-available-bg: rgba(34, 197, 94, 0.15);
-  --color-status-available-text: #4ade80;
-  --color-status-available-border: #16a34a;
+  /* Spacing Scale */
+  --ev-space-1: 4px;
+  --ev-space-2: 8px;
+  --ev-space-3: 12px;
+  --ev-space-4: 16px;
+  --ev-space-5: 20px;
+  --ev-space-6: 24px;
 
-  --color-status-warning-bg: rgba(245, 158, 11, 0.15);
-  --color-status-warning-text: #fbbf24;
-  --color-status-warning-border: #d97706;
-
-  --color-status-conflict-bg: rgba(239, 68, 68, 0.18);
-  --color-status-conflict-text: #f87171;
-  --color-status-conflict-border: #dc2626;
-
-  --color-status-locked-bg: rgba(168, 85, 247, 0.18);
-  --color-status-locked-text: #c084fc;
-  --color-status-locked-border: #9333ea;
-
-  /* Header & Navigation */
-  --color-header-bg: #070a10;
-  --color-nav-active-bg: #1e293b;
-  --color-nav-active-border: #f59e0b;
+  /* Border Radii (Utilitarian Broadcast Look) */
+  --ev-radius-sm: 2px;
+  --ev-radius-md: 4px;
+  --ev-radius-lg: 6px;
 
   /* Focus & Accessibility */
-  --focus-ring: 2px solid #f59e0b;
-  --focus-offset: 2px;
+  --ev-focus-ring: 2px solid #38bdf8;
+  --ev-focus-offset: 1px;
 
-  /* Typography Scale */
-  --font-family-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-family-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  /* ==========================================================================
+     Backward Compatibility Aliases
+     ========================================================================== */
+  --color-bg-app: var(--ev-bg-canvas);
+  --color-bg-surface: var(--ev-bg-panel);
+  --color-bg-surface-elevated: var(--ev-bg-panel-header);
+  --color-bg-surface-hover: var(--ev-bg-control-hover);
+  --color-border: var(--ev-border-dark);
+  --color-border-subtle: #242424;
+
+  --color-text-primary: var(--ev-text-primary);
+  --color-text-secondary: var(--ev-text-secondary);
+  --color-text-muted: var(--ev-text-muted);
+  --color-text-inverse: #000000;
+
+  --color-accent-amber: var(--ev-text-gold);
+  --color-accent-amber-hover: #d97706;
+  --color-accent-amber-subtle: rgba(245, 158, 11, 0.15);
+
+  --color-status-assigned-bg: rgba(40, 100, 163, 0.2);
+  --color-status-assigned-text: #60a5fa;
+  --color-status-assigned-border: var(--ev-blue);
+
+  --color-status-available-bg: rgba(84, 213, 74, 0.15);
+  --color-status-available-text: var(--ev-status-ok);
+  --color-status-available-border: #3aa833;
+
+  --color-status-warning-bg: rgba(226, 185, 59, 0.15);
+  --color-status-warning-text: var(--ev-status-warning);
+  --color-status-warning-border: #b89324;
+
+  --color-status-conflict-bg: rgba(216, 76, 76, 0.2);
+  --color-status-conflict-text: #f87171;
+  --color-status-conflict-border: var(--ev-status-error);
+
+  --color-status-locked-bg: rgba(168, 85, 247, 0.2);
+  --color-status-locked-text: #c084fc;
+  --color-status-locked-border: var(--ev-status-locked);
+
+  --color-header-bg: var(--ev-blue);
+  --color-nav-active-bg: var(--ev-bg-sidebar-active);
+  --color-nav-active-border: var(--ev-blue);
+
+  --focus-ring: var(--ev-focus-ring);
+  --focus-offset: var(--ev-focus-offset);
+
+  --font-family-sans: var(--ev-font);
+  --font-family-mono: var(--ev-font-mono);
+
   --font-size-xs: 0.75rem;
-  --font-size-sm: 0.84rem;
-  --font-size-base: 0.925rem;
-  --font-size-md: 1rem;
-  --font-size-lg: 1.15rem;
-  --font-size-xl: 1.35rem;
-  --font-size-2xl: 1.65rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.875rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.0625rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
 
-  /* Spacing */
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
+  --spacing-1: var(--ev-space-1);
+  --spacing-2: var(--ev-space-2);
+  --spacing-3: var(--ev-space-3);
+  --spacing-4: var(--ev-space-4);
+  --spacing-5: var(--ev-space-5);
+  --spacing-6: var(--ev-space-6);
+  --spacing-8: 32px;
+  --spacing-12: 48px;
 
-  /* Radii */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-sm: var(--ev-radius-sm);
+  --radius-md: var(--ev-radius-md);
+  --radius-lg: var(--ev-radius-lg);
+  --radius-full: 9999px;
 }

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TrackerRepositoryProvider } from '../app/TrackerRepositoryContext';
-import { AppHeader } from '../components/layout/AppHeader';
+import { AppShell } from '../components/layout/AppShell';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LayoutAssignmentsPage } from '../pages/LayoutAssignmentsPage';
 import { DestinationSourcesPage } from '../pages/DestinationSourcesPage';
@@ -22,12 +22,14 @@ function renderWithRepository(ui: React.ReactElement, initialRoute: string = '/'
 }
 
 describe('UI Integration Tests - Displays-First Operational Views', () => {
-  it('renders application shell header with Local Data badge and 4 core operational areas', async () => {
-    renderWithRepository(<AppHeader />);
+  it('renders application shell with Evertz top command bar, Local Data badge, and navigation sidebar', async () => {
+    renderWithRepository(<AppShell />);
 
-    expect(await screen.findByText('Evertz VIP Source Tracker')).toBeInTheDocument();
+    expect(await screen.findByText('VIP TRACKER')).toBeInTheDocument();
+    expect(screen.getByText('Evertz VIP Source Tracker')).toBeInTheDocument();
     expect(screen.getByText('Local Data')).toBeInTheDocument();
-    expect(screen.getByText('Displays')).toBeInTheDocument();
+    expect(screen.getByText('TECH OPS')).toBeInTheDocument();
+    expect(screen.getByText('Multiviewers')).toBeInTheDocument();
     expect(screen.getByText('Layouts')).toBeInTheDocument();
     expect(screen.getByText('Sources')).toBeInTheDocument();
     expect(screen.getByText('Assignments')).toBeInTheDocument();

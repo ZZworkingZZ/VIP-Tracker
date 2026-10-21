@@ -121,11 +121,11 @@ export const ProductionsPage: React.FC = () => {
                   key={prod.assignmentName}
                   className="assignment-package-card"
                   style={{
-                    backgroundColor: '#111726',
-                    border: '1px solid #233044',
-                    borderRadius: '10px',
-                    padding: '18px',
-                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                    backgroundColor: '#1c1c1c',
+                    border: '1px solid #363636',
+                    borderRadius: '3px',
+                    padding: '14px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
                   }}
                 >
                   {/* Package Header */}
@@ -135,21 +135,20 @@ export const ProductionsPage: React.FC = () => {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       flexWrap: 'wrap',
-                      gap: '12px',
-                      marginBottom: '16px',
-                      paddingBottom: '12px',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                      gap: '10px',
+                      marginBottom: '14px',
+                      paddingBottom: '10px',
+                      borderBottom: '1px solid #282828',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <h2
                         style={{
                           margin: 0,
-                          fontSize: '18px',
-                          fontWeight: 800,
-                          fontFamily: 'monospace',
-                          color: '#fbbf24',
-                          letterSpacing: '-0.3px',
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          color: '#f59e0b',
+                          letterSpacing: '-0.2px',
                         }}
                       >
                         {prod.assignmentName}
@@ -159,10 +158,10 @@ export const ProductionsPage: React.FC = () => {
                           fontSize: '11px',
                           fontWeight: 700,
                           backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                          color: '#fbbf24',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          color: '#f59e0b',
+                          padding: '1px 6px',
+                          borderRadius: '2px',
+                          border: '1px solid rgba(245, 158, 11, 0.4)',
                         }}
                       >
                         {matchedOutputs.length} Output{matchedOutputs.length === 1 ? '' : 's'}
@@ -173,30 +172,29 @@ export const ProductionsPage: React.FC = () => {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         flexWrap: 'wrap',
                       }}
                     >
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>Multiviews:</span>
+                      <span style={{ fontSize: '11px', color: '#858585' }}>Multiviews:</span>
                       {prod.multiviewsUsed.map((mv) => (
                         <span
                           key={mv}
                           style={{
                             fontSize: '11px',
                             fontWeight: 700,
-                            fontFamily: 'monospace',
-                            backgroundColor: '#1e293b',
-                            color: '#38bdf8',
+                            backgroundColor: '#282828',
+                            color: '#60a5fa',
                             padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: '1px solid #334155',
+                            borderRadius: '2px',
+                            border: '1px solid #444444',
                           }}
                         >
                           {mv}
                         </span>
                       ))}
 
-                      <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '6px' }}>
+                      <span style={{ fontSize: '11px', color: '#858585', marginLeft: '6px' }}>
                         Layouts:
                       </span>
                       {prod.layouts.map((l) => (
@@ -205,10 +203,11 @@ export const ProductionsPage: React.FC = () => {
                           style={{
                             fontSize: '11px',
                             fontWeight: 600,
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                            color: '#38bdf8',
+                            backgroundColor: 'rgba(40, 100, 163, 0.3)',
+                            color: '#60a5fa',
                             padding: '2px 6px',
-                            borderRadius: '3px',
+                            borderRadius: '2px',
+                            border: '1px solid rgba(40, 100, 163, 0.5)',
                           }}
                         >
                           {l}

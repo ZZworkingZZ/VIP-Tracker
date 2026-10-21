@@ -216,21 +216,21 @@ export const DestinationSourcesPage: React.FC = () => {
                       }
                     }}
                     style={{
-                      backgroundColor: hasSource ? '#111726' : '#0a0e17',
+                      backgroundColor: hasSource ? '#191919' : '#0f0f0f',
                       border: row.hasConflict
-                        ? '1px solid #ef4444'
+                        ? '1px solid var(--ev-status-error)'
                         : hasSource
-                          ? '1px solid #233044'
-                          : '1px dashed #1e293b',
-                      borderRadius: '6px',
-                      padding: '8px',
+                          ? '1px solid #363636'
+                          : '1px dashed #262626',
+                      borderRadius: '2px',
+                      padding: '7px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      minHeight: '75px',
+                      minHeight: '70px',
                       cursor: row.coveringOutput ? 'pointer' : 'default',
-                      transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                      transition: 'border-color 0.15s ease',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
                     }}
                     title={
                       row.coveringOutput

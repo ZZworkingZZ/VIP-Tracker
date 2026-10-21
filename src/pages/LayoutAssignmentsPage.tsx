@@ -217,17 +217,17 @@ export const LayoutAssignmentsPage: React.FC = () => {
                   key={layout.id}
                   className="layout-card"
                   style={{
-                    backgroundColor: '#111726',
-                    border: '1px solid #233044',
-                    borderRadius: '8px',
-                    padding: '14px',
+                    backgroundColor: '#1c1c1c',
+                    border: '1px solid #363636',
+                    borderRadius: '3px',
+                    padding: '12px',
                     display: 'flex',
                     flexDirection: 'column',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
                   }}
                 >
                   {/* Thumbnail Preview */}
-                  <div style={{ marginBottom: '12px' }}>
+                  <div style={{ marginBottom: '10px' }}>
                     <LayoutRenderer layout={layout} mode="thumbnail" />
                   </div>
 
@@ -237,16 +237,15 @@ export const LayoutAssignmentsPage: React.FC = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: '6px',
+                      marginBottom: '4px',
                     }}
                   >
                     <h3
                       style={{
                         margin: 0,
-                        fontSize: '15px',
-                        fontWeight: 800,
-                        fontFamily: 'monospace',
-                        color: '#f8fafc',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: '#ffffff',
                       }}
                     >
                       {layout.name}
@@ -254,11 +253,12 @@ export const LayoutAssignmentsPage: React.FC = () => {
                     <span
                       style={{
                         fontSize: '10px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                        color: '#38bdf8',
-                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: '2px',
+                        backgroundColor: 'rgba(40, 100, 163, 0.35)',
+                        color: '#60a5fa',
+                        border: '1px solid rgba(40, 100, 163, 0.5)',
                       }}
                     >
                       {layout.category}
@@ -267,10 +267,10 @@ export const LayoutAssignmentsPage: React.FC = () => {
 
                   <p
                     style={{
-                      margin: '0 0 12px 0',
+                      margin: '0 0 10px 0',
                       fontSize: '11px',
-                      color: '#94a3b8',
-                      minHeight: '32px',
+                      color: '#a0a0a0',
+                      minHeight: '30px',
                     }}
                   >
                     {layout.description}
@@ -280,8 +280,8 @@ export const LayoutAssignmentsPage: React.FC = () => {
                   <div
                     style={{
                       marginTop: 'auto',
-                      paddingTop: '10px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                      paddingTop: '8px',
+                      borderTop: '1px solid #2a2a2a',
                     }}
                   >
                     <div
@@ -293,12 +293,11 @@ export const LayoutAssignmentsPage: React.FC = () => {
                         marginBottom: '6px',
                       }}
                     >
-                      <span style={{ color: '#64748b' }}>Assigned Outputs:</span>
+                      <span style={{ color: '#858585' }}>Assigned Outputs:</span>
                       <span
                         style={{
                           fontWeight: 700,
-                          color: isInUse ? '#4ade80' : '#64748b',
-                          fontFamily: 'monospace',
+                          color: isInUse ? '#54d54a' : '#666666',
                         }}
                       >
                         {activeOutputs.length} Output{activeOutputs.length === 1 ? '' : 's'}
@@ -313,14 +312,13 @@ export const LayoutAssignmentsPage: React.FC = () => {
                             type="button"
                             onClick={() => setSelectedOutput(out)}
                             style={{
-                              padding: '2px 6px',
-                              borderRadius: '3px',
+                              padding: '2px 5px',
+                              borderRadius: '2px',
                               fontSize: '10px',
-                              fontFamily: 'monospace',
                               fontWeight: 700,
-                              backgroundColor: '#1e293b',
-                              color: '#fbbf24',
-                              border: '1px solid #334155',
+                              backgroundColor: '#282828',
+                              color: '#f59e0b',
+                              border: '1px solid #444444',
                               cursor: 'pointer',
                             }}
                             title={`Inspect ${formatOutputDisplay(out.id)} (${out.assignmentName || 'Assigned'})`}
@@ -330,7 +328,7 @@ export const LayoutAssignmentsPage: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: '#475569', fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '11px', color: '#555555', fontStyle: 'italic' }}>
                         Available in library (not active)
                       </span>
                     )}

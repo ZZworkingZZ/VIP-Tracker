@@ -56,6 +56,13 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="dashboard-page displays-view-page">
+      <header className="page-header">
+        <h1 className="page-title">Multiviewer Displays</h1>
+        <p className="page-description">
+          Physical output geometry and broadcast destination mappings across MV-01 through MV-05
+        </p>
+      </header>
+
       {/* Compact Top Operational Status Strip */}
       <section className="operational-status-strip" aria-label="System Metrics Summary">
         <div className="status-strip-metrics">

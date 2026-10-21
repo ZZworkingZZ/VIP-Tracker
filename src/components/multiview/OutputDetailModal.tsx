@@ -62,7 +62,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         destinationOffset: i,
         destinationNumber: destNumber,
         destinationId: dest?.id,
-        destinationLabel: dest ? formatDestinationDisplay(dest.id) : `#${destNumber}`,
+        destinationLabel: dest ? formatDestinationDisplay(dest.id) : `Src ${destNumber}`,
         sourceName: source?.name || null,
         sourceCategory: source?.category || null,
         isLocked: dest?.locked || false,
@@ -90,29 +90,30 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(5, 8, 15, 0.82)',
-        backdropFilter: 'blur(6px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: '20px',
+        padding: '16px',
       }}
     >
       <div
         className="output-modal-content"
         onClick={(e) => e.stopPropagation()}
         style={{
-          backgroundColor: '#111726',
-          border: '1px solid #2e3d54',
-          borderRadius: '12px',
+          backgroundColor: '#1c1c1c',
+          border: '1px solid #444444',
+          borderRadius: '4px',
           maxWidth: '920px',
           width: '100%',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08)',
           overflow: 'hidden',
+          fontFamily: 'var(--ev-font)',
         }}
       >
         {/* Modal Header */}
@@ -121,19 +122,18 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '16px 20px',
-            backgroundColor: '#0a0e17',
-            borderBottom: '1px solid #222d3d',
+            padding: '12px 16px',
+            backgroundColor: '#272727',
+            borderBottom: '1px solid #383838',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span
               style={{
-                fontFamily: 'monospace',
-                fontSize: '18px',
-                fontWeight: 800,
-                color: '#f8fafc',
-                letterSpacing: '-0.3px',
+                fontSize: '16px',
+                fontWeight: 700,
+                color: '#ffffff',
+                letterSpacing: '-0.2px',
               }}
             >
               {outputLabel}
@@ -141,16 +141,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
             <span
               style={{
-                padding: '3px 10px',
-                borderRadius: '4px',
-                fontSize: '12px',
+                padding: '2px 8px',
+                borderRadius: '2px',
+                fontSize: '11px',
                 fontWeight: 700,
-                fontFamily: 'monospace',
-                backgroundColor: isAvailable
-                  ? 'rgba(34, 197, 94, 0.15)'
-                  : 'rgba(59, 130, 246, 0.15)',
-                color: isAvailable ? '#4ade80' : '#60a5fa',
-                border: `1px solid ${isAvailable ? '#16a34a' : '#2563eb'}`,
+                backgroundColor: isAvailable ? 'rgba(84, 213, 74, 0.2)' : 'rgba(40, 100, 163, 0.4)',
+                color: isAvailable ? '#54d54a' : '#60a5fa',
+                border: `1px solid ${isAvailable ? '#54d54a' : '#3378c2'}`,
               }}
             >
               {isAvailable ? 'AVAILABLE' : output.assignmentName || 'ASSIGNED'}
@@ -159,11 +156,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             {output.locked && (
               <span
                 style={{
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
+                  padding: '2px 6px',
+                  borderRadius: '2px',
+                  fontSize: '10px',
                   fontWeight: 700,
-                  backgroundColor: 'rgba(168, 85, 247, 0.18)',
+                  backgroundColor: 'rgba(168, 85, 247, 0.25)',
                   color: '#c084fc',
                   border: '1px solid #9333ea',
                 }}
@@ -173,19 +170,19 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {prevOutput && onSelectOutput && (
               <button
                 type="button"
                 onClick={() => onSelectOutput(prevOutput)}
                 style={{
-                  padding: '5px 10px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  backgroundColor: '#1e293b',
-                  color: '#cbd5e1',
-                  border: '1px solid #334155',
-                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  backgroundColor: '#303030',
+                  color: '#e2e8f0',
+                  border: '1px solid #444444',
+                  borderRadius: '2px',
                   cursor: 'pointer',
                 }}
               >
@@ -198,13 +195,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 type="button"
                 onClick={() => onSelectOutput(nextOutput)}
                 style={{
-                  padding: '5px 10px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  backgroundColor: '#1e293b',
-                  color: '#cbd5e1',
-                  border: '1px solid #334155',
-                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  backgroundColor: '#303030',
+                  color: '#e2e8f0',
+                  border: '1px solid #444444',
+                  borderRadius: '2px',
                   cursor: 'pointer',
                 }}
               >
@@ -217,14 +214,14 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               onClick={onClose}
               aria-label="Close detail modal"
               style={{
-                marginLeft: '8px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#94a3b8',
-                fontSize: '18px',
+                marginLeft: '6px',
+                width: '28px',
+                height: '28px',
+                borderRadius: '2px',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#cccccc',
+                fontSize: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -237,30 +234,36 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
           {/* Metadata Grid */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px',
-              marginBottom: '20px',
-              padding: '12px',
-              backgroundColor: '#0a0e17',
-              borderRadius: '8px',
-              border: '1px solid #1e293b',
+              gap: '10px',
+              marginBottom: '16px',
+              padding: '10px 14px',
+              backgroundColor: '#161616',
+              borderRadius: '2px',
+              border: '1px solid #333333',
             }}
           >
             <div>
-              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>
-                Multiviewer
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#858585',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                }}
+              >
+                Multiviewer Frame
               </div>
               <div
                 style={{
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 700,
-                  color: '#f8fafc',
-                  fontFamily: 'monospace',
+                  color: '#ffffff',
                 }}
               >
                 {output.multiviewId}
@@ -268,15 +271,21 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#858585',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                }}
+              >
                 Layout Geometry
               </div>
               <div
                 style={{
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 700,
-                  color: '#38bdf8',
-                  fontFamily: 'monospace',
+                  color: '#60a5fa',
                 }}
               >
                 {output.layoutName || 'None (Available)'}
@@ -284,15 +293,21 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#858585',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                }}
+              >
                 Destination Range
               </div>
               <div
                 style={{
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 700,
-                  color: '#f8fafc',
-                  fontFamily: 'monospace',
+                  color: '#ffffff',
                 }}
               >
                 {output.destinationStart && output.destinationEnd
@@ -304,15 +319,21 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#858585',
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                }}
+              >
                 Operational Assignment
               </div>
               <div
                 style={{
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 700,
-                  color: '#fbbf24',
-                  fontFamily: 'monospace',
+                  color: '#f59e0b',
                 }}
               >
                 {output.assignmentName || 'None'}
@@ -321,20 +342,20 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
           </div>
 
           {/* Visual Multiview Display */}
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '18px' }}>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '8px',
+                marginBottom: '6px',
               }}
             >
-              <h3 style={{ fontSize: '13px', fontWeight: 700, color: '#cbd5e1', margin: 0 }}>
+              <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
                 Visual Multiview Output Display
               </h3>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>
-                Aspect Ratio 16:9 Broadcast Feed
+              <span style={{ fontSize: '11px', color: '#858585' }}>
+                Aspect Ratio 16:9 Broadcast Monitor
               </span>
             </div>
 
@@ -344,27 +365,28 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               <div
                 style={{
                   aspectRatio: '16 / 9',
-                  backgroundColor: '#070a12',
-                  borderRadius: '8px',
+                  backgroundColor: '#111111',
+                  borderRadius: '2px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '1px dashed #222d3d',
-                  color: '#64748b',
+                  border: '1px dashed #383838',
+                  color: '#858585',
                 }}
               >
                 <span
                   style={{
-                    fontSize: '16px',
+                    fontSize: '14px',
                     fontWeight: 700,
-                    color: '#4ade80',
+                    color: '#54d54a',
                     marginBottom: '4px',
+                    letterSpacing: '1px',
                   }}
                 >
                   AVAILABLE OUTPUT
                 </span>
-                <span style={{ fontSize: '12px' }}>
+                <span style={{ fontSize: '11px' }}>
                   No layout has been assigned to {outputLabel}
                 </span>
               </div>
@@ -376,10 +398,10 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             <div>
               <h3
                 style={{
-                  fontSize: '13px',
+                  fontSize: '12px',
                   fontWeight: 700,
-                  color: '#cbd5e1',
-                  marginBottom: '10px',
+                  color: '#e2e8f0',
+                  marginBottom: '8px',
                 }}
               >
                 Covered Destinations & Routed Sources ({windowsData.length})
@@ -388,26 +410,61 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               <div
                 style={{
                   overflowX: 'auto',
-                  border: '1px solid #222d3d',
-                  borderRadius: '6px',
+                  border: '1px solid #333333',
+                  borderRadius: '2px',
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#0a0e17', borderBottom: '1px solid #222d3d' }}>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', color: '#94a3b8' }}>
+                    <tr style={{ backgroundColor: '#242424', borderBottom: '1px solid #383838' }}>
+                      <th
+                        style={{
+                          padding: '6px 10px',
+                          textAlign: 'left',
+                          color: '#b8b8b8',
+                          fontWeight: 700,
+                        }}
+                      >
                         Window #
                       </th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', color: '#94a3b8' }}>
+                      <th
+                        style={{
+                          padding: '6px 10px',
+                          textAlign: 'left',
+                          color: '#b8b8b8',
+                          fontWeight: 700,
+                        }}
+                      >
                         Destination Number
                       </th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', color: '#94a3b8' }}>
+                      <th
+                        style={{
+                          padding: '6px 10px',
+                          textAlign: 'left',
+                          color: '#b8b8b8',
+                          fontWeight: 700,
+                        }}
+                      >
                         Destination ID
                       </th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', color: '#94a3b8' }}>
+                      <th
+                        style={{
+                          padding: '6px 10px',
+                          textAlign: 'left',
+                          color: '#b8b8b8',
+                          fontWeight: 700,
+                        }}
+                      >
                         Routed Source
                       </th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', color: '#94a3b8' }}>
+                      <th
+                        style={{
+                          padding: '6px 10px',
+                          textAlign: 'left',
+                          color: '#b8b8b8',
+                          fontWeight: 700,
+                        }}
+                      >
                         Category
                       </th>
                     </tr>
@@ -417,55 +474,50 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                       <tr
                         key={win.destinationOffset}
                         style={{
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                          backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(15, 23, 42, 0.3)',
+                          borderBottom: '1px solid #282828',
+                          backgroundColor: idx % 2 === 0 ? '#191919' : '#141414',
                         }}
                       >
-                        <td
-                          style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#64748b' }}
-                        >
+                        <td style={{ padding: '6px 10px', color: '#858585' }}>
                           Window {win.destinationOffset + 1}
                         </td>
                         <td
                           style={{
-                            padding: '8px 12px',
-                            fontFamily: 'monospace',
-                            fontWeight: 600,
-                            color: '#f8fafc',
+                            padding: '6px 10px',
+                            fontWeight: 700,
+                            color: '#ffffff',
                           }}
                         >
                           #{win.destinationNumber}
                         </td>
-                        <td
-                          style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#38bdf8' }}
-                        >
+                        <td style={{ padding: '6px 10px', color: '#60a5fa' }}>
                           {win.destinationLabel || '—'}
                         </td>
                         <td
                           style={{
-                            padding: '8px 12px',
-                            fontFamily: 'monospace',
+                            padding: '6px 10px',
                             fontWeight: 700,
-                            color: win.sourceName ? '#f8fafc' : '#475569',
+                            color: win.sourceName ? '#ffffff' : '#555555',
                           }}
                         >
                           {win.sourceName || '— [Unrouted]'}
                         </td>
-                        <td style={{ padding: '8px 12px' }}>
+                        <td style={{ padding: '6px 10px' }}>
                           {win.sourceCategory ? (
                             <span
                               style={{
-                                fontSize: '11px',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                                color: '#38bdf8',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                padding: '1px 5px',
+                                borderRadius: '2px',
+                                backgroundColor: 'rgba(40, 100, 163, 0.3)',
+                                color: '#60a5fa',
                               }}
                             >
                               {win.sourceCategory}
                             </span>
                           ) : (
-                            <span style={{ color: '#475569' }}>—</span>
+                            <span style={{ color: '#555555' }}>—</span>
                           )}
                         </td>
                       </tr>

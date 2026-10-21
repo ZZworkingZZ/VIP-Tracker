@@ -109,3 +109,9 @@ V1.1 shifts the application from a data-first table presentation to an **Evertz-
 
 5. **Display View | Table View Toggle:**
    - Every operational area provides an instant toggle between the **Display View** (situational awareness, Tech Ops visual monitoring) and the **Table View** (engineering audits, pin verification, diagnostic analysis).
+
+6. **Evertz Visual Design System (`--ev-*` Tokens & Utilitarian Control Surface):**
+   - **Color Language:** Modeled after Evertz VIP/SDVN interfaces with canvas (`#141414`), sidebar (`#202020`), control surfaces (`#262626`–`#343434`), top command bar (`#2864a3`), and broadcast status LEDs (`#54d54a` healthy tracking, `#e2b93b` warnings, `#d84c4c` conflicts).
+   - **Compact Sans-Serif Typography:** Uses system utilitarian typography (`Arial, Helvetica, "Segoe UI", sans-serif`) with condensed spacing and crisp operational labels rather than heavy modern web fonts.
+   - **Hardware Control Console Shell:** Evertz top system bar with branding, `Local Data` tracking status, `READ-ONLY` indicator, `TECH OPS` role, and collapsible vertical sidebar navigation (`🖥 Multiviewers`, `▦ Layouts`, `⇄ Sources`, `◫ Assignments`, `⎘ Source Directory`).
+   - **Evertz MV Display Cards:** Real Evertz display card structure with thin gray outline, pure black background, output identifier, upper-right status dot, routed source geometry with `Src XX` pin numbers, and bottom assignment footer.

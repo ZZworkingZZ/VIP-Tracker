@@ -9,25 +9,44 @@
 }
 
 html {
-  font-family: var(--font-family-sans);
-  font-size: 16px;
-  background-color: var(--color-bg-app);
-  color: var(--color-text-primary);
-  line-height: 1.5;
+  font-family: var(--ev-font);
+  font-size: 15px;
+  background-color: var(--ev-bg-canvas);
+  color: var(--ev-text-primary);
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
 body {
   min-height: 100vh;
-  background-color: var(--color-bg-app);
-  color: var(--color-text-primary);
+  background-color: var(--ev-bg-canvas);
+  color: var(--ev-text-primary);
   overflow-x: hidden;
+}
+
+/* Custom dark scrollbar for broadcast control surfaces */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ev-bg-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ev-border-dark);
+  border-radius: var(--ev-radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ev-border);
 }
 
 /* Accessible focus visible rings */
 :focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  outline: var(--ev-focus-ring);
+  outline-offset: var(--ev-focus-offset);
 }
 
 /* Reduced motion support */
@@ -63,5 +82,5 @@ table {
 th,
 td {
   text-align: left;
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
 }

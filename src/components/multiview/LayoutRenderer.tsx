@@ -48,13 +48,13 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
         aspectRatio: '16 / 9',
         position: 'relative',
         width: '100%',
-        backgroundColor: '#070a12',
-        borderRadius: mode === 'detail' ? '8px' : '6px',
+        backgroundColor: '#000000',
+        borderRadius: mode === 'detail' ? '4px' : '2px',
         overflow: 'hidden',
         boxShadow:
           mode === 'detail'
-            ? '0 12px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 2px #2e3d54'
-            : '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px #222d3d',
+            ? '0 12px 30px rgba(0, 0, 0, 0.7), inset 0 0 0 1px #444444'
+            : '0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px #2a2a2a',
       }}
     >
       {layout.windows.map((win) => {
@@ -80,9 +80,9 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               width: `${win.width}%`,
               height: `${win.height}%`,
               boxSizing: 'border-box',
-              padding: mode === 'thumbnail' ? '2px' : isHighDensity ? '1px' : '4px',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: hasSource ? '#0e1626' : '#0b0f19',
+              padding: mode === 'thumbnail' ? '2px' : isHighDensity ? '1px' : '3px 4px',
+              border: '1px solid #363636',
+              backgroundColor: hasSource ? '#131313' : '#080808',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -98,7 +98,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                 : `Window ${win.destinationOffset + 1}`
             }
           >
-            {/* THUMBNAIL MODE */}
+            {/* THUMBNAIL MODE (Used in Layout Library) */}
             {mode === 'thumbnail' && (
               <div
                 style={{
@@ -107,20 +107,20 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'rgba(255, 255, 255, 0.45)',
+                  color: 'rgba(255, 255, 255, 0.4)',
                   fontSize: isHighDensity ? '8px' : '10px',
-                  fontFamily: 'monospace',
-                  fontWeight: 600,
+                  fontFamily: 'var(--ev-font)',
+                  fontWeight: 700,
                 }}
               >
                 {win.destinationOffset + 1}
               </div>
             )}
 
-            {/* CARD MODE */}
+            {/* CARD MODE (Evertz Miniature Display Card) */}
             {mode === 'card' && (
               <>
-                {/* Header: Destination number / label */}
+                {/* Header: Destination number / label (e.g. Src 47 or Dest 47) */}
                 <div
                   style={{
                     display: 'flex',
@@ -132,24 +132,23 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   <span
                     style={{
                       fontSize: isHighDensity ? '7px' : '9px',
-                      fontFamily: 'monospace',
+                      fontFamily: 'var(--ev-font)',
                       fontWeight: 600,
-                      color: hasSource ? '#94a3b8' : '#475569',
+                      color: hasSource ? '#9e9e9e' : '#555555',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {winData?.destinationLabel ||
-                      (winData?.destinationNumber
-                        ? `#${winData.destinationNumber}`
-                        : win.destinationOffset + 1)}
+                    {winData?.destinationNumber
+                      ? `Src ${winData.destinationNumber}`
+                      : winData?.destinationLabel || win.destinationOffset + 1}
                   </span>
                   {categoryColor && !isHighDensity && (
                     <span
                       style={{
-                        width: '5px',
-                        height: '5px',
+                        width: '4px',
+                        height: '4px',
                         borderRadius: '50%',
                         backgroundColor: categoryColor,
                         display: 'inline-block',
@@ -166,17 +165,17 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     textAlign: 'center',
-                    padding: isHighDensity ? '0' : '2px 0',
+                    padding: isHighDensity ? '0' : '1px 0',
                     overflow: 'hidden',
                   }}
                 >
                   {hasSource ? (
                     <span
                       style={{
-                        fontFamily: 'monospace',
+                        fontFamily: 'var(--ev-font)',
                         fontWeight: 700,
                         fontSize: isHighDensity ? '7px' : layout.windowCount <= 4 ? '12px' : '10px',
-                        color: '#f8fafc',
+                        color: '#f4f4f4',
                         letterSpacing: '-0.2px',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
@@ -191,7 +190,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                       style={{
                         color: 'rgba(255, 255, 255, 0.15)',
                         fontSize: isHighDensity ? '6px' : '9px',
-                        fontFamily: 'monospace',
+                        fontFamily: 'var(--ev-font)',
                       }}
                     >
                       —
@@ -206,7 +205,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                       height: '2px',
                       width: '100%',
                       backgroundColor: categoryColor,
-                      opacity: 0.8,
+                      opacity: 0.85,
                       borderRadius: '1px',
                     }}
                   />
@@ -214,7 +213,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               </>
             )}
 
-            {/* DETAIL MODE */}
+            {/* DETAIL MODE (Full-size Output Inspection Modal) */}
             {mode === 'detail' && (
               <div
                 style={{
@@ -235,14 +234,14 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                 >
                   <span
                     style={{
-                      fontFamily: 'monospace',
+                      fontFamily: 'var(--ev-font)',
                       fontSize: '11px',
                       fontWeight: 700,
-                      color: '#94a3b8',
-                      backgroundColor: 'rgba(15, 23, 42, 0.7)',
-                      padding: '2px 5px',
-                      borderRadius: '3px',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#b8b8b8',
+                      backgroundColor: '#1f1f1f',
+                      padding: '2px 6px',
+                      borderRadius: '2px',
+                      border: '1px solid #444444',
                     }}
                   >
                     {winData?.destinationLabel || `DEST-${win.destinationOffset + 1}`}
@@ -251,7 +250,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     <span
                       style={{
                         fontSize: '10px',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: categoryColor || '#38bdf8',
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px',
@@ -269,38 +268,46 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    padding: '8px 0',
                   }}
                 >
                   {hasSource ? (
-                    <span
-                      style={{
-                        fontFamily: 'monospace',
-                        fontWeight: 800,
-                        fontSize: layout.windowCount <= 4 ? '18px' : '14px',
-                        color: '#f8fafc',
-                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
-                        backgroundColor: 'rgba(14, 22, 38, 0.8)',
-                        padding: '4px 10px',
-                        borderRadius: '4px',
-                        border: `1px solid ${categoryColor ? categoryColor + '40' : '#334155'}`,
-                        maxWidth: '90%',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {winData?.sourceName}
-                    </span>
+                    <>
+                      <span
+                        style={{
+                          fontFamily: 'var(--ev-font)',
+                          fontSize: layout.windowCount <= 4 ? '20px' : '15px',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          letterSpacing: '-0.3px',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '95%',
+                        }}
+                      >
+                        {winData?.sourceName}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: '#858585',
+                          marginTop: '2px',
+                        }}
+                      >
+                        Destination Pin #{winData?.destinationNumber}
+                      </span>
+                    </>
                   ) : (
                     <span
                       style={{
-                        color: '#475569',
+                        color: '#555555',
                         fontSize: '12px',
                         fontStyle: 'italic',
                       }}
                     >
-                      Unrouted Destination
+                      No Route Assigned
                     </span>
                   )}
                 </div>
@@ -311,7 +318,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                       height: '3px',
                       width: '100%',
                       backgroundColor: categoryColor,
-                      borderRadius: '2px',
+                      borderRadius: '1px',
                     }}
                   />
                 )}
