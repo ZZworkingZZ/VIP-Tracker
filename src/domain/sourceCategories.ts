@@ -71,3 +71,28 @@ export function classifySourceCategory(rawName: string): SourceCategory {
 
   return 'Other';
 }
+
+/**
+ * Maps an operational source category to a distinct visual indicator color.
+ */
+export function getSourceCategoryColor(category: SourceCategory): string {
+  switch (category) {
+    case 'Virtual Camera':
+      return '#38bdf8'; // sky blue
+    case 'J2K Replay':
+    case 'JXS Replay':
+      return '#34d399'; // emerald
+    case 'Switcher':
+      return '#fbbf24'; // amber
+    case 'Transmission':
+      return '#a78bfa'; // purple
+    case 'Virtual Program':
+      return '#f87171'; // red/coral
+    case 'Test':
+      return '#94a3b8'; // slate
+    case 'Capture Encoder':
+      return '#60a5fa'; // blue
+    default:
+      return '#38bdf8';
+  }
+}

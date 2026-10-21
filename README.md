@@ -17,10 +17,11 @@ An operational tracking and visualization web application for broadcast technica
 
 The application tracks:
 
-- **Multiview Processor Capacities:** Frame-level destination input and physical output capabilities across five multiviews (MV-01 through MV-05).
-- **Output Layout Assignments:** Physical display allocations (32 total outputs), designated box count layouts, and inclusive destination ranges.
-- **Destination Sources:** Individual router destination input pins (264 total) and patched broadcast sources.
-- **Production Packages:** Grouped operational assignment tracking across multiview frames.
+- **Multiviewer Displays (Primary Operational View):** Visual 5-column layout (MV-01 through MV-05) featuring miniature multiview cards that render actual window geometry, routed broadcast source names, and destination numbers.
+- **Visual Layout Library:** Comprehensive catalog of standard Evertz layouts (`1 BOX` to `36 BOX`) rendered with geometric thumbnails and active output tracking.
+- **Interactive Multiview Sources:** Visual destination wall enabling operators to drill into any multiview frame and view patched source categories and signals.
+- **Operational Assignments:** Grouped assignment packages across shows, control rooms, test feeds, and monitoring setups.
+- **Display View | Table View Toggles:** Instant switching between visual situational awareness and detailed engineering spreadsheet auditing.
 - **Data Quality & Validation:** Automated detection of range overlaps, capacity violations, and box count discrepancies.
 
 ### Operational Boundaries & Safety Declarations

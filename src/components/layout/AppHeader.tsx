@@ -21,25 +21,25 @@ export const AppHeader: React.FC = () => {
 
         <nav className="app-nav" aria-label="Main Navigation">
           <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            Dashboard
+            Displays
           </NavLink>
           <NavLink
             to="/layouts"
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
           >
-            Layouts &amp; Assignments
+            Layouts
           </NavLink>
           <NavLink
             to="/sources"
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
           >
-            Destination Sources
+            Sources
           </NavLink>
           <NavLink
             to="/productions"
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
           >
-            Productions &amp; Assignments
+            Assignments
           </NavLink>
           <NavLink
             to="/directory"
