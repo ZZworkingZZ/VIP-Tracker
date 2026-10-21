@@ -4,7 +4,8 @@ import { SOURCE_CATEGORIES, SourceCategory } from '../domain/sourceCategories';
 import { selectFilteredSources } from '../domain/selectors';
 
 export const SourceDirectoryPage: React.FC = () => {
-  const { snapshot } = useTrackerSnapshot();
+  const { activeSnapshot } = useTrackerSnapshot();
+  const snapshot = activeSnapshot;
   const [selectedCategory, setSelectedCategory] = useState<SourceCategory | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 

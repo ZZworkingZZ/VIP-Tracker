@@ -86,6 +86,23 @@ export interface ChangeRecord {
   changedAt: string | null;
 }
 
+export interface FieldChange {
+  entityType: EntityType;
+  entityId: string;
+  entityLabel: string;
+  field: string;
+  previousValue: string | null;
+  newValue: string | null;
+  description: string;
+}
+
+export interface ChangeSet {
+  id: string;
+  timestamp: string;
+  summary: string;
+  changes: FieldChange[];
+}
+
 export interface ValidationFinding {
   id: string;
   severity: ValidationSeverity;

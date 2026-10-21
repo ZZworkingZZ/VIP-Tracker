@@ -7,7 +7,8 @@ import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { MultiviewOutput } from '../domain/models';
 
 export const ProductionsPage: React.FC = () => {
-  const { snapshot } = useTrackerSnapshot();
+  const { activeSnapshot } = useTrackerSnapshot();
+  const snapshot = activeSnapshot;
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
@@ -377,7 +378,7 @@ export const ProductionsPage: React.FC = () => {
       {/* Output Focused Drill-in Modal */}
       {selectedOutput && (
         <OutputDetailModal
-          output={selectedOutput}
+          output={snapshot.outputs.find((o) => o.id === selectedOutput.id) ?? selectedOutput}
           destinations={snapshot.destinations}
           sources={snapshot.sources}
           allOutputs={snapshot.outputs}

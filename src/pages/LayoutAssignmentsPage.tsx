@@ -10,7 +10,8 @@ type SortField = 'multiview' | 'outputNumber' | 'assignment' | 'destinationStart
 type SortDirection = 'asc' | 'desc';
 
 export const LayoutAssignmentsPage: React.FC = () => {
-  const { snapshot } = useTrackerSnapshot();
+  const { activeSnapshot } = useTrackerSnapshot();
+  const snapshot = activeSnapshot;
 
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
   const [layoutCategoryFilter, setLayoutCategoryFilter] = useState<string>('ALL');
@@ -609,7 +610,7 @@ export const LayoutAssignmentsPage: React.FC = () => {
       {/* Detail Modal */}
       {selectedOutput && (
         <OutputDetailModal
-          output={selectedOutput}
+          output={snapshot.outputs.find((o) => o.id === selectedOutput.id) ?? selectedOutput}
           destinations={snapshot.destinations}
           sources={snapshot.sources}
           allOutputs={snapshot.outputs}

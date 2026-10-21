@@ -1,13 +1,40 @@
 import { createContext } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
-import { TrackerSnapshot } from '../domain/models';
+import { TrackerSnapshot, MultiviewOutput, Source, FieldChange } from '../domain/models';
+import { MultiviewId, SourceId } from '../domain/identifiers';
 
 export interface TrackerRepositoryContextValue {
   repository: TrackerRepository;
+  /** Persisted canonical snapshot loaded from storage/seed */
   snapshot: TrackerSnapshot | null;
+  /** Active snapshot for display (draftSnapshot when in Edit Mode, else snapshot) */
+  activeSnapshot: TrackerSnapshot | null;
+  /** Staged snapshot during Edit Mode */
+  draftSnapshot: TrackerSnapshot | null;
+  /** Whether the user is currently in Edit Mode */
+  isEditMode: boolean;
+  /** Whether any differences exist between draftSnapshot and snapshot */
+  hasUnsavedChanges: boolean;
+  /** Structured list of staged differences */
+  stagedChanges: FieldChange[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  enterEditMode: () => void;
+  exitEditMode: () => void;
+  discardChanges: () => void;
+  updateDraftOutput: (output: MultiviewOutput) => void;
+  updateDraftDestination: (
+    multiviewId: MultiviewId,
+    destinationNumber: number,
+    sourceId: SourceId | null
+  ) => void;
+  updateDraftDestinationsBatch: (
+    updates: { multiviewId: MultiviewId; destinationNumber: number; sourceId: SourceId | null }[]
+  ) => void;
+  addDraftSource: (source: Source) => void;
+  saveDraftChanges: () => Promise<void>;
+  resetToBaseline: () => Promise<void>;
 }
 
 export const TrackerRepositoryContext = createContext<TrackerRepositoryContextValue | undefined>(

@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useTrackerSnapshot } from '../../hooks/useTracker';
 
 export interface AppHeaderProps {
   readonly onToggleSidebar?: () => void;
@@ -7,6 +8,24 @@ export interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOpen = true }) => {
+  const { isEditMode, hasUnsavedChanges } = useTrackerSnapshot();
+
+  let modeText = 'ACTIVE';
+  let modeClass = 'ev-status-pill ev-pill-mode active-mode';
+  let modeTitle = 'Operational mode: Active Tracking & Configuration';
+
+  if (isEditMode) {
+    if (hasUnsavedChanges) {
+      modeText = 'EDIT MODE • UNSAVED';
+      modeClass = 'ev-status-pill ev-pill-mode edit-mode unsaved';
+      modeTitle = 'Operational mode: Edit Mode (Unsaved Staged Changes)';
+    } else {
+      modeText = 'EDIT MODE';
+      modeClass = 'ev-status-pill ev-pill-mode edit-mode';
+      modeTitle = 'Operational mode: Edit Mode';
+    }
+  }
+
   return (
     <header className="ev-top-bar" role="banner">
       <div className="ev-top-bar-left">
@@ -33,7 +52,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
       </div>
 
       <div className="ev-top-bar-right">
-        {/* Read-Only Operational Tracking Baseline Indicator */}
+        {/* Operational Tracking Baseline Indicator */}
         <span
           className="ev-status-pill ev-pill-local"
           title="Displaying tracked repository baseline data, not direct live hardware state"
@@ -43,11 +62,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
           <span className="pill-text">Local Data</span>
         </span>
 
-        <span
-          className="ev-status-pill ev-pill-mode"
-          title="Operational mode: Read-Only Operational Tracking"
-        >
-          <span className="pill-text">READ-ONLY</span>
+        <span className={modeClass} title={modeTitle} data-testid="app-mode-pill">
+          <span className="pill-text">{modeText}</span>
         </span>
 
         <div className="ev-user-badge" title="Role: Technical Operations / Broadcast Engineering">

@@ -8,7 +8,8 @@ import { MultiviewOutput } from '../domain/models';
 import { getSourceCategoryColor } from '../domain/sourceCategories';
 
 export const DestinationSourcesPage: React.FC = () => {
-  const { snapshot } = useTrackerSnapshot();
+  const { activeSnapshot } = useTrackerSnapshot();
+  const snapshot = activeSnapshot;
   const [selectedMv, setSelectedMv] = useState<MultiviewId>('MV-01');
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -416,7 +417,7 @@ export const DestinationSourcesPage: React.FC = () => {
       {/* Output Focused Drill-in Modal */}
       {selectedOutput && (
         <OutputDetailModal
-          output={selectedOutput}
+          output={snapshot.outputs.find((o) => o.id === selectedOutput.id) ?? selectedOutput}
           destinations={snapshot.destinations}
           sources={snapshot.sources}
           allOutputs={snapshot.outputs}

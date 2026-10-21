@@ -3,9 +3,10 @@ import { NavLink } from 'react-router-dom';
 
 export interface AppSidebarProps {
   readonly isOpen?: boolean;
+  readonly onOpenSettings?: () => void;
 }
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true }) => {
+export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true, onOpenSettings }) => {
   return (
     <aside
       className={`ev-sidebar ${isOpen ? 'open' : 'collapsed'}`}
@@ -101,16 +102,26 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true }) => {
             <span className="ev-nav-badge">V1.4</span>
           </div>
 
-          <div
-            className="ev-nav-item disabled"
-            title="Application Settings & Customizations"
-            aria-disabled="true"
+          <button
+            type="button"
+            className="ev-nav-item"
+            title="Application Settings & Local Data Reset"
+            onClick={onOpenSettings}
+            data-testid="sidebar-settings-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              font: 'inherit',
+            }}
           >
             <span className="ev-nav-icon" aria-hidden="true">
               ⚙
             </span>
             <span className="ev-nav-label">Settings</span>
-          </div>
+          </button>
         </nav>
       </div>
 

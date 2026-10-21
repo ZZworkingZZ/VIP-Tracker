@@ -78,6 +78,37 @@ Represents a structured data quality observation, warning, or error.
 - `entityId`: `string`
 - `relatedEntityIds`: `string[]`
 
+### 2.6 ChangeSet & FieldChange
+
+Represents a staged, reviewed difference collection committed to persistent storage.
+
+- `id`: `string`
+- `timestamp`: `string` (ISO 8601)
+- `summary`: `string`
+- `changes`: `FieldChange[]` (each item detailing `entityType`, `entityId`, `field`, `previousValue`, `newValue`, `description`)
+
+### 2.7 Authoritative Entity Hierarchy
+
+The configuration follows a single authoritative relationship:
+
+```
+Production / Show Assignment
+       │
+       ▼
+VIP Physical Output
+       │
+       ▼
+Layout Geometry Definition
+       │
+       ▼
+Covered Destination Windows
+       │
+       ▼
+Tracked Router Source
+```
+
+Derived views (Displays, Sources Matrix, Operational Assignments, Layout Library, Table audits) calculate presentation dynamically from this canonical relationship.
+
 ---
 
 ## 3. Preserved Raw Operational Seed Records

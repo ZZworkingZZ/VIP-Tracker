@@ -22,4 +22,9 @@ export interface TrackerRepository {
   getOperationalAssignments(): Promise<OperationalAssignment[]>;
   getChangeHistory(): Promise<ChangeRecord[]>;
   getValidationFindings(): Promise<ValidationFinding[]>;
+  saveSnapshot(
+    snapshot: TrackerSnapshot,
+    changeSet?: import('../domain/models').ChangeSet
+  ): Promise<TrackerSnapshot>;
+  resetToBaseline(): Promise<TrackerSnapshot>;
 }

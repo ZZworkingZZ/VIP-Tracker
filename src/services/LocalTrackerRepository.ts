@@ -8,18 +8,50 @@ import {
   ChangeRecord,
   ValidationFinding,
   TrackerSnapshot,
+  ChangeSet,
 } from '../domain/models';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
+import { validateSnapshot } from '../domain/validation';
+import { changeSetToChangeRecords } from '../domain/diff';
+import { TrackerStorage, defaultStorage, TRACKER_SCHEMA_VERSION } from './storage';
 
 /**
- * In-memory local repository serving the typed bundled baseline seed snapshot.
+ * Local repository serving the typed baseline seed snapshot with browser persistence support.
  */
 export class LocalTrackerRepository implements TrackerRepository {
+  private initialSnapshot: TrackerSnapshot;
   private snapshot: TrackerSnapshot;
+  private storage: TrackerStorage;
 
-  constructor(initialSnapshot: TrackerSnapshot = INITIAL_SNAPSHOT) {
-    // Clone snapshot to prevent accidental external mutation
-    this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
+  constructor(
+    initialSnapshot: TrackerSnapshot = INITIAL_SNAPSHOT,
+    storage: TrackerStorage = defaultStorage
+  ) {
+    this.initialSnapshot = JSON.parse(JSON.stringify(initialSnapshot));
+    this.storage = storage;
+
+    const storedData = this.storage.load();
+    if (storedData) {
+      const findings = validateSnapshot(
+        this.initialSnapshot.multiviews,
+        storedData.outputs,
+        storedData.destinations,
+        storedData.sources
+      );
+
+      this.snapshot = {
+        multiviews: JSON.parse(JSON.stringify(this.initialSnapshot.multiviews)),
+        outputs: storedData.outputs,
+        destinations: storedData.destinations,
+        sources: storedData.sources,
+        operationalAssignments: storedData.operationalAssignments,
+        changeRecords: storedData.changeRecords ?? [],
+        validationFindings: findings,
+        generatedAt: storedData.savedAt,
+      };
+    } else {
+      this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
+    }
   }
 
   async getSnapshot(): Promise<TrackerSnapshot> {
@@ -52,6 +84,55 @@ export class LocalTrackerRepository implements TrackerRepository {
 
   async getValidationFindings(): Promise<ValidationFinding[]> {
     return Promise.resolve([...this.snapshot.validationFindings]);
+  }
+
+  async saveSnapshot(
+    updatedSnapshot: TrackerSnapshot,
+    changeSet?: ChangeSet
+  ): Promise<TrackerSnapshot> {
+    const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(updatedSnapshot));
+
+    if (changeSet && changeSet.changes.length > 0) {
+      const newRecords = changeSetToChangeRecords(changeSet);
+      cloned.changeRecords = [...(cloned.changeRecords ?? []), ...newRecords];
+    }
+
+    // Re-run pure domain validation
+    cloned.validationFindings = validateSnapshot(
+      cloned.multiviews,
+      cloned.outputs,
+      cloned.destinations,
+      cloned.sources
+    );
+
+    cloned.generatedAt = new Date().toISOString();
+    this.snapshot = cloned;
+
+    // Persist to storage
+    this.storage.save({
+      schemaVersion: TRACKER_SCHEMA_VERSION,
+      outputs: this.snapshot.outputs,
+      destinations: this.snapshot.destinations,
+      sources: this.snapshot.sources,
+      operationalAssignments: this.snapshot.operationalAssignments,
+      changeRecords: this.snapshot.changeRecords,
+      savedAt: this.snapshot.generatedAt,
+    });
+
+    return Promise.resolve(JSON.parse(JSON.stringify(this.snapshot)));
+  }
+
+  async resetToBaseline(): Promise<TrackerSnapshot> {
+    this.storage.clear();
+    this.snapshot = JSON.parse(JSON.stringify(this.initialSnapshot));
+    this.snapshot.validationFindings = validateSnapshot(
+      this.snapshot.multiviews,
+      this.snapshot.outputs,
+      this.snapshot.destinations,
+      this.snapshot.sources
+    );
+    this.snapshot.generatedAt = new Date().toISOString();
+    return Promise.resolve(JSON.parse(JSON.stringify(this.snapshot)));
   }
 }
 

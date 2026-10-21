@@ -7,7 +7,8 @@ import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 
 export const DashboardPage: React.FC = () => {
-  const { snapshot } = useTrackerSnapshot();
+  const { activeSnapshot, isEditMode, enterEditMode, discardChanges } = useTrackerSnapshot();
+  const snapshot = activeSnapshot;
 
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
   const [selectedMvFilter, setSelectedMvFilter] = useState<string>('ALL');
@@ -119,6 +120,23 @@ export const DashboardPage: React.FC = () => {
               Table View
             </button>
           </div>
+
+          <button
+            type="button"
+            className={`toggle-btn ${isEditMode ? 'active' : ''}`}
+            onClick={isEditMode ? discardChanges : enterEditMode}
+            data-testid="toggle-edit-mode-btn"
+            style={{
+              borderColor: isEditMode ? '#38bdf8' : undefined,
+              color: isEditMode ? '#38bdf8' : undefined,
+              fontWeight: 700,
+            }}
+            title={
+              isEditMode ? 'Exit edit mode' : 'Enter edit mode to modify layouts and source routing'
+            }
+          >
+            {isEditMode ? '✓ Editing Mode' : '✎ Edit Displays'}
+          </button>
         </div>
       </section>
 
@@ -291,7 +309,7 @@ export const DashboardPage: React.FC = () => {
       {/* Output Focused Drill-in Detail Modal */}
       {selectedOutput && (
         <OutputDetailModal
-          output={selectedOutput}
+          output={snapshot.outputs.find((o) => o.id === selectedOutput.id) ?? selectedOutput}
           destinations={snapshot.destinations}
           sources={snapshot.sources}
           allOutputs={snapshot.outputs}

@@ -4,11 +4,13 @@
 
 **Evertz VIP Source Tracker** is an internal operational tracking and visualization web application designed for broadcast technical managers and engineers. It tracks multiview hardware capacities, physical output allocations, designated box layouts, destination ranges, show and production assignments, router destination-to-source mappings, and resource lock states.
 
-### Operational Boundaries
+### Operational Boundaries & Editing Architecture
 
-- **Strictly Read-Only Tracking:** The application represents documented operational baseline data.
-- **No Direct Hardware Telemetry:** The application does **NOT** control Evertz VIP frames, router control systems, Lawo, VSM, or Magnum.
-- **Local Data Indicator:** The UI explicitly displays a **Local Data** indicator to reinforce that data reflects verified baseline records rather than live hardware telemetry.
+- **Active Operational Tracking:** Technical managers and engineers actively maintain layouts, destination ranges, source patches, and production ownership directly through a controlled staged-editing interface.
+- **Controlled Draft/Staged State:** Edits are staged in draft state and reviewed via pure-domain difference calculation before committing.
+- **Local Persistence Boundary:** Data is persisted in browser local storage via an abstracted storage service (`TrackerStorage`), with full capability to reset back to the verified baseline dataset.
+- **No Direct Hardware Telemetry:** The application does **NOT** directly control or poll Evertz VIP frames, router control systems, Lawo, VSM, or Magnum.
+- **Local Data Indicator:** The UI explicitly displays a **Local Data** indicator with active operating states (`ACTIVE`, `EDIT MODE`, `EDIT MODE • UNSAVED`) to reinforce that data reflects tracked operational documentation rather than live hardware telemetry.
 - **Zero Sensitive Secrets:** Contains no internal credentials, passwords, network IP addresses, or infrastructure hostnames.
 
 ---
