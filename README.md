@@ -4,6 +4,15 @@ An operational tracking and visualization web application for broadcast technica
 
 ---
 
+## 🌐 Live Application & Public Repository
+
+- **Public Web Application:** [https://zzworkingzz.github.io/VIP-Tracker/](https://zzworkingzz.github.io/VIP-Tracker/)
+- **Public GitHub Repository:** [https://github.com/ZZworkingZZ/VIP-Tracker](https://github.com/ZZworkingZZ/VIP-Tracker)
+- **Repository Visibility:** Public
+- **Deployment Platform:** GitHub Pages (Automated via GitHub Actions)
+
+---
+
 ## 1. Operational Purpose & Scope
 
 The application tracks:
@@ -27,7 +36,7 @@ The application tracks:
 
 - **Core:** React 18 with TypeScript 5 (Strict Mode enabled)
 - **Build & Dev Tooling:** Vite 6
-- **Routing:** React Router 6 (configured with environment-aware basename)
+- **Routing:** React Router 6 (configured with environment-aware basename `import.meta.env.BASE_URL`)
 - **Testing:** Vitest 2, React Testing Library 16, jsdom 25
 - **Code Quality:** ESLint 9 (flat config), Prettier 3, EditorConfig
 - **Styling:** Standard Vanilla CSS using CSS custom properties (`tokens.css`, `global.css`, `components.css`). No UI component frameworks or utility libraries.
@@ -112,11 +121,11 @@ This file is preserved exactly as-is. In accordance with operational rules:
 
 ---
 
-## 6. GitHub Pages & Deployment Considerations
+## 6. GitHub Pages Deployment
 
 - The application is configured with an environment-aware Vite base path (`base: process.env.GITHUB_ACTIONS ? '/VIP-Tracker/' : '/'`).
-- A GitHub Actions workflow is provided at `.github/workflows/deploy-pages.yml`.
-- **Security Notice:** GitHub Pages is not an authorization boundary. A private GitHub repository does not automatically guarantee that deployed Pages sites are private. Operationally sensitive broadcast routing data must not be deployed to public hosts without an approved access-control architecture.
+- Automated deployment to GitHub Pages is managed via `.github/workflows/deploy-pages.yml` using the official `actions/deploy-pages@v4` workflow.
+- Deep links and direct browser refreshes are supported via an automated `404.html` SPA fallback created during the deployment build.
 
 ---
 
