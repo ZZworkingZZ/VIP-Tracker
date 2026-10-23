@@ -3,6 +3,8 @@
  * Rules operate strictly on prefix/substring matching and never alter original raw names.
  */
 
+import type { SourceType } from './models';
+
 export const SOURCE_CATEGORIES = [
   'Test',
   'Capture Encoder',
@@ -50,7 +52,7 @@ export function classifySourceCategory(rawName: string): SourceCategory {
   if (/^MV\b|^VIP\b|^MULTI\b/.test(upper)) {
     return 'Multiview';
   }
-  if (/^SW\b|^SWITCHER\b|^ME\b|^AUX\b|^PGM\b|^PST\b/.test(upper)) {
+  if (/^SW\b|^SWR\b|^SWITCHER\b|^ME\b|^AUX\b|^PGM\b|^PST\b/.test(upper)) {
     return 'Switcher';
   }
   if (/^TX\b|^TRANS\b|^SAT\b|^FIBER\b/.test(upper)) {
@@ -59,7 +61,7 @@ export function classifySourceCategory(rawName: string): SourceCategory {
   if (/^VCAM\b|^CAM\b|^ROBO\b/.test(upper)) {
     return 'Virtual Camera';
   }
-  if (/^VING\b|^INGEST\b/.test(upper)) {
+  if (/^VING\b|^VINGEST\b|^INGEST\b/.test(upper)) {
     return 'Virtual Ingest';
   }
   if (/^VPGM\b|^PROG\b/.test(upper)) {
@@ -95,4 +97,42 @@ export function getSourceCategoryColor(category: SourceCategory): string {
     default:
       return '#38bdf8';
   }
+}
+
+/**
+ * Classifies a raw source name into a topological SourceType based on conservative rules:
+ * - Sources starting with 'v' or 'V' represent virtual sources (e.g. Lawo virtuals: vCam-02, VING, VPGM, VTIE).
+ * - Sources starting with 'UDX' represent processing equipment (e.g. UDX-03 converters).
+ * - All other sources are treated as originating broadcast signals.
+ */
+export function inferSourceType(rawName: string): SourceType {
+  const trimmed = rawName.trim();
+  if (/^v/i.test(trimmed)) {
+    return 'virtual';
+  }
+  if (/^UDX/i.test(trimmed)) {
+    return 'processing';
+  }
+  return 'originating';
+}
+
+export function isVirtualSource(source: { sourceType?: SourceType; name: string }): boolean {
+  if (source.sourceType) {
+    return source.sourceType === 'virtual';
+  }
+  return inferSourceType(source.name) === 'virtual';
+}
+
+export function isProcessingSource(source: { sourceType?: SourceType; name: string }): boolean {
+  if (source.sourceType) {
+    return source.sourceType === 'processing';
+  }
+  return inferSourceType(source.name) === 'processing';
+}
+
+export function isOriginatingSource(source: { sourceType?: SourceType; name: string }): boolean {
+  if (source.sourceType) {
+    return source.sourceType === 'originating';
+  }
+  return inferSourceType(source.name) === 'originating';
 }

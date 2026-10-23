@@ -109,6 +109,8 @@ export const mockSources: Source[] = [
     normalizedName: 'CAM 1',
     category: 'Virtual Camera',
     active: true,
+    upstreamSourceId: null,
+    sourceType: 'virtual',
   },
 ];
 

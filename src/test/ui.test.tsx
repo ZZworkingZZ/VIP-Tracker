@@ -12,8 +12,12 @@ import { SourceDirectoryPage } from '../pages/SourceDirectoryPage';
 import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
 
-function renderWithRepository(ui: React.ReactElement, initialRoute: string = '/') {
-  const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT);
+function renderWithRepository(
+  ui: React.ReactElement,
+  initialRoute: string = '/',
+  customRepo?: LocalTrackerRepository
+) {
+  const repo = customRepo ?? new LocalTrackerRepository(INITIAL_SNAPSHOT);
   return render(
     <TrackerRepositoryProvider repository={repo}>
       <MemoryRouter initialEntries={[initialRoute]}>{ui}</MemoryRouter>
@@ -127,8 +131,17 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     expect(screen.getByTestId('output-card-OUT:MV-04-02')).toBeInTheDocument();
   });
 
-  it('renders Source Directory page with accessible empty state for unpopulated sources', async () => {
+  it('renders Source Directory page with populated source catalog', async () => {
     renderWithRepository(<SourceDirectoryPage />);
+
+    expect(await screen.findByText('Source Directory')).toBeInTheDocument();
+    expect(screen.getByText(/Showing/i)).toBeInTheDocument();
+    expect(screen.getAllByText('231').length).toBe(2);
+  });
+
+  it('renders Source Directory page with accessible empty state for unpopulated sources', async () => {
+    const emptyRepo = new LocalTrackerRepository({ ...INITIAL_SNAPSHOT, sources: [] });
+    renderWithRepository(<SourceDirectoryPage />, '/', emptyRepo);
 
     expect(await screen.findByText('Source Directory')).toBeInTheDocument();
     expect(screen.getByText(/No router sources currently cataloged/i)).toBeInTheDocument();

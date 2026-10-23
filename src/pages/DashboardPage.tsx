@@ -7,7 +7,14 @@ import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 
 export const DashboardPage: React.FC = () => {
-  const { activeSnapshot, isEditMode, enterEditMode, discardChanges } = useTrackerSnapshot();
+  const {
+    activeSnapshot,
+    isEditMode,
+    hasUnsavedChanges,
+    enterEditMode,
+    exitEditMode,
+    discardChanges,
+  } = useTrackerSnapshot();
   const snapshot = activeSnapshot;
 
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
@@ -54,6 +61,22 @@ export const DashboardPage: React.FC = () => {
   if (!snapshot || !totals) {
     return null;
   }
+
+  const handleToggleEditMode = () => {
+    if (!isEditMode) {
+      enterEditMode();
+    } else {
+      if (hasUnsavedChanges) {
+        const confirmDiscard = window.confirm(
+          'Discard all staged changes? Any unsaved edits will be lost.'
+        );
+        if (!confirmDiscard) return;
+        discardChanges();
+      } else {
+        exitEditMode();
+      }
+    }
+  };
 
   return (
     <div className="dashboard-page displays-view-page">
@@ -124,7 +147,7 @@ export const DashboardPage: React.FC = () => {
           <button
             type="button"
             className={`toggle-btn ${isEditMode ? 'active' : ''}`}
-            onClick={isEditMode ? discardChanges : enterEditMode}
+            onClick={handleToggleEditMode}
             data-testid="toggle-edit-mode-btn"
             style={{
               borderColor: isEditMode ? '#38bdf8' : undefined,

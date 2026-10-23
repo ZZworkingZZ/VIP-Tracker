@@ -230,6 +230,41 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     [snapshot]
   );
 
+  // Update a single source's upstream source in draft state
+  const updateDraftSourceUpstream = useCallback(
+    (sourceId: SourceId, upstreamSourceId: SourceId | null) => {
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const nextSources = current.sources.map((s: Source) => {
+          if (s.id === sourceId) {
+            return {
+              ...s,
+              upstreamSourceId,
+            };
+          }
+          return s;
+        });
+
+        const findings = validateSnapshot(
+          current.multiviews,
+          current.outputs,
+          current.destinations,
+          nextSources
+        );
+
+        return {
+          ...current,
+          sources: nextSources,
+          validationFindings: findings,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [snapshot]
+  );
+
   // Save all staged changes to repository
   const saveDraftChanges = useCallback(async () => {
     if (!snapshot || !draftSnapshot) return;
@@ -294,6 +329,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestination,
       updateDraftDestinationsBatch,
       addDraftSource,
+      updateDraftSourceUpstream,
       saveDraftChanges,
       resetToBaseline,
     }),
@@ -315,6 +351,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestination,
       updateDraftDestinationsBatch,
       addDraftSource,
+      updateDraftSourceUpstream,
       saveDraftChanges,
       resetToBaseline,
     ]

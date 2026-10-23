@@ -140,10 +140,11 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
     }
   }
 
-  // 3. Compare Sources (detect newly cataloged sources)
-  const baselineSourceIds = new Set(baseline.sources.map((s) => s.id));
+  // 3. Compare Sources (detect newly cataloged sources and upstream relationship changes)
+  const baselineSourcesMap = new Map(baseline.sources.map((s) => [s.id, s]));
   for (const draftSrc of draft.sources) {
-    if (!baselineSourceIds.has(draftSrc.id)) {
+    const baseSrc = baselineSourcesMap.get(draftSrc.id);
+    if (!baseSrc) {
       changes.push({
         entityType: 'source',
         entityId: draftSrc.id,
@@ -152,6 +153,35 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
         previousValue: null,
         newValue: draftSrc.name,
         description: `Added Source to Directory: ${draftSrc.name} (${draftSrc.category})`,
+      });
+      continue;
+    }
+
+    if (baseSrc.upstreamSourceId !== draftSrc.upstreamSourceId) {
+      const prevName = baseSrc.upstreamSourceId
+        ? (baselineSources.get(baseSrc.upstreamSourceId) ?? baseSrc.upstreamSourceId)
+        : 'Unassigned';
+      const newName = draftSrc.upstreamSourceId
+        ? (draftSources.get(draftSrc.upstreamSourceId) ?? draftSrc.upstreamSourceId)
+        : 'Unassigned';
+
+      let description: string;
+      if (!baseSrc.upstreamSourceId && draftSrc.upstreamSourceId) {
+        description = `${draftSrc.name} upstream changed from Unassigned to ${newName}`;
+      } else if (baseSrc.upstreamSourceId && !draftSrc.upstreamSourceId) {
+        description = `${draftSrc.name} upstream cleared from ${prevName}`;
+      } else {
+        description = `${draftSrc.name} upstream changed from ${prevName} to ${newName}`;
+      }
+
+      changes.push({
+        entityType: 'source',
+        entityId: draftSrc.id,
+        entityLabel: draftSrc.name,
+        field: 'upstreamSourceId',
+        previousValue: prevName,
+        newValue: newName,
+        description,
       });
     }
   }

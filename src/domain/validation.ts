@@ -252,5 +252,100 @@ export function validateSnapshot(
     }
   }
 
+  // 13: Source graph validations
+  const directSelfRouteSources = new Set<string>();
+  const reportedCycleKeys = new Set<string>();
+  const sourceLookup = new Map<string, Source>(sources.map((s) => [s.id, s]));
+
+  for (const source of sources) {
+    if (!source.upstreamSourceId) {
+      continue;
+    }
+
+    // Direct self-route check
+    if (source.upstreamSourceId === source.id) {
+      directSelfRouteSources.add(source.id);
+      findings.push({
+        id: `finding-${findings.length + 1}`,
+        severity: 'error',
+        code: 'SOURCE_SELF_ROUTING',
+        message: `Source '${source.name}' (${source.id}) is routed directly into itself.`,
+        entityType: 'source',
+        entityId: source.id,
+        relatedEntityIds: [source.id],
+      });
+      continue;
+    }
+
+    // Unknown upstream reference check
+    if (!sourceIdSet.has(source.upstreamSourceId)) {
+      findings.push({
+        id: `finding-${findings.length + 1}`,
+        severity: 'error',
+        code: 'SOURCE_UNKNOWN_UPSTREAM',
+        message: `Source '${source.name}' (${source.id}) references unknown upstream source ID '${source.upstreamSourceId}'.`,
+        entityType: 'source',
+        entityId: source.id,
+        relatedEntityIds: [source.upstreamSourceId],
+      });
+      continue;
+    }
+  }
+
+  // Indirect circular routing check (with deduplication)
+  for (const startSource of sources) {
+    if (directSelfRouteSources.has(startSource.id)) {
+      continue;
+    }
+
+    const path: string[] = [];
+    const pathSet = new Set<string>();
+    let current: Source | undefined = startSource;
+
+    while (current && current.upstreamSourceId) {
+      // Direct self-route aborted (already handled)
+      if (current.upstreamSourceId === current.id) {
+        break;
+      }
+
+      // Dangling upstream aborted (already handled)
+      if (!sourceLookup.has(current.upstreamSourceId)) {
+        break;
+      }
+
+      path.push(current.id);
+      pathSet.add(current.id);
+
+      const nextId = current.upstreamSourceId;
+      if (pathSet.has(nextId)) {
+        // Cycle detected
+        const cycleStartIndex = path.indexOf(nextId);
+        const cycleNodes = path.slice(cycleStartIndex);
+
+        if (cycleNodes.length > 1) {
+          const canonicalKey = [...cycleNodes].sort().join('|');
+          if (!reportedCycleKeys.has(canonicalKey)) {
+            reportedCycleKeys.add(canonicalKey);
+
+            const cycleNames = cycleNodes.map((id) => sourceLookup.get(id)?.name ?? id).join(' → ');
+
+            findings.push({
+              id: `finding-${findings.length + 1}`,
+              severity: 'error',
+              code: 'SOURCE_CIRCULAR_ROUTING',
+              message: `Circular source routing detected: ${cycleNames} → ${sourceLookup.get(nextId)?.name ?? nextId}.`,
+              entityType: 'source',
+              entityId: cycleNodes[0],
+              relatedEntityIds: cycleNodes.slice(1),
+            });
+          }
+        }
+        break;
+      }
+
+      current = sourceLookup.get(nextId);
+    }
+  }
+
   return findings;
 }

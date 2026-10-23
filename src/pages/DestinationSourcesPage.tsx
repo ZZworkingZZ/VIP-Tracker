@@ -1,20 +1,57 @@
 import React, { useState, useMemo } from 'react';
 import { useTrackerSnapshot } from '../hooks/useTracker';
-import { MultiviewId, formatDestinationDisplay, formatOutputDisplay } from '../domain/identifiers';
+import {
+  MultiviewId,
+  DestinationId,
+  formatDestinationDisplay,
+  formatOutputDisplay,
+} from '../domain/identifiers';
 import { selectDestinationsForMultiview } from '../domain/selectors';
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
+import { SourceRoutingSelectorModal } from '../components/multiview/SourceRoutingSelectorModal';
 import { MultiviewOutput } from '../domain/models';
 import { getSourceCategoryColor } from '../domain/sourceCategories';
 
 export const DestinationSourcesPage: React.FC = () => {
-  const { activeSnapshot } = useTrackerSnapshot();
+  const {
+    activeSnapshot,
+    isEditMode,
+    enterEditMode,
+    exitEditMode,
+    discardChanges,
+    hasUnsavedChanges,
+    updateDraftDestination,
+    addDraftSource,
+  } = useTrackerSnapshot();
   const snapshot = activeSnapshot;
   const [selectedMv, setSelectedMv] = useState<MultiviewId>('MV-01');
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
+  const [routingDestId, setRoutingDestId] = useState<DestinationId | null>(null);
+
+  const routingDestination = useMemo(() => {
+    if (!routingDestId || !snapshot) return null;
+    return snapshot.destinations.find((d) => d.id === routingDestId) ?? null;
+  }, [snapshot, routingDestId]);
+
+  const handleToggleEditMode = () => {
+    if (isEditMode) {
+      if (hasUnsavedChanges) {
+        const confirmDiscard = window.confirm(
+          'Discard all staged changes and exit Edit Mode?\nUnsaved changes will be lost.'
+        );
+        if (!confirmDiscard) return;
+        discardChanges();
+      } else {
+        exitEditMode();
+      }
+    } else {
+      enterEditMode();
+    }
+  };
 
   const currentMv = useMemo(
     () => snapshot?.multiviews.find((mv) => mv.id === selectedMv),
@@ -76,20 +113,39 @@ export const DestinationSourcesPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="view-mode-toggle" role="group" aria-label="View Mode">
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="view-mode-toggle" role="group" aria-label="View Mode">
+              <button
+                type="button"
+                className={`toggle-btn ${viewMode === 'display' ? 'active' : ''}`}
+                onClick={() => setViewMode('display')}
+              >
+                Visual Display
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+              >
+                Table View
+              </button>
+            </div>
+
             <button
               type="button"
-              className={`toggle-btn ${viewMode === 'display' ? 'active' : ''}`}
-              onClick={() => setViewMode('display')}
+              className={`toggle-btn ${isEditMode ? 'active' : ''}`}
+              onClick={handleToggleEditMode}
+              data-testid="toggle-edit-mode-btn"
+              style={{
+                borderColor: isEditMode ? '#38bdf8' : undefined,
+                color: isEditMode ? '#38bdf8' : undefined,
+                fontWeight: 700,
+              }}
+              title={
+                isEditMode ? 'Exit edit mode' : 'Enter edit mode to modify destination routing'
+              }
             >
-              Visual Display
-            </button>
-            <button
-              type="button"
-              className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-            >
-              Table View
+              {isEditMode ? '✓ Editing Mode' : '✎ Edit Matrix'}
             </button>
           </div>
         </div>
@@ -116,7 +172,7 @@ export const DestinationSourcesPage: React.FC = () => {
               className={`mv-tab-btn ${selectedMv === mv.id ? 'active' : ''}`}
               onClick={() => setSelectedMv(mv.id)}
             >
-              <strong>{mv.id}</strong> ({mv.destinationCapacity} Inputs)
+              <strong>{mv.id}</strong> ({mv.destinationCapacity} Dests)
             </button>
           ))}
         </div>
@@ -189,7 +245,9 @@ export const DestinationSourcesPage: React.FC = () => {
                 {currentMv.destinationCapacity})
               </h2>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Click output feed above for high-res layout inspection
+                {isEditMode
+                  ? 'Click any destination tile or Route button to patch broadcast sources directly'
+                  : 'Click output feed above for high-res layout inspection'}
               </span>
             </div>
 
@@ -211,8 +269,11 @@ export const DestinationSourcesPage: React.FC = () => {
                 return (
                   <div
                     key={dest.id}
+                    data-testid={`dest-card-${dest.id}`}
                     onClick={() => {
-                      if (row.coveringOutput) {
+                      if (isEditMode) {
+                        setRoutingDestId(dest.id);
+                      } else if (row.coveringOutput) {
                         setSelectedOutput(row.coveringOutput);
                       }
                     }}
@@ -220,23 +281,29 @@ export const DestinationSourcesPage: React.FC = () => {
                       backgroundColor: hasSource ? '#191919' : '#0f0f0f',
                       border: row.hasConflict
                         ? '1px solid var(--ev-status-error)'
-                        : hasSource
-                          ? '1px solid #363636'
-                          : '1px dashed #262626',
+                        : isEditMode
+                          ? '1px solid #38bdf8'
+                          : hasSource
+                            ? '1px solid #363636'
+                            : '1px dashed #262626',
                       borderRadius: '2px',
                       padding: '7px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       minHeight: '70px',
-                      cursor: row.coveringOutput ? 'pointer' : 'default',
-                      transition: 'border-color 0.15s ease',
-                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.4)',
+                      cursor: isEditMode || row.coveringOutput ? 'pointer' : 'default',
+                      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                      boxShadow: isEditMode
+                        ? '0 2px 6px rgba(56, 189, 248, 0.15)'
+                        : '0 2px 4px rgba(0, 0, 0, 0.4)',
                     }}
                     title={
-                      row.coveringOutput
-                        ? `Covered by ${formatOutputDisplay(row.coveringOutput.id)} (${row.coveringOutput.assignmentName || 'Assigned'})`
-                        : undefined
+                      isEditMode
+                        ? `Click to route ${destDisplay} (Destination #${dest.destinationNumber})`
+                        : row.coveringOutput
+                          ? `Covered by ${formatOutputDisplay(row.coveringOutput.id)} (${row.coveringOutput.assignmentName || 'Assigned'})`
+                          : undefined
                     }
                   >
                     <div
@@ -251,7 +318,7 @@ export const DestinationSourcesPage: React.FC = () => {
                           fontSize: '10px',
                           fontFamily: 'monospace',
                           fontWeight: 700,
-                          color: '#64748b',
+                          color: isEditMode ? '#38bdf8' : '#64748b',
                         }}
                       >
                         {destDisplay}
@@ -270,17 +337,40 @@ export const DestinationSourcesPage: React.FC = () => {
 
                     <div style={{ textAlign: 'center', margin: '4px 0' }}>
                       {row.source ? (
-                        <span
+                        <div
                           style={{
-                            fontFamily: 'monospace',
-                            fontWeight: 800,
-                            fontSize: '11px',
-                            color: '#f8fafc',
-                            wordBreak: 'break-all',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '1px',
                           }}
                         >
-                          {row.source.name}
-                        </span>
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontWeight: 800,
+                              fontSize: '11px',
+                              color: '#f8fafc',
+                              wordBreak: 'break-all',
+                            }}
+                          >
+                            {row.source.name}
+                          </span>
+                          {row.source.upstreamSourceId && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                color: '#38bdf8',
+                                fontFamily: 'monospace',
+                              }}
+                              title="Upstream Source"
+                            >
+                              ↳{' '}
+                              {snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
+                                ?.name ?? 'Upstream'}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ fontSize: '10px', color: '#475569', fontStyle: 'italic' }}>
                           Unassigned
@@ -298,11 +388,71 @@ export const DestinationSourcesPage: React.FC = () => {
                         fontFamily: 'monospace',
                       }}
                     >
-                      <span>#{dest.destinationNumber}</span>
-                      {row.coveringOutput && (
-                        <span style={{ color: '#fbbf24', fontWeight: 600 }}>
-                          {formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')}
-                        </span>
+                      <span>
+                        #{dest.destinationNumber}
+                        {isEditMode && row.coveringOutput ? (
+                          <span style={{ color: '#fbbf24', marginLeft: '3px' }}>
+                            ({formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')})
+                          </span>
+                        ) : null}
+                      </span>
+                      {isEditMode ? (
+                        <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            data-testid={`dest-route-btn-${dest.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRoutingDestId(dest.id);
+                            }}
+                            style={{
+                              padding: '1px 5px',
+                              fontSize: '9px',
+                              fontWeight: 700,
+                              backgroundColor: '#2864a3',
+                              color: '#ffffff',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                            }}
+                            title={`Route source to ${destDisplay}`}
+                          >
+                            Route
+                          </button>
+                          {hasSource && (
+                            <button
+                              type="button"
+                              data-testid={`dest-clear-btn-${dest.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateDraftDestination(
+                                  dest.multiviewId,
+                                  dest.destinationNumber,
+                                  null
+                                );
+                              }}
+                              style={{
+                                padding: '1px 4px',
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                backgroundColor: '#262626',
+                                color: '#94a3b8',
+                                border: '1px solid #444',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                              }}
+                              title="Clear source"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        row.coveringOutput && (
+                          <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                            {formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')}
+                          </span>
+                        )
                       )}
                     </div>
                   </div>
@@ -324,19 +474,24 @@ export const DestinationSourcesPage: React.FC = () => {
                     Destination ID
                   </th>
                   <th scope="col" style={{ width: '80px' }}>
-                    Input #
+                    Dest #
                   </th>
                   <th scope="col">Assigned Source</th>
                   <th scope="col">Derived Layout Assignment</th>
                   <th scope="col">Mapped Output</th>
                   <th scope="col">Lock State</th>
                   <th scope="col">State</th>
+                  {isEditMode && (
+                    <th scope="col" style={{ width: '100px' }}>
+                      Routing
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {filteredDestinations.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-state">
+                    <td colSpan={isEditMode ? 8 : 7} className="empty-state">
                       No destinations match the filter criteria for {selectedMv}.
                     </td>
                   </tr>
@@ -348,6 +503,7 @@ export const DestinationSourcesPage: React.FC = () => {
                     return (
                       <tr
                         key={dest.id}
+                        data-testid={`dest-table-row-${dest.id}`}
                         style={
                           row.hasConflict
                             ? { backgroundColor: 'rgba(239, 68, 68, 0.08)' }
@@ -360,7 +516,24 @@ export const DestinationSourcesPage: React.FC = () => {
                         <td className="mono-cell">{dest.destinationNumber}</td>
                         <td>
                           {row.source ? (
-                            <span style={{ fontWeight: 600 }}>{row.source.name}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontWeight: 600 }}>{row.source.name}</span>
+                              {row.source.upstreamSourceId && (
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    color: '#38bdf8',
+                                    fontFamily: 'monospace',
+                                  }}
+                                  title="Upstream Source"
+                                >
+                                  ↳ via{' '}
+                                  {snapshot.sources.find(
+                                    (s) => s.id === row.source?.upstreamSourceId
+                                  )?.name ?? row.source.upstreamSourceId}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="muted-text" style={{ fontStyle: 'italic' }}>
                               Unassigned (Blank in CSV)
@@ -404,6 +577,56 @@ export const DestinationSourcesPage: React.FC = () => {
                             <span className="status-badge badge-available">Open</span>
                           )}
                         </td>
+                        {isEditMode && (
+                          <td>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                data-testid={`table-route-dest-${dest.id}`}
+                                onClick={() => setRoutingDestId(dest.id)}
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  backgroundColor: '#2864a3',
+                                  color: '#ffffff',
+                                  border: '1px solid #38bdf8',
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                }}
+                                title={`Route source to ${destDisplay}`}
+                              >
+                                Route
+                              </button>
+                              {row.source && (
+                                <button
+                                  type="button"
+                                  data-testid={`table-clear-dest-${dest.id}`}
+                                  onClick={() => {
+                                    updateDraftDestination(
+                                      dest.multiviewId,
+                                      dest.destinationNumber,
+                                      null
+                                    );
+                                  }}
+                                  style={{
+                                    padding: '2px 6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    backgroundColor: '#262626',
+                                    color: '#94a3b8',
+                                    border: '1px solid #444',
+                                    borderRadius: '2px',
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Unroute source"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -423,6 +646,29 @@ export const DestinationSourcesPage: React.FC = () => {
           allOutputs={snapshot.outputs}
           onClose={() => setSelectedOutput(null)}
           onSelectOutput={(newOut) => setSelectedOutput(newOut)}
+        />
+      )}
+
+      {/* Direct Destination Routing Selector Modal */}
+      {routingDestination && (
+        <SourceRoutingSelectorModal
+          isOpen={Boolean(routingDestination)}
+          destinationNumber={routingDestination.destinationNumber}
+          destinationId={routingDestination.id}
+          currentSourceId={routingDestination.assignedSourceId}
+          sources={snapshot.sources}
+          onApplySource={(sourceId) => {
+            updateDraftDestination(
+              routingDestination.multiviewId,
+              routingDestination.destinationNumber,
+              sourceId
+            );
+            setRoutingDestId(null);
+          }}
+          onAddNewSource={(newSource) => {
+            addDraftSource(newSource);
+          }}
+          onClose={() => setRoutingDestId(null)}
         />
       )}
     </div>

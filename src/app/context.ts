@@ -33,6 +33,7 @@ export interface TrackerRepositoryContextValue {
     updates: { multiviewId: MultiviewId; destinationNumber: number; sourceId: SourceId | null }[]
   ) => void;
   addDraftSource: (source: Source) => void;
+  updateDraftSourceUpstream: (sourceId: SourceId, upstreamSourceId: SourceId | null) => void;
   saveDraftChanges: () => Promise<void>;
   resetToBaseline: () => Promise<void>;
 }

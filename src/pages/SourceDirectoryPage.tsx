@@ -2,29 +2,108 @@ import React, { useState, useMemo } from 'react';
 import { useTrackerSnapshot } from '../hooks/useTracker';
 import { SOURCE_CATEGORIES, SourceCategory } from '../domain/sourceCategories';
 import { selectFilteredSources } from '../domain/selectors';
+import { SourceId } from '../domain/identifiers';
+import { SourceSignalFlowModal } from '../components/multiview/SourceSignalFlowModal';
+import { resolveSignalFlow, formatSignalFlowChain } from '../domain/signalFlow';
 
 export const SourceDirectoryPage: React.FC = () => {
-  const { activeSnapshot } = useTrackerSnapshot();
+  const {
+    activeSnapshot,
+    isEditMode,
+    enterEditMode,
+    exitEditMode,
+    discardChanges,
+    hasUnsavedChanges,
+    updateDraftSourceUpstream,
+  } = useTrackerSnapshot();
+
   const snapshot = activeSnapshot;
   const [selectedCategory, setSelectedCategory] = useState<SourceCategory | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [routingModalSourceId, setRoutingModalSourceId] = useState<SourceId | null>(null);
 
   const sources = useMemo(() => snapshot?.sources ?? [], [snapshot]);
+
+  const sourceMap = useMemo(
+    () => new Map<SourceId, import('../domain/models').Source>(sources.map((s) => [s.id, s])),
+    [sources]
+  );
 
   const filteredSources = useMemo(() => {
     return selectFilteredSources(sources, selectedCategory, searchQuery);
   }, [sources, selectedCategory, searchQuery]);
 
+  const selectedSource = useMemo(() => {
+    if (!routingModalSourceId) return null;
+    return sources.find((s) => s.id === routingModalSourceId) ?? null;
+  }, [sources, routingModalSourceId]);
+
+  const handleToggleEditMode = () => {
+    if (isEditMode) {
+      if (hasUnsavedChanges) {
+        const confirmDiscard = window.confirm(
+          'Discard all staged changes and exit Edit Mode?\nUnsaved changes will be lost.'
+        );
+        if (!confirmDiscard) return;
+        discardChanges();
+      } else {
+        exitEditMode();
+      }
+    } else {
+      enterEditMode();
+    }
+  };
+
+  const handleOpenRouting = (sourceId: SourceId, autoEnterEdit: boolean = false) => {
+    if (autoEnterEdit && !isEditMode) {
+      enterEditMode();
+    }
+    setRoutingModalSourceId(sourceId);
+  };
+
   if (!snapshot) return null;
 
   return (
     <div className="source-directory-page">
-      <header className="page-header">
-        <h1 className="page-title">Source Directory</h1>
-        <p className="page-description">
-          Master catalog of verified broadcast router source feeds and engineering test signals
-          extracted from tracked reference documentation.
-        </p>
+      <header className="page-header" style={{ marginBottom: '1.25rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <h1 className="page-title">Source Directory</h1>
+            <p className="page-description">
+              Master catalog of verified broadcast router source feeds, engineering test signals,
+              and upstream signal flow relationships.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              type="button"
+              className={`toggle-btn ${isEditMode ? 'active' : ''}`}
+              onClick={handleToggleEditMode}
+              data-testid="toggle-edit-mode-btn"
+              style={{
+                borderColor: isEditMode ? '#38bdf8' : undefined,
+                color: isEditMode ? '#38bdf8' : undefined,
+                fontWeight: 700,
+              }}
+              title={
+                isEditMode
+                  ? 'Exit edit mode'
+                  : 'Enter edit mode to configure upstream source signal flow'
+              }
+            >
+              {isEditMode ? '✓ Editing Mode' : '✎ Edit Signal Flow'}
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* Filter and Search Bar */}
@@ -77,14 +156,18 @@ export const SourceDirectoryPage: React.FC = () => {
             <tr>
               <th scope="col">Source Name</th>
               <th scope="col">Category</th>
-              <th scope="col">Normalized Key</th>
-              <th scope="col">Status</th>
+              <th scope="col">Source Type</th>
+              <th scope="col">Upstream Source</th>
+              <th scope="col">Signal Flow</th>
+              <th scope="col" style={{ textAlign: 'right' }}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {filteredSources.length === 0 ? (
               <tr>
-                <td colSpan={4} className="empty-state">
+                <td colSpan={6} className="empty-state">
                   <div
                     style={{
                       display: 'flex',
@@ -104,22 +187,127 @@ export const SourceDirectoryPage: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredSources.map((source) => (
-                <tr key={source.id}>
-                  <td style={{ fontWeight: 600 }}>{source.name}</td>
-                  <td>
-                    <span className="status-badge badge-assigned">{source.category}</span>
-                  </td>
-                  <td className="mono-cell muted-text">{source.normalizedName}</td>
-                  <td>
-                    <span className="status-badge badge-available">Active</span>
-                  </td>
-                </tr>
-              ))
+              filteredSources.map((source) => {
+                const upstream = source.upstreamSourceId
+                  ? sourceMap.get(source.upstreamSourceId)
+                  : null;
+                const flow = resolveSignalFlow(source.id, sourceMap);
+
+                return (
+                  <tr key={source.id} data-testid={`source-row-${source.id}`}>
+                    <td style={{ fontWeight: 600 }}>
+                      <span style={{ color: '#ffffff' }}>{source.name}</span>
+                    </td>
+                    <td>
+                      <span className="status-badge badge-assigned">{source.category}</span>
+                    </td>
+                    <td style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                      {source.sourceType === 'virtual'
+                        ? 'Virtual Source'
+                        : source.sourceType === 'processing'
+                          ? 'Processing'
+                          : 'Direct VIP'}
+                    </td>
+                    <td data-testid={`upstream-cell-${source.id}`}>
+                      {!source.upstreamSourceId ? (
+                        <span style={{ color: '#858585', fontSize: '11px' }}>Not assigned</span>
+                      ) : upstream ? (
+                        <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '12px' }}>
+                          {upstream.name}
+                        </span>
+                      ) : (
+                        <span
+                          className="status-badge badge-conflict"
+                          title={`Referenced upstream ID '${source.upstreamSourceId}' not found`}
+                        >
+                          Missing Source
+                        </span>
+                      )}
+                    </td>
+                    <td data-testid={`signal-flow-cell-${source.id}`}>
+                      {flow.hasCycle ? (
+                        <span
+                          className="status-badge badge-conflict"
+                          title="Circular routing detected"
+                        >
+                          Circular routing detected
+                        </span>
+                      ) : flow.isDangling ? (
+                        <span
+                          className="status-badge badge-conflict"
+                          title="Missing upstream source in flow"
+                        >
+                          Missing upstream
+                        </span>
+                      ) : flow.maxDepthExceeded ? (
+                        <span
+                          className="status-badge badge-warning"
+                          title="Maximum signal flow depth reached"
+                        >
+                          Max depth
+                        </span>
+                      ) : flow.hops.length > 1 ? (
+                        <span
+                          style={{
+                            fontFamily: 'monospace',
+                            fontSize: '11px',
+                            color: '#54d54a',
+                          }}
+                        >
+                          {formatSignalFlowChain(flow)}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#858585', fontSize: '11px' }}>Origin</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        data-testid={`edit-signal-flow-btn-${source.id}`}
+                        onClick={() => handleOpenRouting(source.id, true)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          backgroundColor: isEditMode ? '#2864a3' : '#262626',
+                          color: isEditMode ? '#ffffff' : '#cbd5e1',
+                          border: `1px solid ${isEditMode ? '#38bdf8' : '#444'}`,
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                        }}
+                        title={
+                          isEditMode
+                            ? `Edit signal flow for ${source.name}`
+                            : `View routing details for ${source.name}`
+                        }
+                      >
+                        {isEditMode ? 'Edit Flow' : 'Routing Details'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Signal Flow Detail & Editing Modal */}
+      {selectedSource && (
+        <SourceSignalFlowModal
+          isOpen={Boolean(selectedSource)}
+          source={selectedSource}
+          allSources={sources}
+          validationFindings={snapshot.validationFindings}
+          isEditMode={isEditMode}
+          onEnterEditMode={enterEditMode}
+          onApply={(newUpstreamId) => {
+            updateDraftSourceUpstream(selectedSource.id, newUpstreamId);
+            setRoutingModalSourceId(null);
+          }}
+          onClose={() => setRoutingModalSourceId(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { TrackerSnapshot } from '../../domain/models';
+import { SEED_SOURCES } from './sources';
 
 export const INITIAL_SNAPSHOT: TrackerSnapshot = {
   multiviews: [
@@ -3125,7 +3126,7 @@ export const INITIAL_SNAPSHOT: TrackerSnapshot = {
       updatedBy: null,
     },
   ],
-  sources: [],
+  sources: SEED_SOURCES,
   operationalAssignments: [
     {
       id: 'ASSIGN:BR_ALERT_1',

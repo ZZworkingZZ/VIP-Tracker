@@ -13,7 +13,12 @@ import {
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
 import { validateSnapshot } from '../domain/validation';
 import { changeSetToChangeRecords } from '../domain/diff';
-import { TrackerStorage, defaultStorage, TRACKER_SCHEMA_VERSION } from './storage';
+import {
+  TrackerStorage,
+  defaultStorage,
+  TRACKER_SCHEMA_VERSION,
+  CURRENT_SOURCE_SEED_VERSION,
+} from './storage';
 
 /**
  * Local repository serving the typed baseline seed snapshot with browser persistence support.
@@ -32,23 +37,50 @@ export class LocalTrackerRepository implements TrackerRepository {
 
     const storedData = this.storage.load();
     if (storedData) {
+      let sources = storedData.sources;
+      let shouldPersistBootstrap = false;
+
+      // Existing installation that predates authoritative source catalog seeding
+      if (
+        storedData.sourceSeedVersion === undefined ||
+        storedData.sourceSeedVersion < CURRENT_SOURCE_SEED_VERSION
+      ) {
+        sources = JSON.parse(JSON.stringify(this.initialSnapshot.sources));
+        storedData.sourceSeedVersion = CURRENT_SOURCE_SEED_VERSION;
+        storedData.sources = sources;
+        shouldPersistBootstrap = true;
+      }
+
       const findings = validateSnapshot(
         this.initialSnapshot.multiviews,
         storedData.outputs,
         storedData.destinations,
-        storedData.sources
+        sources
       );
 
       this.snapshot = {
         multiviews: JSON.parse(JSON.stringify(this.initialSnapshot.multiviews)),
         outputs: storedData.outputs,
         destinations: storedData.destinations,
-        sources: storedData.sources,
+        sources,
         operationalAssignments: storedData.operationalAssignments,
         changeRecords: storedData.changeRecords ?? [],
         validationFindings: findings,
         generatedAt: storedData.savedAt,
       };
+
+      if (shouldPersistBootstrap) {
+        this.storage.save({
+          schemaVersion: storedData.schemaVersion ?? TRACKER_SCHEMA_VERSION,
+          sourceSeedVersion: CURRENT_SOURCE_SEED_VERSION,
+          outputs: storedData.outputs,
+          destinations: storedData.destinations,
+          sources: storedData.sources,
+          operationalAssignments: storedData.operationalAssignments,
+          changeRecords: storedData.changeRecords ?? [],
+          savedAt: storedData.savedAt,
+        });
+      }
     } else {
       this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
     }
@@ -111,6 +143,7 @@ export class LocalTrackerRepository implements TrackerRepository {
     // Persist to storage
     this.storage.save({
       schemaVersion: TRACKER_SCHEMA_VERSION,
+      sourceSeedVersion: CURRENT_SOURCE_SEED_VERSION,
       outputs: this.snapshot.outputs,
       destinations: this.snapshot.destinations,
       sources: this.snapshot.sources,

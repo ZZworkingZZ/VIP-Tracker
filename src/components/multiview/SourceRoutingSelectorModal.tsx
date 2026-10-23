@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Source } from '../../domain/models';
 import { SourceId, createSourceId } from '../../domain/identifiers';
-import { SOURCE_CATEGORIES, SourceCategory } from '../../domain/sourceCategories';
+import { SOURCE_CATEGORIES, SourceCategory, inferSourceType } from '../../domain/sourceCategories';
 
 export interface SourceRoutingSelectorModalProps {
   readonly isOpen: boolean;
   readonly destinationNumber: number;
   readonly destinationId?: string;
-  readonly windowIndex: number;
+  readonly windowIndex?: number;
   readonly currentSourceId: string | null;
   readonly sources: readonly Source[];
   readonly onApplySource: (sourceId: SourceId | null) => void;
@@ -91,11 +91,152 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
       normalizedName: trimmed,
       category: newSourceCategory,
       active: true,
+      upstreamSourceId: null,
+      sourceType: inferSourceType(trimmed),
     };
 
     onAddNewSource(newSource);
     onApplySource(newSource.id);
     onClose();
+  };
+
+  const renderAddSourceSection = () => {
+    if (!isAddingNew) {
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            setIsAddingNew(true);
+            setNewSourceName(searchQuery);
+          }}
+          data-testid="show-add-source-form-btn"
+          style={{
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontWeight: 700,
+            backgroundColor: '#2864a3',
+            color: '#ffffff',
+            border: '1px solid #38bdf8',
+            borderRadius: '2px',
+            cursor: 'pointer',
+          }}
+        >
+          + Catalog New Source in Directory
+        </button>
+      );
+    }
+
+    return (
+      <form
+        onSubmit={handleCreateAndApplyNew}
+        data-testid="add-new-source-form"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          maxWidth: '360px',
+          margin: '0 auto',
+          textAlign: 'left',
+        }}
+      >
+        <div>
+          <label
+            style={{
+              fontSize: '10px',
+              color: '#858585',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+            }}
+          >
+            New Source Name
+          </label>
+          <input
+            type="text"
+            value={newSourceName}
+            onChange={(e) => setNewSourceName(e.target.value)}
+            placeholder="e.g. CNN-NYP-Feed-1"
+            required
+            data-testid="new-source-name-input"
+            style={{
+              width: '100%',
+              padding: '6px',
+              fontSize: '12px',
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #444',
+              color: '#fff',
+              borderRadius: '2px',
+            }}
+          />
+        </div>
+
+        <div>
+          <label
+            style={{
+              fontSize: '10px',
+              color: '#858585',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+            }}
+          >
+            Category
+          </label>
+          <select
+            value={newSourceCategory}
+            onChange={(e) => setNewSourceCategory(e.target.value as SourceCategory)}
+            style={{
+              width: '100%',
+              padding: '6px',
+              fontSize: '12px',
+              backgroundColor: '#262626',
+              border: '1px solid #444',
+              color: '#fff',
+              borderRadius: '2px',
+            }}
+          >
+            {SOURCE_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <button
+            type="submit"
+            data-testid="save-new-source-btn"
+            style={{
+              flex: 1,
+              padding: '6px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: '#2864a3',
+              color: '#fff',
+              border: '1px solid #38bdf8',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            Catalog & Apply Route
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddingNew(false)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '11px',
+              backgroundColor: '#262626',
+              color: '#cbd5e1',
+              border: '1px solid #444',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
   };
 
   return (
@@ -163,8 +304,8 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
               Route Broadcast Source
             </div>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-              Window {windowIndex + 1} · Destination #{destinationNumber}{' '}
-              {destinationId ? `(${destinationId})` : ''}
+              {typeof windowIndex === 'number' ? `Window ${windowIndex + 1} · ` : ''}Destination #
+              {destinationNumber} {destinationId ? `(${destinationId})` : ''}
             </div>
           </div>
 
@@ -172,6 +313,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
             type="button"
             onClick={onClose}
             aria-label="Close source routing selector"
+            data-testid="close-source-routing-btn"
             style={{
               width: '28px',
               height: '28px',
@@ -333,7 +475,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
               );
             })}
 
-            {filteredSources.length === 0 && (
+            {filteredSources.length === 0 ? (
               <div
                 style={{
                   padding: '24px 16px',
@@ -349,139 +491,18 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
                     ? 'No sources currently cataloged in the master Source Directory.'
                     : `No cataloged sources match "${searchQuery}".`}
                 </p>
-
-                {!isAddingNew ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAddingNew(true);
-                      setNewSourceName(searchQuery);
-                    }}
-                    data-testid="show-add-source-form-btn"
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor: '#2864a3',
-                      color: '#ffffff',
-                      border: '1px solid #38bdf8',
-                      borderRadius: '2px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    + Catalog New Source in Directory
-                  </button>
-                ) : (
-                  <form
-                    onSubmit={handleCreateAndApplyNew}
-                    data-testid="add-new-source-form"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      maxWidth: '360px',
-                      margin: '0 auto',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div>
-                      <label
-                        style={{
-                          fontSize: '10px',
-                          color: '#858585',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        New Source Name
-                      </label>
-                      <input
-                        type="text"
-                        value={newSourceName}
-                        onChange={(e) => setNewSourceName(e.target.value)}
-                        placeholder="e.g. CNN-NYP-Feed-1"
-                        required
-                        data-testid="new-source-name-input"
-                        style={{
-                          width: '100%',
-                          padding: '6px',
-                          fontSize: '12px',
-                          backgroundColor: '#0a0a0a',
-                          border: '1px solid #444',
-                          color: '#fff',
-                          borderRadius: '2px',
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        style={{
-                          fontSize: '10px',
-                          color: '#858585',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Category
-                      </label>
-                      <select
-                        value={newSourceCategory}
-                        onChange={(e) => setNewSourceCategory(e.target.value as SourceCategory)}
-                        style={{
-                          width: '100%',
-                          padding: '6px',
-                          fontSize: '12px',
-                          backgroundColor: '#262626',
-                          border: '1px solid #444',
-                          color: '#fff',
-                          borderRadius: '2px',
-                        }}
-                      >
-                        {SOURCE_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                      <button
-                        type="submit"
-                        data-testid="save-new-source-btn"
-                        style={{
-                          flex: 1,
-                          padding: '6px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          backgroundColor: '#2864a3',
-                          color: '#fff',
-                          border: '1px solid #38bdf8',
-                          borderRadius: '2px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Catalog & Apply Route
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingNew(false)}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '11px',
-                          backgroundColor: '#262626',
-                          color: '#cbd5e1',
-                          border: '1px solid #444',
-                          borderRadius: '2px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                )}
+                {renderAddSourceSection()}
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: '12px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid #282828',
+                  textAlign: 'center',
+                }}
+              >
+                {renderAddSourceSection()}
               </div>
             )}
           </div>
@@ -501,6 +522,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
           <button
             type="button"
             onClick={onClose}
+            data-testid="cancel-source-routing-btn"
             style={{
               padding: '6px 12px',
               fontSize: '12px',

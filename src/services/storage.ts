@@ -5,12 +5,16 @@ import {
   OperationalAssignment,
   ChangeRecord,
 } from '../domain/models';
+import { SourceId, createSourceId } from '../domain/identifiers';
+import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
 
 export const TRACKER_STORAGE_KEY = 'vip_tracker_data_v1';
-export const TRACKER_SCHEMA_VERSION = 1;
+export const TRACKER_SCHEMA_VERSION = 2;
+export const CURRENT_SOURCE_SEED_VERSION = 1;
 
 export interface PersistedTrackerData {
   schemaVersion: number;
+  sourceSeedVersion?: number;
   outputs: MultiviewOutput[];
   destinations: Destination[];
   sources: Source[];
@@ -26,7 +30,160 @@ export interface TrackerStorage {
 }
 
 /**
- * Standard browser localStorage implementation with version checking and graceful fallback.
+ * Validates that an arbitrary payload strictly adheres to the current V2 storage schema.
+ */
+export function isValidPersistedTrackerData(data: unknown): data is PersistedTrackerData {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  if (d.schemaVersion !== TRACKER_SCHEMA_VERSION) return false;
+  if (
+    'sourceSeedVersion' in d &&
+    d.sourceSeedVersion !== undefined &&
+    typeof d.sourceSeedVersion !== 'number'
+  ) {
+    return false;
+  }
+  if (!Array.isArray(d.outputs) || !Array.isArray(d.destinations) || !Array.isArray(d.sources)) {
+    return false;
+  }
+  for (const s of d.sources) {
+    if (!s || typeof s !== 'object') return false;
+    const src = s as Record<string, unknown>;
+    if (typeof src.id !== 'string' || typeof src.name !== 'string') return false;
+    if (
+      !('upstreamSourceId' in src) ||
+      (src.upstreamSourceId !== null && typeof src.upstreamSourceId !== 'string')
+    ) {
+      return false;
+    }
+    if (
+      src.sourceType !== 'originating' &&
+      src.sourceType !== 'processing' &&
+      src.sourceType !== 'virtual'
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Pure V1-to-V2 schema migration.
+ * Inspects the actual persisted structure and updates every stored source collection.
+ * Migrates V1 sources to upstreamSourceId: null and conservatively inferred sourceType.
+ * Preserves all existing entities and assignments.
+ * Never mutates the original object in place; returns a new migrated copy or null on failure.
+ */
+export function migrateV1ToV2(raw: unknown): PersistedTrackerData | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  try {
+    const cloned = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+
+    const migrateSourceList = (sources: unknown[]): Source[] => {
+      return sources.map((s) => {
+        const src = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
+        const name = typeof src.name === 'string' ? src.name : '';
+        const id: SourceId =
+          typeof src.id === 'string' && src.id.startsWith('SRC:')
+            ? (src.id as SourceId)
+            : createSourceId(name || String(src.id ?? ''));
+
+        const upstreamSourceId: SourceId | null =
+          typeof src.upstreamSourceId === 'string' && src.upstreamSourceId.startsWith('SRC:')
+            ? (src.upstreamSourceId as SourceId)
+            : null;
+
+        const sourceType =
+          src.sourceType === 'originating' ||
+          src.sourceType === 'processing' ||
+          src.sourceType === 'virtual'
+            ? src.sourceType
+            : inferSourceType(name);
+
+        return {
+          id,
+          name,
+          normalizedName:
+            typeof src.normalizedName === 'string' ? src.normalizedName : name.toUpperCase().trim(),
+          category: (typeof src.category === 'string' ? src.category : 'Other') as SourceCategory,
+          active: src.active !== false,
+          upstreamSourceId,
+          sourceType,
+        };
+      });
+    };
+
+    const snapshotObj =
+      cloned.snapshot && typeof cloned.snapshot === 'object'
+        ? (cloned.snapshot as Record<string, unknown>)
+        : null;
+    const dataObj =
+      cloned.data && typeof cloned.data === 'object'
+        ? (cloned.data as Record<string, unknown>)
+        : null;
+
+    // 1. Top-level sources (standard PersistedTrackerData)
+    if (Array.isArray(cloned.sources)) {
+      cloned.sources = migrateSourceList(cloned.sources);
+    } else if (snapshotObj && Array.isArray(snapshotObj.sources)) {
+      cloned.sources = migrateSourceList(snapshotObj.sources);
+    } else if (dataObj && Array.isArray(dataObj.sources)) {
+      cloned.sources = migrateSourceList(dataObj.sources);
+    } else {
+      cloned.sources = [];
+    }
+
+    // 2. Also migrate nested snapshot/data sources if present
+    if (snapshotObj && Array.isArray(snapshotObj.sources)) {
+      snapshotObj.sources = migrateSourceList(snapshotObj.sources);
+    }
+    if (dataObj && Array.isArray(dataObj.sources)) {
+      dataObj.sources = migrateSourceList(dataObj.sources);
+    }
+
+    if (!Array.isArray(cloned.outputs)) {
+      if (snapshotObj && Array.isArray(snapshotObj.outputs)) {
+        cloned.outputs = snapshotObj.outputs as MultiviewOutput[];
+      } else {
+        cloned.outputs = [];
+      }
+    }
+
+    if (!Array.isArray(cloned.destinations)) {
+      if (snapshotObj && Array.isArray(snapshotObj.destinations)) {
+        cloned.destinations = snapshotObj.destinations as Destination[];
+      } else {
+        cloned.destinations = [];
+      }
+    }
+
+    if (!Array.isArray(cloned.operationalAssignments)) {
+      cloned.operationalAssignments = [];
+    }
+
+    if (!Array.isArray(cloned.changeRecords)) {
+      cloned.changeRecords = [];
+    }
+
+    cloned.schemaVersion = TRACKER_SCHEMA_VERSION;
+    if (!cloned.savedAt) {
+      cloned.savedAt = new Date().toISOString();
+    }
+
+    if (isValidPersistedTrackerData(cloned)) {
+      return cloned;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Error migrating VIP Tracker V1 storage to V2:', err);
+    return null;
+  }
+}
+
+/**
+ * Standard browser localStorage implementation with non-destructive migration and graceful fallback.
  */
 export class BrowserLocalStorage implements TrackerStorage {
   private key: string;
@@ -43,20 +200,53 @@ export class BrowserLocalStorage implements TrackerStorage {
       const raw = window.localStorage.getItem(this.key);
       if (!raw) return null;
 
-      const parsed = JSON.parse(raw) as PersistedTrackerData;
-      if (parsed.schemaVersion !== TRACKER_SCHEMA_VERSION) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        console.error('Failed to parse VIP Tracker data from local storage: malformed JSON.');
+        // Never clear or overwrite original stored payload on error
+        return null;
+      }
+
+      if (!parsed || typeof parsed !== 'object') {
+        return null;
+      }
+
+      const record = parsed as Record<string, unknown>;
+
+      // Current schema version: validate and load without modification
+      if (record.schemaVersion === TRACKER_SCHEMA_VERSION) {
+        if (isValidPersistedTrackerData(record)) {
+          return record;
+        }
+        console.warn('VIP Tracker: Stored V2 data failed structural validation.');
+        return null;
+      }
+
+      // Legacy schema version 1: non-destructive migration
+      if (record.schemaVersion === 1) {
+        const migrated = migrateV1ToV2(record);
+        if (migrated && isValidPersistedTrackerData(migrated)) {
+          // Parsing, migration, and current-schema validation all succeeded
+          try {
+            window.localStorage.setItem(this.key, JSON.stringify(migrated));
+          } catch (writeErr) {
+            console.warn('Failed to upgrade local storage payload to V2:', writeErr);
+          }
+          return migrated;
+        }
+
         console.warn(
-          `VIP Tracker: Schema version mismatch (stored: ${parsed.schemaVersion}, current: ${TRACKER_SCHEMA_VERSION}). Discarding legacy data.`
+          'VIP Tracker: Failed to migrate legacy V1 data to V2. Leaving original payload untouched.'
         );
-        this.clear();
         return null;
       }
 
-      if (!Array.isArray(parsed.outputs) || !Array.isArray(parsed.destinations)) {
-        return null;
-      }
-
-      return parsed;
+      console.warn(
+        `VIP Tracker: Unsupported schema version (${record.schemaVersion}). Leaving storage untouched.`
+      );
+      return null;
     } catch (err) {
       console.error('Failed to load VIP Tracker data from local storage:', err);
       return null;
@@ -86,13 +276,30 @@ export class BrowserLocalStorage implements TrackerStorage {
 }
 
 /**
- * In-memory storage for unit tests or headless environments.
+ * In-memory storage with non-destructive migration for unit tests or headless environments.
  */
 export class MemoryTrackerStorage implements TrackerStorage {
-  private data: PersistedTrackerData | null = null;
+  private data: unknown | null = null;
 
   load(): PersistedTrackerData | null {
-    return this.data ? JSON.parse(JSON.stringify(this.data)) : null;
+    if (!this.data) return null;
+    const cloned = JSON.parse(JSON.stringify(this.data));
+    if (typeof cloned !== 'object' || cloned === null) return null;
+
+    if (cloned.schemaVersion === TRACKER_SCHEMA_VERSION) {
+      return isValidPersistedTrackerData(cloned) ? (cloned as PersistedTrackerData) : null;
+    }
+
+    if (cloned.schemaVersion === 1) {
+      const migrated = migrateV1ToV2(cloned);
+      if (migrated && isValidPersistedTrackerData(migrated)) {
+        this.data = JSON.parse(JSON.stringify(migrated));
+        return migrated;
+      }
+      return null;
+    }
+
+    return null;
   }
 
   save(data: PersistedTrackerData): void {
@@ -101,6 +308,14 @@ export class MemoryTrackerStorage implements TrackerStorage {
 
   clear(): void {
     this.data = null;
+  }
+
+  seedRaw(raw: unknown): void {
+    this.data = typeof raw === 'string' ? JSON.parse(raw) : JSON.parse(JSON.stringify(raw));
+  }
+
+  getRaw(): unknown {
+    return this.data;
   }
 }
 

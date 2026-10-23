@@ -1,7 +1,7 @@
 import { MultiviewId, createDestinationId, createSourceId } from '../../domain/identifiers';
 import { Destination, Source } from '../../domain/models';
 import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
-import { classifySourceCategory } from '../../domain/sourceCategories';
+import { classifySourceCategory, inferSourceType } from '../../domain/sourceCategories';
 
 export interface CsvParseResult {
   destinations: Destination[];
@@ -99,6 +99,8 @@ export function parseSourcesCsv(csvContent: string): CsvParseResult {
             normalizedName: srcValue.toUpperCase().trim(),
             category: classifySourceCategory(srcValue),
             active: true,
+            upstreamSourceId: null,
+            sourceType: inferSourceType(srcValue),
           });
         }
       }

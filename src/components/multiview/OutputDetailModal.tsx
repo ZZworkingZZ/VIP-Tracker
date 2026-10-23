@@ -31,6 +31,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     enterEditMode,
     updateDraftOutput,
     updateDraftDestination,
+    updateDraftDestinationsBatch,
     addDraftSource,
   } = useTrackerSnapshot();
 
@@ -131,10 +132,41 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   // Handle Releasing Output to AVAILABLE
   const handleReleaseToAvailable = () => {
-    const confirmRelease = window.confirm(
-      `Release output ${outputLabel} to AVAILABLE?\nThis will clear the assigned layout, destination range, and production assignment.`
-    );
-    if (!confirmRelease) return;
+    const routedWindows = windowsData.filter((w) => w.sourceName !== null);
+
+    if (routedWindows.length > 0) {
+      const confirmRelease = window.confirm(
+        `Release output ${outputLabel} to AVAILABLE?\n\nNotice: This output currently covers ${routedWindows.length} routed destination feed${
+          routedWindows.length === 1 ? '' : 's'
+        }. Destination routes will be preserved unless explicitly cleared.`
+      );
+      if (!confirmRelease) return;
+
+      const clearRoutes = window.confirm(
+        `Do you also want to clear (unroute) the ${routedWindows.length} destination source assignment${
+          routedWindows.length === 1 ? '' : 's'
+        }?\n\n• Click OK to unroute all sources.\n• Click Cancel to PRESERVE source routing on these destinations.`
+      );
+
+      if (clearRoutes) {
+        const batchUpdates = routedWindows
+          .filter(
+            (w): w is typeof w & { destinationNumber: number } =>
+              typeof w.destinationNumber === 'number'
+          )
+          .map((w) => ({
+            multiviewId: output.multiviewId,
+            destinationNumber: w.destinationNumber,
+            sourceId: null,
+          }));
+        updateDraftDestinationsBatch(batchUpdates);
+      }
+    } else {
+      const confirmRelease = window.confirm(
+        `Release output ${outputLabel} to AVAILABLE?\nThis will clear the assigned layout and production assignment.`
+      );
+      if (!confirmRelease) return;
+    }
 
     updateDraftOutput({
       ...output,

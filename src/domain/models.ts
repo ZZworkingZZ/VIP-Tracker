@@ -24,7 +24,10 @@ export type ValidationCode =
   | 'DESTINATION_UNKNOWN_SOURCE'
   | 'LOCKED_ASSIGNMENT_INCOMPLETE_TRACKING'
   | 'BOX_COUNT_RANGE_MISMATCH'
-  | 'NAMING_INCONSISTENCY';
+  | 'NAMING_INCONSISTENCY'
+  | 'SOURCE_SELF_ROUTING'
+  | 'SOURCE_UNKNOWN_UPSTREAM'
+  | 'SOURCE_CIRCULAR_ROUTING';
 
 export interface Multiview {
   id: MultiviewId;
@@ -59,12 +62,16 @@ export interface Destination {
   updatedBy: string | null;
 }
 
+export type SourceType = 'originating' | 'processing' | 'virtual';
+
 export interface Source {
   id: SourceId;
   name: string;
   normalizedName: string;
   category: SourceCategory;
   active: boolean;
+  upstreamSourceId: SourceId | null;
+  sourceType: SourceType;
 }
 
 export interface OperationalAssignment {

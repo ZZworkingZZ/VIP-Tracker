@@ -299,6 +299,8 @@ function formatFieldLabel(field: string): string {
       return 'Lock State';
     case 'sourceCatalog':
       return 'Directory Catalog';
+    case 'upstreamSourceId':
+      return 'Upstream Source';
     default:
       return field;
   }
