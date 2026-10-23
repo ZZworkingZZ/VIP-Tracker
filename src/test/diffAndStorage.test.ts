@@ -10,10 +10,7 @@ import {
   CURRENT_SOURCE_SEED_VERSION,
 } from '../services/storage';
 import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
-import {
-  checkDestructiveLayoutReduction,
-  findNextAvailableDestinationRange,
-} from '../domain/rangeUtils';
+import { checkDestructiveLayoutReduction, findNextAvailableInputBlock } from '../domain/rangeUtils';
 import {
   buildAuthoritativeExportDataset,
   serializeTrackerSnapshot,
@@ -78,10 +75,10 @@ describe('Diff Engine & ChangeSet Generation', () => {
 });
 
 describe('Range Allocation & Destructive Layout Reduction Protection', () => {
-  it('finds next contiguous available destination range on a multiview', () => {
+  it('finds next contiguous available destination window slot on a multiview', () => {
     const outputs = [...INITIAL_SNAPSHOT.outputs];
     // MV-01 has 4 outputs, all Available in initial seed
-    const range = findNextAvailableDestinationRange('MV-01', 4, outputs);
+    const range = findNextAvailableInputBlock('MV-01', 4, outputs);
     expect(range).not.toBeNull();
     expect(range?.start).toBe(1);
     expect(range?.end).toBe(4);

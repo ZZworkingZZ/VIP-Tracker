@@ -11,7 +11,7 @@ export interface LayoutWindowDefinition {
   readonly y: number; // percentage (0 - 100)
   readonly width: number; // percentage (0 - 100)
   readonly height: number; // percentage (0 - 100)
-  readonly destinationOffset: number; // 0-based offset into output's destination range
+  readonly destinationOffset: number; // 0-based offset into output's mapped window inputs
   readonly label?: string;
 }
 

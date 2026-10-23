@@ -40,7 +40,7 @@ Represents a physical router input destination fed into the multiview frame.
 
 - `id`: `DestinationId` (e.g. `'DEST:MV-04-37'`)
 - `multiviewId`: `MultiviewId`
-- `destinationNumber`: `number` (1-indexed, 1 to `destinationCapacity`)
+- `destinationNumber`: `number` (1-indexed, 1 to `inputCapacity`)
 - `assignedSourceId`: `SourceId | null` (ID of patched broadcast source, or null if unassigned)
 - `assignmentName`: `string | null` (derived operational assignment)
 - `locked`: `boolean`
@@ -115,7 +115,7 @@ Derived views (Displays, Sources Matrix, Operational Assignments, Layout Library
 
 ### MV-03-03 Record Preservation
 
-- Output `OUT:MV-03-03` has verified layout `'11 BOX'`, assignment `'BOB TEST'`, and destination range `64-64`.
+- Output `OUT:MV-03-03` has verified layout `'11 BOX'`, assignment `'BOB TEST'`, and mapped destination `64`.
 - The data model preserves `destinationStart: 64` and `destinationEnd: 64` exactly as verified.
 - The validation engine raises a `BOX_COUNT_RANGE_MISMATCH` warning for operator visibility without mutating or fabricating data.
 

@@ -109,7 +109,7 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
 
         <div className="ev-card-footer">
           <span className="ev-card-assignment unassigned">Available</span>
-          <span className="ev-card-dest-range">Out {output.outputNumber}</span>
+          <span className="ev-card-output-num">Out {output.outputNumber}</span>
         </div>
       </article>
     );
@@ -167,20 +167,11 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
         )}
       </div>
 
-      {/* Bottom Footer: Assignment Name & Destination Range */}
+      {/* Bottom Footer: Assignment Name */}
       <div className="ev-card-footer">
         <span className="ev-card-assignment" title={output.assignmentName || 'Unassigned'}>
           {output.assignmentName || 'Unassigned'}
         </span>
-
-        {output.destinationStart && output.destinationEnd && (
-          <span
-            className="ev-card-dest-range"
-            title={`Multiview router destinations ${output.destinationStart} through ${output.destinationEnd}`}
-          >
-            Dest {output.destinationStart}–{output.destinationEnd}
-          </span>
-        )}
       </div>
     </article>
   );

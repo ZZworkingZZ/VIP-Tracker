@@ -4,6 +4,7 @@ import {
   TOTAL_EXPECTED_MULTIVIEWS,
   TOTAL_EXPECTED_OUTPUTS,
   TOTAL_EXPECTED_DESTINATIONS,
+  deriveInputRange,
 } from '../domain/constants';
 import {
   createOutputId,
@@ -54,29 +55,55 @@ describe('Domain Models & Capacities', () => {
     const mv4 = VERIFIED_MULTIVIEWS.find((mv) => mv.id === 'MV-04')!;
     const mv5 = VERIFIED_MULTIVIEWS.find((mv) => mv.id === 'MV-05')!;
 
-    expect(mv1.destinationCapacity).toBe(36);
+    expect(mv1.inputCapacity).toBe(36);
     expect(mv1.outputCapacity).toBe(4);
 
-    expect(mv2.destinationCapacity).toBe(36);
+    expect(mv2.inputCapacity).toBe(36);
     expect(mv2.outputCapacity).toBe(4);
 
-    expect(mv3.destinationCapacity).toBe(64);
+    expect(mv3.inputCapacity).toBe(64);
     expect(mv3.outputCapacity).toBe(8);
 
-    expect(mv4.destinationCapacity).toBe(64);
+    expect(mv4.inputCapacity).toBe(64);
     expect(mv4.outputCapacity).toBe(8);
 
-    expect(mv5.destinationCapacity).toBe(64);
+    expect(mv5.inputCapacity).toBe(64);
     expect(mv5.outputCapacity).toBe(8);
 
     const totalOutputs = VERIFIED_MULTIVIEWS.reduce((sum, mv) => sum + mv.outputCapacity, 0);
-    const totalDestinations = VERIFIED_MULTIVIEWS.reduce(
-      (sum, mv) => sum + mv.destinationCapacity,
-      0
-    );
+    const totalDestinations = VERIFIED_MULTIVIEWS.reduce((sum, mv) => sum + mv.inputCapacity, 0);
 
     expect(totalOutputs).toBe(TOTAL_EXPECTED_OUTPUTS);
     expect(totalDestinations).toBe(TOTAL_EXPECTED_DESTINATIONS);
+  });
+
+  it('correctly resolves authoritative Input Range for MV-01 through MV-05 and derives on-the-fly without stored state', () => {
+    // MV-01 has 36 inputs: MV-01-01 through MV-01-36
+    expect(deriveInputRange('MV-01')).toBe('MV-01-01 through MV-01-36');
+    // MV-02 has 36 inputs: MV-02-01 through MV-02-36
+    expect(deriveInputRange('MV-02')).toBe('MV-02-01 through MV-02-36');
+    // MV-03 has 64 inputs: MV-03-01 through MV-03-64
+    expect(deriveInputRange('MV-03')).toBe('MV-03-01 through MV-03-64');
+    // MV-04 has 64 inputs: MV-04-01 through MV-04-64
+    expect(deriveInputRange('MV-04')).toBe('MV-04-01 through MV-04-64');
+    // MV-05 has 64 inputs: MV-05-01 through MV-05-64
+    expect(deriveInputRange('MV-05')).toBe('MV-05-01 through MV-05-64');
+
+    // Confirm inputRange is NOT stored as state on Multiview records
+    VERIFIED_MULTIVIEWS.forEach((mv) => {
+      expect('inputRange' in mv).toBe(false);
+      expect(mv.inputCapacity).toBeGreaterThan(0);
+    });
+
+    INITIAL_SNAPSHOT.multiviews.forEach((mv) => {
+      expect('inputRange' in mv).toBe(false);
+      expect(mv.inputCapacity).toBeGreaterThan(0);
+    });
+
+    // Proves that missing or unknown MV IDs fail loudly during development rather than guessing fallbacks
+    expect(() => deriveInputRange('MV-99' as MultiviewId)).toThrow(
+      'Authoritative configuration missing for multiview: MV-99'
+    );
   });
 
   it('preserves individual VIP input/destination IDs without alteration', () => {

@@ -16,14 +16,17 @@ export interface DestructiveLayoutReductionWarning {
 /**
  * Finds the next available contiguous block of destination numbers on a multiview frame.
  */
-export function findNextAvailableDestinationRange(
+export function findNextAvailableInputBlock(
   multiviewId: MultiviewId,
   windowCount: number,
   outputs: MultiviewOutput[],
   excludeOutputId?: string
 ): { start: number; end: number } | null {
   const mvMeta = VERIFIED_MULTIVIEWS.find((mv) => mv.id === multiviewId);
-  const capacity = mvMeta?.destinationCapacity ?? 64;
+  if (!mvMeta) {
+    throw new Error(`Authoritative configuration missing for multiview: ${multiviewId}`);
+  }
+  const capacity = mvMeta.inputCapacity;
 
   // Mark all currently covered destination numbers
   const covered = new Set<number>();

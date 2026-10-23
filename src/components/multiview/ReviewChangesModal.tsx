@@ -285,8 +285,6 @@ function formatFieldLabel(field: string): string {
   switch (field) {
     case 'layoutName':
       return 'Layout';
-    case 'destinationRange':
-      return 'Destination Range';
     case 'assignmentName':
       return 'Production Assignment';
     case 'assignedSourceId':

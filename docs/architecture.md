@@ -2,11 +2,11 @@
 
 ## 1. Overview and Purpose
 
-**Evertz VIP Source Tracker** is an internal operational tracking and visualization web application designed for broadcast technical managers and engineers. It tracks multiview hardware capacities, physical output allocations, designated box layouts, destination ranges, show and production assignments, router destination-to-source mappings, and resource lock states.
+**Evertz VIP Source Tracker** is an internal operational tracking and visualization web application designed for broadcast technical managers and engineers. It tracks multiview hardware capacities, physical output allocations, designated box layouts, show and production assignments, router destination-to-source mappings, and resource lock states.
 
 ### Operational Boundaries & Editing Architecture
 
-- **Active Operational Tracking:** Technical managers and engineers actively maintain layouts, destination ranges, source patches, and production ownership directly through a controlled staged-editing interface.
+- **Active Operational Tracking:** Technical managers and engineers actively maintain layouts, source patches, and production ownership directly through a controlled staged-editing interface.
 - **Controlled Draft/Staged State:** Edits are staged in draft state and reviewed via pure-domain difference calculation before committing.
 - **Local Persistence Boundary:** Data is persisted in browser local storage via an abstracted storage service (`TrackerStorage`), with full capability to reset back to the verified baseline dataset.
 - **No Direct Hardware Telemetry:** The application does **NOT** directly control or poll Evertz VIP frames, router control systems, Lawo, VSM, or Magnum.
@@ -102,7 +102,7 @@ V1.1 shifts the application from a data-first table presentation to an **Evertz-
    - Color-codes source tallies by broadcast category (`CAM`, `VTR`, `GFX`, `ROUTER`, `NET`, `LINE`, `MISC`).
 
 3. **`OutputDisplayCard` (`src/components/multiview/OutputDisplayCard.tsx`):**
-   - Miniature multiview monitor card displaying status LEDs, layout badges, routed sources, destination ranges, and lock indicators.
+   - Miniature multiview monitor card displaying status LEDs, layout badges, routed sources, and lock indicators.
    - Visually differentiates active outputs from unassigned/available outputs using neutral dark frames.
 
 4. **`OutputDetailModal` (`src/components/multiview/OutputDetailModal.tsx`):**

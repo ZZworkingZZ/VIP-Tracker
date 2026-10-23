@@ -219,10 +219,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <p
               style={{ fontSize: '12px', color: '#cbd5e1', margin: '0 0 12px 0', lineHeight: 1.4 }}
             >
-              Purges all locally edited layouts, destination ranges, source route patches, and
-              production assignments from browser storage. The application will restore the initial
-              verified repository baseline dataset (5 multiview frames, 32 outputs, 264
-              destinations) and refresh all derived operational views.
+              Purges all locally edited layouts, source route patches, and production assignments
+              from browser storage. The application will restore the initial verified repository
+              baseline dataset (5 multiview frames, 32 outputs, 264 destinations) and refresh all
+              derived operational views.
             </p>
 
             {resetSuccess ? (

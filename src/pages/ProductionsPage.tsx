@@ -265,9 +265,8 @@ export const ProductionsPage: React.FC = () => {
               <thead>
                 <tr>
                   <th scope="col">Operational Assignment Name</th>
-                  <th scope="col">Frames Used</th>
+                  <th scope="col">MV</th>
                   <th scope="col">Outputs Allocated</th>
-                  <th scope="col">Destination Ranges</th>
                   <th scope="col">Layouts Used</th>
                   <th scope="col">Lock Status</th>
                   <th scope="col">Observations &amp; Validation</th>
@@ -276,7 +275,7 @@ export const ProductionsPage: React.FC = () => {
               <tbody>
                 {filteredProductions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-state">
+                    <td colSpan={6} className="empty-state">
                       No assignments match the query.
                     </td>
                   </tr>
@@ -310,19 +309,6 @@ export const ProductionsPage: React.FC = () => {
                               }}
                             >
                               {formatOutputDisplay(outId)}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {prod.destinationRanges.map((r, i) => (
-                            <span
-                              key={i}
-                              className="mono-cell"
-                              style={{ color: 'var(--color-accent-amber)' }}
-                            >
-                              {r.display}
                             </span>
                           ))}
                         </div>

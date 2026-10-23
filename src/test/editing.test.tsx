@@ -364,6 +364,29 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     confirmSpy.mockRestore();
   });
 
+  it('displays Input Range and confirms Destination Range is completely removed from the UI', async () => {
+    renderApp(repo);
+
+    // MV-02 has 36 inputs capacity
+    const card = await screen.findByTestId('output-card-OUT:MV-02-01');
+    fireEvent.click(card);
+
+    const editBtn = await screen.findByTestId('enter-edit-mode-btn');
+    fireEvent.click(editBtn);
+
+    // Verify Destination Range does not exist in the modal or on the page
+    const modal = screen.getByTestId('output-detail-modal');
+    expect(within(modal).queryByText(/Destination Range/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Destination Range/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dest-start-input')).not.toBeInTheDocument();
+
+    // Verify Input Range is displayed with authoritative derived range
+    expect(screen.getByText('Input Range')).toBeInTheDocument();
+    expect(screen.getByTestId('input-range-display')).toHaveTextContent(
+      'MV-02-01 through MV-02-36'
+    );
+  });
+
   it('informs user and preserves destination routes when releasing an output unless explicitly cleared', async () => {
     renderApp(repo);
 

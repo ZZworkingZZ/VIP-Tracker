@@ -2,14 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { parseSourcesCsv } from '../src/services/csv/parseSourcesCsv';
 import { VERIFIED_MULTIVIEWS } from '../src/domain/constants';
-import {
-  Multiview,
-  MultiviewOutput,
-  OperationalAssignment,
-  TrackerSnapshot,
-} from '../src/domain/models';
+import { Multiview, MultiviewOutput, OperationalAssignment } from '../src/domain/models';
 import { createOutputId, createAssignmentId, MultiviewId } from '../src/domain/identifiers';
 import { validateSnapshot } from '../src/domain/validation';
+import { SEED_SOURCES } from '../src/data/seed/sources';
 
 import { fileURLToPath } from 'url';
 
@@ -225,8 +221,8 @@ for (const mv of VERIFIED_MULTIVIEWS) {
 // 3. Destinations from CSV
 const destinations = parseResult.destinations;
 
-// 4. Sources from CSV
-const sources = parseResult.sources;
+// 4. Sources: use parsed sources if present in CSV, otherwise preserve SEED_SOURCES inventory
+const sources = parseResult.sources.length > 0 ? parseResult.sources : SEED_SOURCES;
 
 // 5. Operational assignments derived strictly from verified output data
 const uniqueAssignmentNames = Array.from(
@@ -259,30 +255,21 @@ fs.writeFileSync(
   `import { Destination } from '../../domain/models';\n\nexport const SEED_DESTINATIONS: Destination[] = ${JSON.stringify(destinations, null, 2)};\n`
 );
 
-fs.writeFileSync(
-  path.join(OUTPUT_DIR, 'sources.ts'),
-  `import { Source } from '../../domain/models';\n\nexport const SEED_SOURCES: Source[] = ${JSON.stringify(sources, null, 2)};\n`
-);
+if (parseResult.sources.length > 0) {
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, 'sources.ts'),
+    `import { Source } from '../../domain/models';\n\nexport const SEED_SOURCES: Source[] = ${JSON.stringify(sources, null, 2)};\n`
+  );
+}
 
 fs.writeFileSync(
   path.join(OUTPUT_DIR, 'destinationAssignments.ts'),
   `import { OperationalAssignment } from '../../domain/models';\n\nexport const SEED_OPERATIONAL_ASSIGNMENTS: OperationalAssignment[] = ${JSON.stringify(operationalAssignments, null, 2)};\n`
 );
 
-const snapshot: TrackerSnapshot = {
-  multiviews,
-  outputs,
-  destinations,
-  sources,
-  operationalAssignments,
-  changeRecords: [],
-  validationFindings,
-  generatedAt: new Date().toISOString(),
-};
-
 fs.writeFileSync(
   path.join(OUTPUT_DIR, 'snapshot.ts'),
-  `import { TrackerSnapshot } from '../../domain/models';\n\nexport const INITIAL_SNAPSHOT: TrackerSnapshot = ${JSON.stringify(snapshot, null, 2)};\n`
+  `import { TrackerSnapshot } from '../../domain/models';\nimport { SEED_SOURCES } from './sources';\n\nexport const INITIAL_SNAPSHOT: TrackerSnapshot = {\n  multiviews: ${JSON.stringify(multiviews, null, 2)},\n  outputs: ${JSON.stringify(outputs, null, 2)},\n  destinations: ${JSON.stringify(destinations, null, 2)},\n  sources: SEED_SOURCES,\n  operationalAssignments: ${JSON.stringify(operationalAssignments, null, 2)},\n  changeRecords: [],\n  validationFindings: ${JSON.stringify(validationFindings, null, 2)},\n  generatedAt: ${JSON.stringify(new Date().toISOString())},\n};\n`
 );
 
 console.log('Seed data generated successfully:');

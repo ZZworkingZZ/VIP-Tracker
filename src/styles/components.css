@@ -650,7 +650,7 @@
   font-style: italic;
 }
 
-.ev-card-dest-range {
+.ev-card-output-num {
   font-size: 10px;
   color: var(--ev-text-muted);
 }

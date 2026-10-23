@@ -6,7 +6,8 @@ import { formatOutputDisplay, formatDestinationDisplay } from '../../domain/iden
 import { useTrackerSnapshot } from '../../hooks/useTracker';
 import { LayoutSelectorModal } from './LayoutSelectorModal';
 import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
-import { findNextAvailableDestinationRange } from '../../domain/rangeUtils';
+import { findNextAvailableInputBlock } from '../../domain/rangeUtils';
+import { VERIFIED_MULTIVIEWS, deriveInputRange } from '../../domain/constants';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
@@ -101,15 +102,25 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       ? siblingOutputs[currentIndex + 1]
       : null;
 
+  // Multiview input capacity
+  const mvMeta =
+    activeSnapshot?.multiviews.find((m) => m.id === output.multiviewId) ??
+    VERIFIED_MULTIVIEWS.find((m) => m.id === output.multiviewId);
+  const inputCapacity = mvMeta?.inputCapacity ?? 64;
+
   // Handle Layout Selection
   const handleSelectLayout = (newLayoutName: string) => {
     const newDef = getLayoutDefinition(newLayoutName);
     if (!newDef) return;
 
+    if (newDef.windowCount > inputCapacity) {
+      return;
+    }
+
     let start = output.destinationStart;
     if (start === null) {
-      // Find contiguous range
-      const freeRange = findNextAvailableDestinationRange(
+      // Find contiguous block
+      const freeRange = findNextAvailableInputBlock(
         output.multiviewId,
         newDef.windowCount,
         allOutputs as MultiviewOutput[],
@@ -118,7 +129,27 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       start = freeRange ? freeRange.start : 1;
     }
 
+    // Ensure range fits within inputCapacity
+    if (start + newDef.windowCount - 1 > inputCapacity) {
+      const freeRange = findNextAvailableInputBlock(
+        output.multiviewId,
+        newDef.windowCount,
+        allOutputs as MultiviewOutput[],
+        output.id
+      );
+      if (freeRange) {
+        start = freeRange.start;
+      } else {
+        start = Math.max(1, inputCapacity - newDef.windowCount + 1);
+      }
+    }
+
     const end = start + newDef.windowCount - 1;
+
+    // Reject if range is invalid or exceeds processor frame capacity
+    if (start < 1 || end > inputCapacity) {
+      return;
+    }
 
     updateDraftOutput({
       ...output,
@@ -175,18 +206,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       destinationEnd: null,
       assignmentName: null,
       status: 'Available',
-    });
-  };
-
-  // Handle Destination Start Change
-  const handleStartDestinationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value, 10);
-    if (isNaN(val) || val < 1 || !layout) return;
-
-    updateDraftOutput({
-      ...output,
-      destinationStart: val,
-      destinationEnd: val + layout.windowCount - 1,
     });
   };
 
@@ -488,7 +507,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 )}
               </div>
 
-              {/* Destination Range */}
+              {/* Input Range */}
               <div>
                 <div
                   style={{
@@ -498,50 +517,19 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Destination Range
+                  Input Range
                 </div>
-                {isEditMode && output.layoutName ? (
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}
-                  >
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Start:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={output.destinationStart ?? ''}
-                      onChange={handleStartDestinationChange}
-                      data-testid="dest-start-input"
-                      style={{
-                        width: '54px',
-                        padding: '2px 4px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        backgroundColor: '#101010',
-                        border: '1px solid #444',
-                        color: '#fff',
-                        borderRadius: '2px',
-                      }}
-                    />
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                      End: <strong>{output.destinationEnd ?? '—'}</strong>
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: '#ffffff',
-                      marginTop: '2px',
-                    }}
-                  >
-                    {output.destinationStart && output.destinationEnd
-                      ? `${output.destinationStart} – ${output.destinationEnd} (${
-                          output.destinationEnd - output.destinationStart + 1
-                        } windows)`
-                      : 'None'}
-                  </div>
-                )}
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    marginTop: '2px',
+                  }}
+                  data-testid="input-range-display"
+                >
+                  {deriveInputRange(output.multiviewId)}
+                </div>
               </div>
 
               {/* Production / Show Assignment */}

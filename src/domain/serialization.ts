@@ -12,7 +12,6 @@ export interface OutputExportRow {
   layoutName: string;
   destinationStart: number | null;
   destinationEnd: number | null;
-  destinationRange: string;
   windowCount: number;
   assignmentName: string;
   status: string;
@@ -68,10 +67,6 @@ export function buildAuthoritativeExportDataset(
 
   // Build Output rows
   const outputs: OutputExportRow[] = snapshot.outputs.map((out) => {
-    const range =
-      out.destinationStart !== null && out.destinationEnd !== null
-        ? `${out.destinationStart}-${out.destinationEnd}`
-        : 'None';
     const winCount =
       out.destinationStart !== null && out.destinationEnd !== null
         ? out.destinationEnd - out.destinationStart + 1
@@ -85,7 +80,6 @@ export function buildAuthoritativeExportDataset(
       layoutName: out.layoutName ?? 'Available',
       destinationStart: out.destinationStart,
       destinationEnd: out.destinationEnd,
-      destinationRange: range,
       windowCount: winCount,
       assignmentName: out.assignmentName ?? 'Available',
       status: out.status,

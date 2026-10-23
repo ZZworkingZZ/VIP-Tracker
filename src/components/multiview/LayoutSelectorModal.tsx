@@ -198,7 +198,7 @@ export const LayoutSelectorModal: React.FC<LayoutSelectorModalProps> = ({
             <p style={{ fontSize: '12px', margin: '0 0 8px 0', lineHeight: 1.4 }}>
               Switching from <strong>{output.layoutName}</strong> ({reductionWarning.oldWindowCount}{' '}
               windows) to <strong>{pendingLayout.name}</strong> ({pendingLayout.windowCount}{' '}
-              windows) will truncate the destination range. The following populated source
+              windows) will reduce the number of active windows. The following populated source
               assignments will be removed from this output:
             </p>
             <ul style={{ margin: '0 0 10px 16px', padding: 0, fontSize: '11px' }}>

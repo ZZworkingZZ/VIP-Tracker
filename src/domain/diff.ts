@@ -33,28 +33,6 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
       });
     }
 
-    // Destination Range
-    const baseRange =
-      baseOut.destinationStart !== null && baseOut.destinationEnd !== null
-        ? `${baseOut.destinationStart}-${baseOut.destinationEnd}`
-        : 'None';
-    const draftRange =
-      draftOut.destinationStart !== null && draftOut.destinationEnd !== null
-        ? `${draftOut.destinationStart}-${draftOut.destinationEnd}`
-        : 'None';
-
-    if (baseRange !== draftRange) {
-      changes.push({
-        entityType: 'output',
-        entityId: draftOut.id,
-        entityLabel: outputLabel,
-        field: 'destinationRange',
-        previousValue: baseRange,
-        newValue: draftRange,
-        description: `Destination Range: ${baseRange} → ${draftRange}`,
-      });
-    }
-
     // Production Assignment
     const baseAssign = baseOut.assignmentName || 'AVAILABLE';
     const draftAssign = draftOut.assignmentName || 'AVAILABLE';

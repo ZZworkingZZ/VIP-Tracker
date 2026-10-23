@@ -39,7 +39,7 @@ export function parseSourcesCsv(csvContent: string): CsvParseResult {
 
   // Multiview capacity lookup
   const capacityMap = new Map<MultiviewId, number>(
-    VERIFIED_MULTIVIEWS.map((mv) => [mv.id, mv.destinationCapacity])
+    VERIFIED_MULTIVIEWS.map((mv) => [mv.id, mv.inputCapacity])
   );
 
   const multiviewOrder: MultiviewId[] = ['MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'];

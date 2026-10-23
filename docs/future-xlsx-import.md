@@ -41,14 +41,14 @@ Any future workbook importer must adhere to the domain contracts defined in `src
    - Must confirm the 5 verified multiview frames (MV-01 to MV-05) and validate against known capacities (36/36/64/64/64).
 
 2. **Output Layout Mapping:**
-   - Must emit `MultiviewOutput` records with explicit `OutputId` (`OUT:MV-XX-YY`), integer destination ranges (`destinationStart`, `destinationEnd`), and exact raw assignment names.
+   - Must emit `MultiviewOutput` records with explicit `OutputId` (`OUT:MV-XX-YY`), internal destination coordinates (`destinationStart`, `destinationEnd`), and exact raw assignment names.
 
 3. **Destination Mapping:**
    - Must emit `Destination` records with explicit `DestinationId` (`DEST:MV-XX-YY`) and associate verified `SourceId` values.
 
 4. **Preservation of Raw Values:**
    - Must not silently normalize inconsistent naming (e.g. `HOH-WKB` vs `HOH_WKB`).
-   - Must preserve special cases such as `MV-03-03` with layout `11 BOX` and single-destination range `64-64`.
+   - Must preserve special cases such as `MV-03-03` with layout `11 BOX` and single-destination mapping `64-64`.
 
 5. **Validation Pipeline Integration:**
    - Must execute `validateSnapshot()` upon generation to verify that no overlapping output ranges or out-of-capacity numbers are committed.

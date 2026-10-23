@@ -5,8 +5,9 @@ import { STANDARD_LAYOUTS } from '../domain/layoutDefinitions';
 import { LayoutRenderer } from '../components/multiview/LayoutRenderer';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { MultiviewOutput } from '../domain/models';
+import { deriveInputRange } from '../domain/constants';
 
-type SortField = 'multiview' | 'outputNumber' | 'assignment' | 'destinationStart';
+type SortField = 'multiview' | 'outputNumber' | 'assignment';
 type SortDirection = 'asc' | 'desc';
 
 export const LayoutAssignmentsPage: React.FC = () => {
@@ -98,10 +99,6 @@ export const LayoutAssignmentsPage: React.FC = () => {
           const aName = a.assignmentName ?? '';
           const bName = b.assignmentName ?? '';
           comp = aName.localeCompare(bName);
-        } else if (sortField === 'destinationStart') {
-          const aStart = a.destinationStart ?? 9999;
-          const bStart = b.destinationStart ?? 9999;
-          comp = aStart - bStart;
         }
         return sortDirection === 'asc' ? comp : -comp;
       });
@@ -348,7 +345,7 @@ export const LayoutAssignmentsPage: React.FC = () => {
           <section className="controls-bar" aria-label="Output Filters">
             <div className="control-group">
               <label htmlFor="filter-mv" className="control-label">
-                Multiview
+                MV
               </label>
               <select
                 id="filter-mv"
@@ -356,7 +353,7 @@ export const LayoutAssignmentsPage: React.FC = () => {
                 value={selectedMv}
                 onChange={(e) => setSelectedMv(e.target.value)}
               >
-                <option value="ALL">All Multiviews</option>
+                <option value="ALL">All MVs</option>
                 {snapshot.multiviews.map((mv) => (
                   <option key={mv.id} value={mv.id}>
                     {mv.id} ({mv.displayName})
@@ -463,25 +460,10 @@ export const LayoutAssignmentsPage: React.FC = () => {
                       }
                     }}
                   >
-                    Multiview{' '}
-                    {sortField === 'multiview' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    MV {sortField === 'multiview' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
                   </th>
+                  <th scope="col">Input Range</th>
                   <th scope="col">Layout</th>
-                  <th
-                    scope="col"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      if (sortField === 'destinationStart') {
-                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('destinationStart');
-                        setSortDirection('asc');
-                      }
-                    }}
-                  >
-                    Dest Range{' '}
-                    {sortField === 'destinationStart' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                  </th>
                   <th
                     scope="col"
                     style={{ cursor: 'pointer' }}
@@ -523,20 +505,10 @@ export const LayoutAssignmentsPage: React.FC = () => {
                           {formatOutputDisplay(out.id)}
                         </td>
                         <td>{out.multiviewId}</td>
+                        <td className="mono-cell">{deriveInputRange(out.multiviewId)}</td>
                         <td>
                           {out.layoutName ? (
                             <strong>{out.layoutName}</strong>
-                          ) : (
-                            <span className="muted-text">—</span>
-                          )}
-                        </td>
-                        <td className="mono-cell">
-                          {out.destinationStart !== null && out.destinationEnd !== null ? (
-                            out.destinationStart === out.destinationEnd ? (
-                              `${out.destinationStart}`
-                            ) : (
-                              `${out.destinationStart}–${out.destinationEnd}`
-                            )
                           ) : (
                             <span className="muted-text">—</span>
                           )}

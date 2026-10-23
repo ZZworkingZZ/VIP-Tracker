@@ -146,4 +146,59 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     expect(await screen.findByText('Source Directory')).toBeInTheDocument();
     expect(screen.getByText(/No router sources currently cataloged/i)).toBeInTheDocument();
   });
+
+  it('verifies MV and Input Range conceptual layout and complete absence of Destination Range across views', async () => {
+    renderWithRepository(<DashboardPage />);
+
+    // Toggle to Table View on Dashboard
+    const tableToggle = await screen.findByRole('button', { name: 'Table View' });
+    fireEvent.click(tableToggle);
+
+    // Multiview Frame Configuration table layout: MV | Input Range
+    const configTable = screen.getByTestId('mv-config-table');
+    expect(configTable).toBeInTheDocument();
+    expect(configTable).toHaveTextContent('MV');
+    expect(configTable).toHaveTextContent('Input Range');
+    expect(configTable).toHaveTextContent('MV-01-01 through MV-01-36');
+    expect(configTable).toHaveTextContent('MV-02-01 through MV-02-36');
+    expect(configTable).toHaveTextContent('MV-03-01 through MV-03-64');
+    expect(configTable).toHaveTextContent('MV-04-01 through MV-04-64');
+    expect(configTable).toHaveTextContent('MV-05-01 through MV-05-64');
+
+    // Main table has MV and Input Range columns, and NO Destination Range
+    const mainTable = screen.getByLabelText('Multiview Engineering Table');
+    expect(mainTable).toHaveTextContent('MV');
+    expect(mainTable).toHaveTextContent('Input Range');
+    expect(screen.queryByText('Destination Range')).not.toBeInTheDocument();
+
+    // Switch back to Display View and click an output card
+    const displayToggle = screen.getByRole('button', { name: 'Display View' });
+    fireEvent.click(displayToggle);
+
+    const card = screen.getByTestId('output-card-OUT:MV-01-01');
+    fireEvent.click(card);
+
+    // Detail modal shows Input Range and NO Destination Range
+    const modal = screen.getByTestId('output-detail-modal');
+    expect(modal).toHaveTextContent('Input Range');
+    expect(modal).toHaveTextContent('MV-01-01 through MV-01-36');
+    expect(modal).not.toHaveTextContent('Destination Range');
+  });
+
+  it('renders Layouts page with MV and Input Range columns and no Dest Range', async () => {
+    renderWithRepository(<LayoutAssignmentsPage />);
+
+    // Toggle to Table View
+    const tableBtn = await screen.findByRole('button', { name: 'Table View' });
+    fireEvent.click(tableBtn);
+
+    const table = screen.getByLabelText('Multiview Outputs Table');
+    expect(table).toHaveTextContent('MV');
+    expect(table).toHaveTextContent('Input Range');
+    expect(table).not.toHaveTextContent('Dest Range');
+    expect(table).not.toHaveTextContent('Destination Range');
+
+    // Filter bar has MV label
+    expect(screen.getByLabelText('MV')).toBeInTheDocument();
+  });
 });

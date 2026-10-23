@@ -1,6 +1,6 @@
 # Evertz VIP Source Tracker
 
-An operational tracking and visualization web application for broadcast technical managers and engineers, providing structured visibility into Evertz VIP multiview processor capacities, physical output allocations, designated box layouts, destination ranges, show production assignments, and router source patches.
+An operational tracking and visualization web application for broadcast technical managers and engineers, providing structured visibility into Evertz VIP multiview processor capacities, physical output allocations, designated box layouts, show production assignments, and router source patches.
 
 ---
 

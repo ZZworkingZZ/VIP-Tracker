@@ -40,7 +40,6 @@ export interface GroupedProductionAssignment {
   assignmentName: string;
   multiviewsUsed: MultiviewId[];
   outputsUsed: OutputId[];
-  destinationRanges: { multiviewId: MultiviewId; display: string }[];
   layouts: string[];
   isLocked: boolean;
   findings: ValidationFinding[];
@@ -164,7 +163,6 @@ export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProd
         assignmentName: name,
         multiviewsUsed: [],
         outputsUsed: [],
-        destinationRanges: [],
         layouts: [],
         isLocked: false,
         findings: [],
@@ -181,15 +179,6 @@ export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProd
     }
     if (out.layoutName && !group.layouts.includes(out.layoutName)) {
       group.layouts.push(out.layoutName);
-    }
-    if (out.destinationStart !== null && out.destinationEnd !== null) {
-      const rangeDisplay =
-        out.destinationStart === out.destinationEnd
-          ? `${out.multiviewId}:${out.destinationStart}`
-          : `${out.multiviewId}:${out.destinationStart}-${out.destinationEnd}`;
-      if (!group.destinationRanges.some((r) => r.display === rangeDisplay)) {
-        group.destinationRanges.push({ multiviewId: out.multiviewId, display: rangeDisplay });
-      }
     }
     if (out.locked) {
       group.isLocked = true;

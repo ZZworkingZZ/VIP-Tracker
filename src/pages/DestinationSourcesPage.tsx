@@ -172,7 +172,7 @@ export const DestinationSourcesPage: React.FC = () => {
               className={`mv-tab-btn ${selectedMv === mv.id ? 'active' : ''}`}
               onClick={() => setSelectedMv(mv.id)}
             >
-              <strong>{mv.id}</strong> ({mv.destinationCapacity} Dests)
+              <strong>{mv.id}</strong> ({mv.inputCapacity} Inputs)
             </button>
           ))}
         </div>
@@ -241,8 +241,8 @@ export const DestinationSourcesPage: React.FC = () => {
               }}
             >
               <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', margin: 0 }}>
-                Destination Windows Wall ({filteredDestinations.length} of{' '}
-                {currentMv.destinationCapacity})
+                Destination Windows Wall ({filteredDestinations.length} of {currentMv.inputCapacity}
+                )
               </h2>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
                 {isEditMode
@@ -474,7 +474,7 @@ export const DestinationSourcesPage: React.FC = () => {
                     Destination ID
                   </th>
                   <th scope="col" style={{ width: '80px' }}>
-                    Dest #
+                    Input #
                   </th>
                   <th scope="col">Assigned Source</th>
                   <th scope="col">Derived Layout Assignment</th>

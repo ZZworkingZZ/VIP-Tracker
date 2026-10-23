@@ -49,26 +49,26 @@ export function validateSnapshot(
     const hasLayout = Boolean(out.layoutName && out.layoutName.trim());
     const hasAssignment = Boolean(out.assignmentName && out.assignmentName.trim());
 
-    // 7: Layout present without destination range
+    // 7: Layout present without destination mapping
     if (hasLayout && (!hasStart || !hasEnd)) {
       findings.push({
         id: `finding-${findings.length + 1}`,
         severity: 'error',
         code: 'LAYOUT_WITHOUT_RANGE',
-        message: `Output ${formatOutputDisplay(out.id)} has layout '${out.layoutName}' but lacks a destination range.`,
+        message: `Output ${formatOutputDisplay(out.id)} has layout '${out.layoutName}' but lacks destination mapping.`,
         entityType: 'output',
         entityId: out.id,
         relatedEntityIds: [],
       });
     }
 
-    // 8: Destination range present without layout
+    // 8: Destination mapping present without layout
     if ((hasStart || hasEnd) && !hasLayout) {
       findings.push({
         id: `finding-${findings.length + 1}`,
         severity: 'error',
         code: 'RANGE_WITHOUT_LAYOUT',
-        message: `Output ${formatOutputDisplay(out.id)} has destination range but no layout assigned.`,
+        message: `Output ${formatOutputDisplay(out.id)} has mapped destinations but no layout assigned.`,
         entityType: 'output',
         entityId: out.id,
         relatedEntityIds: [],
@@ -81,7 +81,7 @@ export function validateSnapshot(
         id: `finding-${findings.length + 1}`,
         severity: 'warning',
         code: 'ASSIGNMENT_WITHOUT_LAYOUT_OR_RANGE',
-        message: `Output ${formatOutputDisplay(out.id)} has assignment '${out.assignmentName}' but missing layout or destination range.`,
+        message: `Output ${formatOutputDisplay(out.id)} has assignment '${out.assignmentName}' but missing layout or destination mapping.`,
         entityType: 'output',
         entityId: out.id,
         relatedEntityIds: [],
@@ -103,17 +103,17 @@ export function validateSnapshot(
         });
       }
 
-      // 5: Destination range outside multiview capacity
+      // 5: Destination outside multiview capacity
       if (
         out.destinationStart < 1 ||
-        out.destinationEnd > mv.destinationCapacity ||
-        out.destinationStart > mv.destinationCapacity
+        out.destinationEnd > mv.inputCapacity ||
+        out.destinationStart > mv.inputCapacity
       ) {
         findings.push({
           id: `finding-${findings.length + 1}`,
           severity: 'error',
           code: 'DESTINATION_RANGE_OUT_OF_CAPACITY',
-          message: `Output ${formatOutputDisplay(out.id)} range (${out.destinationStart}-${out.destinationEnd}) exceeds destination capacity (${mv.destinationCapacity}).`,
+          message: `Output ${formatOutputDisplay(out.id)} mapped destinations (${out.destinationStart}-${out.destinationEnd}) exceed input capacity (${mv.inputCapacity}).`,
           entityType: 'output',
           entityId: out.id,
           relatedEntityIds: [mv.id],
@@ -131,7 +131,7 @@ export function validateSnapshot(
               id: `finding-${findings.length + 1}`,
               severity: 'warning',
               code: 'BOX_COUNT_RANGE_MISMATCH',
-              message: `Output ${formatOutputDisplay(out.id)} layout '${out.layoutName}' declares ${declaredBoxes} boxes, but destination range ${out.destinationStart}-${out.destinationEnd} spans ${inclusiveRangeSize} destination(s).`,
+              message: `Output ${formatOutputDisplay(out.id)} layout '${out.layoutName}' declares ${declaredBoxes} boxes, but mapped destinations ${out.destinationStart}-${out.destinationEnd} span ${inclusiveRangeSize} destination(s).`,
               entityType: 'output',
               entityId: out.id,
               relatedEntityIds: [],
@@ -148,7 +148,7 @@ export function validateSnapshot(
           id: `finding-${findings.length + 1}`,
           severity: 'warning',
           code: 'LOCKED_ASSIGNMENT_INCOMPLETE_TRACKING',
-          message: `Locked output ${formatOutputDisplay(out.id)} is missing complete tracking details (assignment, layout, or destination range).`,
+          message: `Locked output ${formatOutputDisplay(out.id)} is missing complete tracking details (assignment, layout, or destination mapping).`,
           entityType: 'output',
           entityId: out.id,
           relatedEntityIds: [],
@@ -201,7 +201,7 @@ export function validateSnapshot(
             id: `finding-${findings.length + 1}`,
             severity: 'error',
             code: 'OVERLAPPING_OUTPUT_RANGES',
-            message: `Overlapping destination ranges on ${mvId}: ${formatOutputDisplay(a.id)} (${a.destinationStart}-${a.destinationEnd}) and ${formatOutputDisplay(b.id)} (${b.destinationStart}-${b.destinationEnd}).`,
+            message: `Overlapping mapped destinations on ${mvId}: ${formatOutputDisplay(a.id)} (${a.destinationStart}-${a.destinationEnd}) and ${formatOutputDisplay(b.id)} (${b.destinationStart}-${b.destinationEnd}).`,
             entityType: 'output',
             entityId: a.id,
             relatedEntityIds: [b.id, mvId],
@@ -227,12 +227,12 @@ export function validateSnapshot(
       continue;
     }
 
-    if (dest.destinationNumber < 1 || dest.destinationNumber > mv.destinationCapacity) {
+    if (dest.destinationNumber < 1 || dest.destinationNumber > mv.inputCapacity) {
       findings.push({
         id: `finding-${findings.length + 1}`,
         severity: 'error',
         code: 'DESTINATION_NUMBER_OUT_OF_CAPACITY',
-        message: `Destination ${dest.destinationNumber} on ${dest.multiviewId} exceeds capacity of ${mv.destinationCapacity}.`,
+        message: `Destination ${dest.destinationNumber} on ${dest.multiviewId} exceeds capacity of ${mv.inputCapacity}.`,
         entityType: 'destination',
         entityId: dest.id,
         relatedEntityIds: [mv.id],

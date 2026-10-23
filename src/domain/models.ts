@@ -32,7 +32,7 @@ export type ValidationCode =
 export interface Multiview {
   id: MultiviewId;
   displayName: string;
-  destinationCapacity: number;
+  inputCapacity: number;
   outputCapacity: number;
 }
 

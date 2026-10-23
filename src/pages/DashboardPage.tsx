@@ -5,6 +5,7 @@ import { formatOutputDisplay } from '../domain/identifiers';
 import { MultiviewOutput } from '../domain/models';
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
+import { deriveInputRange } from '../domain/constants';
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -213,13 +214,13 @@ export const DashboardPage: React.FC = () => {
                   {/* Column Header */}
                   <div className="mv-column-header">
                     <div className="mv-col-title-row">
-                      <h2 className="mv-col-title">{mv.displayName}</h2>
+                      <h2 className="mv-col-title">{mv.id}</h2>
                       <span className="mv-col-badge">
                         {summary.assignedOutputsCount} / {mv.outputCapacity} Active
                       </span>
                     </div>
                     <div className="mv-col-meta">
-                      {mv.destinationCapacity} Destinations ·{' '}
+                      {deriveInputRange(mv.id)} ·{' '}
                       {summary.conflictCount === 0 ? 'Optimal' : `${summary.conflictCount} Warning`}
                     </div>
                   </div>
@@ -253,15 +254,59 @@ export const DashboardPage: React.FC = () => {
       {/* TABLE VIEW: Engineering Spreadsheet / Audit Table */}
       {viewMode === 'table' && (
         <section className="displays-table-view" aria-label="Multiview Engineering Table">
+          {/* Multiview Frame Configuration: MV | Input Range */}
+          <div
+            style={{
+              marginBottom: '16px',
+              backgroundColor: '#181818',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              padding: '12px 16px',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '13px',
+                fontWeight: 700,
+                margin: '0 0 8px 0',
+                color: '#e2e8f0',
+              }}
+            >
+              Multiview Frame Configuration
+            </h3>
+            <table
+              className="data-table"
+              style={{ width: 'auto', minWidth: '400px' }}
+              data-testid="mv-config-table"
+            >
+              <thead>
+                <tr>
+                  <th style={{ width: '120px' }}>MV</th>
+                  <th>Input Range</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.multiviews.map((mv) => (
+                  <tr key={mv.id}>
+                    <td className="mono-text" style={{ fontWeight: 700 }}>
+                      {mv.id}
+                    </td>
+                    <td className="mono-text">{deriveInputRange(mv.id)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <div className="table-responsive">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>Output</th>
-                  <th>Multiview</th>
+                  <th>MV</th>
+                  <th>Input Range</th>
                   <th>Status</th>
                   <th>Layout</th>
-                  <th>Destination Range</th>
                   <th>Assignment</th>
                   <th>Locked</th>
                   <th>Actions</th>
@@ -283,6 +328,7 @@ export const DashboardPage: React.FC = () => {
                       >
                         <td className="output-id-mono">{formatOutputDisplay(out.id)}</td>
                         <td>{out.multiviewId}</td>
+                        <td className="mono-text">{deriveInputRange(out.multiviewId)}</td>
                         <td>
                           <span
                             className={`status-badge ${
@@ -293,13 +339,6 @@ export const DashboardPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="mono-text">{out.layoutName || '—'}</td>
-                        <td className="mono-text">
-                          {out.destinationStart && out.destinationEnd
-                            ? `${out.destinationStart} - ${out.destinationEnd} (${
-                                out.destinationEnd - out.destinationStart + 1
-                              })`
-                            : '—'}
-                        </td>
                         <td className="assignment-cell">{out.assignmentName || '—'}</td>
                         <td>
                           {out.locked ? (
