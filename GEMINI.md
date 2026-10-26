@@ -20,18 +20,14 @@ This repository follows the architectural rules, security boundaries, and operat
 
 ---
 
-## Required Completion Checks
+## Risk-Based Development & Completion Checks
 
-Before declaring any task complete:
+Optimize for **speed and efficiency** while maintaining core safeguards. Match validation effort to the risk level of the change (see [`AGENTS.md`](AGENTS.md) for full details):
 
-```bash
-npm run validate
-```
+- **Level 1 (Small / Low-Risk):** Targeted test (if exists) + `npm run typecheck` (if TS changed) → Git commit & push. Do NOT run full validate or full test suite.
+- **Level 2 (Normal App Change):** Relevant tests + `npm run typecheck` (+ lint if warranted) → Git commit & push.
+- **Level 3 (High-Risk / Architectural):** Run `npm run validate` once.
 
-Every stage must pass cleanly:
+**Redundancy Rule:** Never run individual checks and then immediately run `npm run validate`. Never inspect unrelated files or reformat unrelated code.
 
-1. `npm run format:check`
-2. `npm run lint`
-3. `npm run typecheck`
-4. `npm run test`
-5. `npm run build`
+**Autonomous Git Push:** Once appropriate validation passes and `git diff` is confirmed clean, stage, commit, and push directly to `origin/main` without waiting for extra confirmation.
