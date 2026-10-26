@@ -34,6 +34,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     updateDraftDestination,
     updateDraftDestinationsBatch,
     addDraftSource,
+    customLayouts,
   } = useTrackerSnapshot();
 
   const [isLayoutSelectorOpen, setIsLayoutSelectorOpen] = useState(false);
@@ -992,6 +993,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         output={output}
         destinations={destinations}
         sources={sources}
+        customLayouts={customLayouts}
         onSelectLayout={handleSelectLayout}
         onClose={() => setIsLayoutSelectorOpen(false)}
       />

@@ -302,6 +302,71 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     }
   }, [repository]);
 
+  // Save a custom layout definition
+  const saveCustomLayout = useCallback(
+    async (layout: import('../domain/layoutDefinitions').LayoutDefinition) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        if (repository.saveCustomLayout) {
+          const updated = await repository.saveCustomLayout(layout);
+          setSnapshot(updated);
+          if (draftSnapshot) {
+            setDraftSnapshot((prev) => {
+              if (!prev) return null;
+              const currentCustoms = [...(prev.customLayouts ?? [])];
+              const idx = currentCustoms.findIndex(
+                (l) => l.id === layout.id || l.name.toUpperCase() === layout.name.toUpperCase()
+              );
+              if (idx >= 0) {
+                currentCustoms[idx] = layout;
+              } else {
+                currentCustoms.push(layout);
+              }
+              return {
+                ...prev,
+                customLayouts: currentCustoms,
+              };
+            });
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save custom layout.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repository, draftSnapshot]
+  );
+
+  // Delete a custom layout definition
+  const deleteCustomLayout = useCallback(
+    async (layoutId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        if (repository.deleteCustomLayout) {
+          const updated = await repository.deleteCustomLayout(layoutId);
+          setSnapshot(updated);
+          if (draftSnapshot) {
+            setDraftSnapshot((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                customLayouts: (prev.customLayouts ?? []).filter((l) => l.id !== layoutId),
+              };
+            });
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete custom layout.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [repository, draftSnapshot]
+  );
+
   // The active snapshot being displayed: draftSnapshot if in edit mode, else canonical snapshot
   const activeSnapshot = useMemo(() => {
     if (isEditMode && draftSnapshot) {
@@ -309,6 +374,10 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     }
     return snapshot;
   }, [isEditMode, draftSnapshot, snapshot]);
+
+  const customLayouts = useMemo(() => {
+    return activeSnapshot?.customLayouts ?? [];
+  }, [activeSnapshot]);
 
   const value = useMemo(
     () => ({
@@ -332,6 +401,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftSourceUpstream,
       saveDraftChanges,
       resetToBaseline,
+      saveCustomLayout,
+      deleteCustomLayout,
+      customLayouts,
     }),
     [
       repository,
@@ -354,6 +426,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftSourceUpstream,
       saveDraftChanges,
       resetToBaseline,
+      saveCustomLayout,
+      deleteCustomLayout,
+      customLayouts,
     ]
   );
 

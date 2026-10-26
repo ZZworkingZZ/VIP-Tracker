@@ -7,6 +7,7 @@ import {
   EntityType,
 } from './identifiers';
 import { SourceCategory } from './sourceCategories';
+import { LayoutDefinition } from './layoutDefinitions';
 
 export type OutputStatus = 'Available' | 'Assigned' | 'Reserved';
 export type ValidationSeverity = 'error' | 'warning' | 'info';
@@ -129,4 +130,5 @@ export interface TrackerSnapshot {
   changeRecords: ChangeRecord[];
   validationFindings: ValidationFinding[];
   generatedAt: string;
+  customLayouts?: LayoutDefinition[];
 }

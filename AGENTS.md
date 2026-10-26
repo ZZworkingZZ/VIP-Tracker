@@ -58,7 +58,8 @@ Before making any architectural changes or modifying code:
 Optimize development for **speed and efficiency** while maintaining core safeguards. Match validation effort to the size and risk of the change. Never perform redundant checks or excessive repo-wide validation for small/routine updates.
 
 ### Efficiency & Redundancy Rule
-- **Never run redundant commands:** Before running any command, ask: *"What new information will this command provide?"* If already obtained from another command, skip it.
+
+- **Never run redundant commands:** Before running any command, ask: _"What new information will this command provide?"_ If already obtained from another command, skip it.
 - If `npm run validate` is needed, run it once. Do **not** run every individual check and then run `npm run validate`.
 - Start with files/components directly related to the requested change; do not inspect large portions of the repository unless required.
 - Do not refactor unrelated code, reformat unrelated files, or make cleanup changes outside the requested scope.
@@ -67,47 +68,58 @@ Optimize development for **speed and efficiency** while maintaining core safegua
 ### Validation Levels
 
 #### Level 1 — Small / Low-Risk Change
-*Examples:* Text/label updates, removing/adding a UI field, CSS/layout adjustments, small display changes, minor component behavior, test selector updates, simple config changes.
+
+_Examples:_ Text/label updates, removing/adding a UI field, CSS/layout adjustments, small display changes, minor component behavior, test selector updates, simple config changes.
+
 1. Identify relevant file(s) and make targeted change.
 2. Run the narrowest relevant test if one exists.
 3. Run `npm run typecheck` if TypeScript types/interfaces were modified.
 4. Review `git diff`.
 5. Proceed directly to git commit and push.
-*(Do NOT automatically run the full test suite, production build, or `npm run validate`)*.
+   _(Do NOT automatically run the full test suite, production build, or `npm run validate`)_.
 
 #### Level 2 — Normal Application Change
-*Examples:* Component logic, state-management updates, domain-model adjustments, routing behavior, serialization/storage changes, changes affecting multiple related components.
+
+_Examples:_ Component logic, state-management updates, domain-model adjustments, routing behavior, serialization/storage changes, changes affecting multiple related components.
+
 1. Make targeted change.
 2. Run relevant tests for modified components/modules.
 3. Run `npm run typecheck`.
 4. Run `npm run lint` only if the changed code warrants it.
 5. Review `git diff`.
 6. Proceed directly to git commit and push.
-*(Run full test suite only if the change has broad effects or targeted testing cannot establish confidence)*.
+   _(Run full test suite only if the change has broad effects or targeted testing cannot establish confidence)_.
 
 #### Level 3 — High-Risk / Architectural Change
-*Examples:* Core routing model changes, major state architecture changes, storage/schema migrations, changes affecting source-to-destination calculations, major dependency additions/updates, build tooling changes, large refactors, or cross-cutting changes touching many areas.
+
+_Examples:_ Core routing model changes, major state architecture changes, storage/schema migrations, changes affecting source-to-destination calculations, major dependency additions/updates, build tooling changes, large refactors, or cross-cutting changes touching many areas.
+
 1. Make targeted change.
 2. Run `npm run validate` (which runs format check, lint, typecheck, tests, and build in one pipeline — do not duplicate).
 3. Review `git diff`.
 4. Proceed directly to git commit and push.
 
 ### Failure Escalation
+
 Use progressive escalation if a check fails:
 Targeted test → Typecheck → Relevant broader tests if necessary → Full test suite if necessary → `npm run validate` only when justified.
 
 ### Formatting Policy
+
 Do not run repository-wide formatting (`npm run format`) for small changes. If formatting inadvertently touches unrelated files, revert those unrelated changes before committing.
 
 ### Git & Push Behavior
+
 Once appropriate validation passes, proceed directly without asking for confirmation:
+
 1. Review `git diff` to confirm only intended files changed.
 2. Stage intended changes (`git add`).
 3. Commit with a concise, descriptive message (`git commit`).
 4. Push to remote (`git push origin main`).
 5. Confirm clean working tree (`git status`).
 
-*Only pause for confirmation if:*
+_Only pause for confirmation if:_
+
 - The push would be destructive or require a force push.
 - A merge conflict occurs.
 - Unrelated uncommitted user changes are detected that may be overwritten.
@@ -118,6 +130,7 @@ Once appropriate validation passes, proceed directly without asking for confirma
 ## 4. Core Domain Invariants Checklist
 
 Before declaring any task complete or pushing:
+
 - [ ] Maintain entity distinction: Outputs (`OUT:MV-XX-YY`) vs Destinations (`DEST:MV-XX-YY`).
 - [ ] Preserve the 5 multiviews, 32 outputs, and 264 destinations baseline.
 - [ ] No data fabrication or dummy placeholder assignments (`null` remains unassigned).

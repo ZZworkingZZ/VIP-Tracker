@@ -27,4 +27,8 @@ export interface TrackerRepository {
     changeSet?: import('../domain/models').ChangeSet
   ): Promise<TrackerSnapshot>;
   resetToBaseline(): Promise<TrackerSnapshot>;
+  saveCustomLayout?(
+    layout: import('../domain/layoutDefinitions').LayoutDefinition
+  ): Promise<TrackerSnapshot>;
+  deleteCustomLayout?(layoutId: string): Promise<TrackerSnapshot>;
 }

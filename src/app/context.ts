@@ -36,6 +36,11 @@ export interface TrackerRepositoryContextValue {
   updateDraftSourceUpstream: (sourceId: SourceId, upstreamSourceId: SourceId | null) => void;
   saveDraftChanges: () => Promise<void>;
   resetToBaseline: () => Promise<void>;
+  saveCustomLayout: (
+    layout: import('../domain/layoutDefinitions').LayoutDefinition
+  ) => Promise<void>;
+  deleteCustomLayout: (layoutId: string) => Promise<void>;
+  customLayouts: import('../domain/layoutDefinitions').LayoutDefinition[];
 }
 
 export const TrackerRepositoryContext = createContext<TrackerRepositoryContextValue | undefined>(

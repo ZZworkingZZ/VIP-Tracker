@@ -12,6 +12,7 @@ export interface LayoutSelectorModalProps {
   readonly output: MultiviewOutput;
   readonly destinations: readonly Destination[];
   readonly sources: readonly Source[];
+  readonly customLayouts?: readonly LayoutDefinition[];
   readonly onSelectLayout: (newLayoutName: string) => void;
   readonly onClose: () => void;
 }
@@ -21,6 +22,7 @@ export const LayoutSelectorModal: React.FC<LayoutSelectorModalProps> = ({
   output,
   destinations,
   sources,
+  customLayouts = [],
   onSelectLayout,
   onClose,
 }) => {
@@ -46,16 +48,20 @@ export const LayoutSelectorModal: React.FC<LayoutSelectorModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, reductionWarning, onClose]);
 
+  const allAvailableLayouts = useMemo(() => {
+    return [...STANDARD_LAYOUTS, ...customLayouts];
+  }, [customLayouts]);
+
   const categories = useMemo(() => {
     const set = new Set<string>();
-    STANDARD_LAYOUTS.forEach((l) => set.add(l.category));
+    allAvailableLayouts.forEach((l) => set.add(l.category));
     return ['ALL', ...Array.from(set)];
-  }, []);
+  }, [allAvailableLayouts]);
 
   const filteredLayouts = useMemo(() => {
-    if (selectedCategory === 'ALL') return STANDARD_LAYOUTS;
-    return STANDARD_LAYOUTS.filter((l) => l.category === selectedCategory);
-  }, [selectedCategory]);
+    if (selectedCategory === 'ALL') return allAvailableLayouts;
+    return allAvailableLayouts.filter((l) => l.category === selectedCategory);
+  }, [allAvailableLayouts, selectedCategory]);
 
   if (!isOpen) return null;
 

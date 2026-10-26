@@ -7,6 +7,7 @@ import {
 } from '../domain/models';
 import { SourceId, createSourceId } from '../domain/identifiers';
 import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
+import { LayoutDefinition } from '../domain/layoutDefinitions';
 
 export const TRACKER_STORAGE_KEY = 'vip_tracker_data_v1';
 export const TRACKER_SCHEMA_VERSION = 2;
@@ -21,6 +22,7 @@ export interface PersistedTrackerData {
   operationalAssignments: OperationalAssignment[];
   changeRecords: ChangeRecord[];
   savedAt: string;
+  customLayouts?: LayoutDefinition[];
 }
 
 export interface TrackerStorage {
@@ -62,6 +64,21 @@ export function isValidPersistedTrackerData(data: unknown): data is PersistedTra
       src.sourceType !== 'virtual'
     ) {
       return false;
+    }
+  }
+  if ('customLayouts' in d && d.customLayouts !== undefined) {
+    if (!Array.isArray(d.customLayouts)) return false;
+    for (const cl of d.customLayouts) {
+      if (!cl || typeof cl !== 'object') return false;
+      const l = cl as Record<string, unknown>;
+      if (
+        typeof l.id !== 'string' ||
+        typeof l.name !== 'string' ||
+        typeof l.windowCount !== 'number' ||
+        !Array.isArray(l.windows)
+      ) {
+        return false;
+      }
     }
   }
   return true;

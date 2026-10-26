@@ -19,6 +19,7 @@ import {
   TRACKER_SCHEMA_VERSION,
   CURRENT_SOURCE_SEED_VERSION,
 } from './storage';
+import { LayoutDefinition, setCustomLayoutRegistry } from '../domain/layoutDefinitions';
 
 /**
  * Local repository serving the typed baseline seed snapshot with browser persistence support.
@@ -58,6 +59,9 @@ export class LocalTrackerRepository implements TrackerRepository {
         sources
       );
 
+      const customLayouts = storedData.customLayouts ?? [];
+      setCustomLayoutRegistry(customLayouts);
+
       this.snapshot = {
         multiviews: JSON.parse(JSON.stringify(this.initialSnapshot.multiviews)),
         outputs: storedData.outputs,
@@ -67,6 +71,7 @@ export class LocalTrackerRepository implements TrackerRepository {
         changeRecords: storedData.changeRecords ?? [],
         validationFindings: findings,
         generatedAt: storedData.savedAt,
+        customLayouts,
       };
 
       if (shouldPersistBootstrap) {
@@ -79,10 +84,13 @@ export class LocalTrackerRepository implements TrackerRepository {
           operationalAssignments: storedData.operationalAssignments,
           changeRecords: storedData.changeRecords ?? [],
           savedAt: storedData.savedAt,
+          customLayouts,
         });
       }
     } else {
       this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
+      const customLayouts = this.snapshot.customLayouts ?? [];
+      setCustomLayoutRegistry(customLayouts);
     }
   }
 
@@ -140,6 +148,9 @@ export class LocalTrackerRepository implements TrackerRepository {
     cloned.generatedAt = new Date().toISOString();
     this.snapshot = cloned;
 
+    const customLayouts = this.snapshot.customLayouts ?? [];
+    setCustomLayoutRegistry(customLayouts);
+
     // Persist to storage
     this.storage.save({
       schemaVersion: TRACKER_SCHEMA_VERSION,
@@ -150,14 +161,42 @@ export class LocalTrackerRepository implements TrackerRepository {
       operationalAssignments: this.snapshot.operationalAssignments,
       changeRecords: this.snapshot.changeRecords,
       savedAt: this.snapshot.generatedAt,
+      customLayouts,
     });
 
     return Promise.resolve(JSON.parse(JSON.stringify(this.snapshot)));
   }
 
+  async saveCustomLayout(layout: LayoutDefinition): Promise<TrackerSnapshot> {
+    const current = [...(this.snapshot.customLayouts ?? [])];
+    const idx = current.findIndex(
+      (l) => l.id === layout.id || l.name.toUpperCase() === layout.name.toUpperCase()
+    );
+    if (idx >= 0) {
+      current[idx] = layout;
+    } else {
+      current.push(layout);
+    }
+    const nextSnapshot: TrackerSnapshot = {
+      ...this.snapshot,
+      customLayouts: current,
+    };
+    return this.saveSnapshot(nextSnapshot);
+  }
+
+  async deleteCustomLayout(layoutId: string): Promise<TrackerSnapshot> {
+    const current = (this.snapshot.customLayouts ?? []).filter((l) => l.id !== layoutId);
+    const nextSnapshot: TrackerSnapshot = {
+      ...this.snapshot,
+      customLayouts: current,
+    };
+    return this.saveSnapshot(nextSnapshot);
+  }
+
   async resetToBaseline(): Promise<TrackerSnapshot> {
     this.storage.clear();
     this.snapshot = JSON.parse(JSON.stringify(this.initialSnapshot));
+    setCustomLayoutRegistry([]);
     this.snapshot.validationFindings = validateSnapshot(
       this.snapshot.multiviews,
       this.snapshot.outputs,
