@@ -5,7 +5,6 @@ import { STANDARD_LAYOUTS } from '../domain/layoutDefinitions';
 import { LayoutRenderer } from '../components/multiview/LayoutRenderer';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { MultiviewOutput } from '../domain/models';
-import { deriveInputRange } from '../domain/constants';
 
 type SortField = 'multiview' | 'outputNumber' | 'assignment';
 type SortDirection = 'asc' | 'desc';
@@ -462,7 +461,6 @@ export const LayoutAssignmentsPage: React.FC = () => {
                   >
                     MV {sortField === 'multiview' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
                   </th>
-                  <th scope="col">Input Range</th>
                   <th scope="col">Layout</th>
                   <th
                     scope="col"
@@ -488,7 +486,7 @@ export const LayoutAssignmentsPage: React.FC = () => {
               <tbody>
                 {filteredOutputs.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="empty-state">
+                    <td colSpan={8} className="empty-state">
                       No outputs match the selected filter criteria.
                     </td>
                   </tr>
@@ -505,7 +503,6 @@ export const LayoutAssignmentsPage: React.FC = () => {
                           {formatOutputDisplay(out.id)}
                         </td>
                         <td>{out.multiviewId}</td>
-                        <td className="mono-cell">{deriveInputRange(out.multiviewId)}</td>
                         <td>
                           {out.layoutName ? (
                             <strong>{out.layoutName}</strong>

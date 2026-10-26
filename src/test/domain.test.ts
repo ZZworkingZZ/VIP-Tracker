@@ -4,7 +4,6 @@ import {
   TOTAL_EXPECTED_MULTIVIEWS,
   TOTAL_EXPECTED_OUTPUTS,
   TOTAL_EXPECTED_DESTINATIONS,
-  deriveInputRange,
 } from '../domain/constants';
 import {
   createOutputId,
@@ -75,35 +74,6 @@ describe('Domain Models & Capacities', () => {
 
     expect(totalOutputs).toBe(TOTAL_EXPECTED_OUTPUTS);
     expect(totalDestinations).toBe(TOTAL_EXPECTED_DESTINATIONS);
-  });
-
-  it('correctly resolves authoritative Input Range for MV-01 through MV-05 and derives on-the-fly without stored state', () => {
-    // MV-01 has 36 inputs: MV-01-01 through MV-01-36
-    expect(deriveInputRange('MV-01')).toBe('MV-01-01 through MV-01-36');
-    // MV-02 has 36 inputs: MV-02-01 through MV-02-36
-    expect(deriveInputRange('MV-02')).toBe('MV-02-01 through MV-02-36');
-    // MV-03 has 64 inputs: MV-03-01 through MV-03-64
-    expect(deriveInputRange('MV-03')).toBe('MV-03-01 through MV-03-64');
-    // MV-04 has 64 inputs: MV-04-01 through MV-04-64
-    expect(deriveInputRange('MV-04')).toBe('MV-04-01 through MV-04-64');
-    // MV-05 has 64 inputs: MV-05-01 through MV-05-64
-    expect(deriveInputRange('MV-05')).toBe('MV-05-01 through MV-05-64');
-
-    // Confirm inputRange is NOT stored as state on Multiview records
-    VERIFIED_MULTIVIEWS.forEach((mv) => {
-      expect('inputRange' in mv).toBe(false);
-      expect(mv.inputCapacity).toBeGreaterThan(0);
-    });
-
-    INITIAL_SNAPSHOT.multiviews.forEach((mv) => {
-      expect('inputRange' in mv).toBe(false);
-      expect(mv.inputCapacity).toBeGreaterThan(0);
-    });
-
-    // Proves that missing or unknown MV IDs fail loudly during development rather than guessing fallbacks
-    expect(() => deriveInputRange('MV-99' as MultiviewId)).toThrow(
-      'Authoritative configuration missing for multiview: MV-99'
-    );
   });
 
   it('preserves individual VIP input/destination IDs without alteration', () => {
@@ -247,7 +217,7 @@ describe('Validation Engine', () => {
     };
 
     const findings = validateSnapshot(mockMultiviews, [overflowOutput], [], []);
-    expect(findings.some((f) => f.code === 'DESTINATION_RANGE_OUT_OF_CAPACITY')).toBe(true);
+    expect(findings.some((f) => f.code === 'DESTINATION_CAPACITY_EXCEEDED')).toBe(true);
   });
 
   it('detects overlapping mapped destinations on the same multiview', () => {

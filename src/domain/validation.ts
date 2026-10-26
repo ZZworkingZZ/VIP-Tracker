@@ -112,7 +112,7 @@ export function validateSnapshot(
         findings.push({
           id: `finding-${findings.length + 1}`,
           severity: 'error',
-          code: 'DESTINATION_RANGE_OUT_OF_CAPACITY',
+          code: 'DESTINATION_CAPACITY_EXCEEDED',
           message: `Output ${formatOutputDisplay(out.id)} mapped destinations (${out.destinationStart}-${out.destinationEnd}) exceed input capacity (${mv.inputCapacity}).`,
           entityType: 'output',
           entityId: out.id,

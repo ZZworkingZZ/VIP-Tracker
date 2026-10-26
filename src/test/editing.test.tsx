@@ -364,7 +364,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     confirmSpy.mockRestore();
   });
 
-  it('displays Input Range and confirms Destination Range is completely removed from the UI', async () => {
+  it('confirms Destination Range is completely removed from the UI and detail modal renders cleanly', async () => {
     renderApp(repo);
 
     // MV-02 has 36 inputs capacity
@@ -377,14 +377,16 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     // Verify Destination Range does not exist in the modal or on the page
     const modal = screen.getByTestId('output-detail-modal');
     expect(within(modal).queryByText(/Destination Range/i)).not.toBeInTheDocument();
+    expect(within(modal).queryByText(/Input Range/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Destination Range/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Input Range/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('dest-start-input')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('input-range-display')).not.toBeInTheDocument();
 
-    // Verify Input Range is displayed with authoritative derived range
-    expect(screen.getByText('Input Range')).toBeInTheDocument();
-    expect(screen.getByTestId('input-range-display')).toHaveTextContent(
-      'MV-02-01 through MV-02-36'
-    );
+    // Verify active editing fields exist and render cleanly
+    expect(within(modal).getByText('Output Identity (Hardware)')).toBeInTheDocument();
+    expect(within(modal).getByText('Layout Assignment')).toBeInTheDocument();
+    expect(within(modal).getByText('Production Assignment')).toBeInTheDocument();
   });
 
   it('informs user and preserves destination routes when releasing an output unless explicitly cleared', async () => {

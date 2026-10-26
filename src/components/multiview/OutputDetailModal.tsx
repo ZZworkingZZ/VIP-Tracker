@@ -7,7 +7,7 @@ import { useTrackerSnapshot } from '../../hooks/useTracker';
 import { LayoutSelectorModal } from './LayoutSelectorModal';
 import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
 import { findNextAvailableInputBlock } from '../../domain/rangeUtils';
-import { VERIFIED_MULTIVIEWS, deriveInputRange } from '../../domain/constants';
+import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
@@ -505,31 +505,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     {layout.windowCount} windows ({layout.category})
                   </span>
                 )}
-              </div>
-
-              {/* Input Range */}
-              <div>
-                <div
-                  style={{
-                    fontSize: '10px',
-                    color: '#858585',
-                    textTransform: 'uppercase',
-                    fontWeight: 700,
-                  }}
-                >
-                  Input Range
-                </div>
-                <div
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#ffffff',
-                    marginTop: '2px',
-                  }}
-                  data-testid="input-range-display"
-                >
-                  {deriveInputRange(output.multiviewId)}
-                </div>
               </div>
 
               {/* Production / Show Assignment */}

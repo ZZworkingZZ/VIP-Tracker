@@ -50,25 +50,6 @@ export const VERIFIED_MULTIVIEWS: readonly MultiviewConfig[] = [
   },
 ] as const;
 
-/**
- * Deterministically derives the operator-facing Input Range for a given multiview frame.
- * MV-01: MV-01-01 through MV-01-36
- * MV-02: MV-02-01 through MV-02-36
- * MV-03: MV-03-01 through MV-03-64
- * MV-04: MV-04-01 through MV-04-64
- * MV-05: MV-05-01 through MV-05-64
- *
- * Fails clearly if authoritative configuration is missing rather than inventing fallbacks.
- */
-export function deriveInputRange(mvId: MultiviewId): string {
-  const config = VERIFIED_MULTIVIEWS.find((mv) => mv.id === mvId);
-  if (!config) {
-    throw new Error(`Authoritative configuration missing for multiview: ${mvId}`);
-  }
-  const paddedCap = String(config.inputCapacity).padStart(2, '0');
-  return `${mvId}-01 through ${mvId}-${paddedCap}`;
-}
-
 export const TOTAL_EXPECTED_MULTIVIEWS = 5;
 export const TOTAL_EXPECTED_OUTPUTS = 32;
 export const TOTAL_EXPECTED_DESTINATIONS = 264;

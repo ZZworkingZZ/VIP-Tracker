@@ -147,29 +147,23 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     expect(screen.getByText(/No router sources currently cataloged/i)).toBeInTheDocument();
   });
 
-  it('verifies MV and Input Range conceptual layout and complete absence of Destination Range across views', async () => {
+  it('verifies MV layout and complete absence of Destination Range across views', async () => {
     renderWithRepository(<DashboardPage />);
 
     // Toggle to Table View on Dashboard
     const tableToggle = await screen.findByRole('button', { name: 'Table View' });
     fireEvent.click(tableToggle);
 
-    // Multiview Frame Configuration table layout: MV | Input Range
-    const configTable = screen.getByTestId('mv-config-table');
-    expect(configTable).toBeInTheDocument();
-    expect(configTable).toHaveTextContent('MV');
-    expect(configTable).toHaveTextContent('Input Range');
-    expect(configTable).toHaveTextContent('MV-01-01 through MV-01-36');
-    expect(configTable).toHaveTextContent('MV-02-01 through MV-02-36');
-    expect(configTable).toHaveTextContent('MV-03-01 through MV-03-64');
-    expect(configTable).toHaveTextContent('MV-04-01 through MV-04-64');
-    expect(configTable).toHaveTextContent('MV-05-01 through MV-05-64');
-
-    // Main table has MV and Input Range columns, and NO Destination Range
+    // Main table has MV column and NO Destination Range or Input Range columns
     const mainTable = screen.getByLabelText('Multiview Engineering Table');
+    expect(mainTable).toHaveTextContent('Output');
     expect(mainTable).toHaveTextContent('MV');
-    expect(mainTable).toHaveTextContent('Input Range');
-    expect(screen.queryByText('Destination Range')).not.toBeInTheDocument();
+    expect(mainTable).toHaveTextContent('Status');
+    expect(mainTable).toHaveTextContent('Layout');
+    expect(mainTable).toHaveTextContent('Assignment');
+    expect(mainTable).not.toHaveTextContent('Destination Range');
+    expect(mainTable).not.toHaveTextContent('Input Range');
+    expect(screen.queryByTestId('mv-config-table')).not.toBeInTheDocument();
 
     // Switch back to Display View and click an output card
     const displayToggle = screen.getByRole('button', { name: 'Display View' });
@@ -178,14 +172,13 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     const card = screen.getByTestId('output-card-OUT:MV-01-01');
     fireEvent.click(card);
 
-    // Detail modal shows Input Range and NO Destination Range
+    // Detail modal shows NO Destination Range and NO Input Range
     const modal = screen.getByTestId('output-detail-modal');
-    expect(modal).toHaveTextContent('Input Range');
-    expect(modal).toHaveTextContent('MV-01-01 through MV-01-36');
     expect(modal).not.toHaveTextContent('Destination Range');
+    expect(modal).not.toHaveTextContent('Input Range');
   });
 
-  it('renders Layouts page with MV and Input Range columns and no Dest Range', async () => {
+  it('renders Layouts page with MV column and no Dest Range or Input Range', async () => {
     renderWithRepository(<LayoutAssignmentsPage />);
 
     // Toggle to Table View
@@ -193,10 +186,13 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     fireEvent.click(tableBtn);
 
     const table = screen.getByLabelText('Multiview Outputs Table');
+    expect(table).toHaveTextContent('Output');
     expect(table).toHaveTextContent('MV');
-    expect(table).toHaveTextContent('Input Range');
+    expect(table).toHaveTextContent('Layout');
+    expect(table).toHaveTextContent('Assignment');
     expect(table).not.toHaveTextContent('Dest Range');
     expect(table).not.toHaveTextContent('Destination Range');
+    expect(table).not.toHaveTextContent('Input Range');
 
     // Filter bar has MV label
     expect(screen.getByLabelText('MV')).toBeInTheDocument();
