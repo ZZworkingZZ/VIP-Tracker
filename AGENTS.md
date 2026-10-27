@@ -85,18 +85,28 @@ Use only the verified commands defined in `package.json`:
 > [!WARNING]
 > Never run `npm run test:watch` or interactive `vitest` in automated workflows; it will hang indefinitely waiting for input.
 
-### Validation Environment
+## Workspace
+- Authoritative repo: C:\dev\VIP-Tracker (local clone; same path on home and work PCs). GitHub is the sync point.
+- Never use Z:\ or any mirror/validation copy. Never copy files between workspaces.
+- Session start: `git pull --ff-only`. If it fails, STOP and report — do not merge or rebase on your own.
+- Session end: all work committed and pushed. Unfinished work goes on a `wip/<feature>` branch, not main.
 
-- `Z:\ZZ\VIP Tracker` is the authoritative working repository, but it resides on an SMB-backed network share.
-- Node-based tooling can experience severe filesystem and worker-startup delays when executed from the network workspace, particularly Vitest, TypeScript, ESLint, Prettier, and Vite builds.
-- Source editing and Git operations may occur in the authoritative `Z:` workspace.
-- Automated validation should run from a current local-disk clone or disposable local validation worktree, such as `C:\temp\vip-tracker-validate` (or another local path).
-- The local validation copy must match the exact commit and intended working changes being validated.
-- Never interpret stalled validation on `Z:` as evidence that code is correct or incorrect.
-- Never claim validation passed unless the command completed with exit code `0`.
-- After validating locally, transfer only intentional corrections back to the authoritative repository and review the resulting diff before committing.
-- Never use `git reset --hard`, broad cleanup, or destructive synchronization in the authoritative workspace.
-- Destructive reset operations are permitted only in a disposable local validation copy after confirming the path and repository context.
+## Architecture map (read only what the task touches)
+- Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, attribution.ts
+- Persistence: src/services/ — TrackerRepository.ts, LocalTrackerRepository.ts, storage.ts, operatorStorage.ts
+- State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
+- UI: src/components/layout/ (AppShell, AppHeader, OperatorModal), src/components/multiview/ (OutputDetailModal, OutputDisplayCard, ReviewChangesModal, EditModeBanner)
+- Styles: src/styles/components.css
+- Tests: src/test/
+
+## Efficiency rules
+- Do not re-read a file range already read this session.
+- No baseline test run before changes.
+- While iterating: run only the targeted test file.
+- Before commit: `npx prettier --write <changed files>`, then `npm run validate` ONCE. Do not run lint/typecheck/test/format separately.
+- Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
+- Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
+- Final report: max 10 lines — files changed, validate result, commit hash.
 
 ---
 

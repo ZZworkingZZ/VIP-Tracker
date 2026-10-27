@@ -33,20 +33,6 @@ This document defines execution rules for Gemini in the **VIP Tracker** reposito
   6. Run formatting only against changed files during implementation.
   7. Allow `npm run validate` to perform the final repository-wide format check.
   8. If the final format check fails, format only the reported files where practical, then rerun `npm run validate` once.
-- **Local Validation Workflow:**
-  - Detect whether the active repository is running from the SMB-backed `Z:` workspace before starting Node-based validation.
-  - For Level 2 or Level 3 validation from `Z:`, prefer a current local-disk clone or disposable validation worktree.
-  - Confirm the local validation copy references the intended branch/commit and contains the exact changes being validated.
-  - Run dependency installation and validation only in the local copy when network-share execution is known to stall.
-  - Do not repeatedly retry Vitest, TypeScript, ESLint, Prettier, or Vite commands from `Z:` after network-path behavior has been established.
-  - Do not copy the entire local repository back to `Z:`.
-  - If fixes are made locally, transfer only the intentional changed files, review the authoritative repository diff, and commit from the authoritative repository.
-  - Preserve unrelated changes in both locations.
-- **Local Copy Safety:**
-  - Before `Remove-Item -Recurse`, `git reset --hard`, or similar destructive cleanup in a local validation copy, confirm the resolved path is the disposable local copy and not `Z:\ZZ\VIP Tracker`.
-  - Never run destructive cleanup against the authoritative repository.
-  - Do not delete a local copy that contains untransferred fixes.
-  - Prefer reusing or refreshing a known disposable validation directory rather than creating many abandoned clones.
 - **Validation Claim Discipline:**
   - Do not call a phase, feature, or fix “validated,” “verified,” “passing,” or “complete” unless the required checks actually completed successfully.
   - Clearly distinguish:
