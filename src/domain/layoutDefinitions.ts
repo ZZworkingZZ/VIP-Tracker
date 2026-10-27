@@ -214,7 +214,7 @@ export const LAYOUT_9_BOX: LayoutDefinition = {
 };
 
 /**
- * 10 BOX (Evertz Broadcast Control: 2 Hero Windows Left, 8 Small Windows Right)
+ * 10 BOX (2 large upper windows over 8 small lower windows in 4x2 grid)
  */
 export const LAYOUT_10_BOX: LayoutDefinition = {
   id: '10-BOX',
@@ -222,20 +222,21 @@ export const LAYOUT_10_BOX: LayoutDefinition = {
   windowCount: 10,
   aspectRatio: '16:9',
   category: 'Hero Split',
-  description: '2 large hero windows left with 8 auxiliary windows in 4x2 grid right',
+  description: '2 large upper windows over 8 small lower windows in 4x2 grid',
   windows: [
-    // 2 Hero windows (left half, stacked)
-    { id: 'w-1', x: 0, y: 0, width: 50, height: 50, destinationOffset: 0 },
-    { id: 'w-2', x: 0, y: 50, width: 50, height: 50, destinationOffset: 1 },
-    // 8 small windows (right half, 2 cols x 4 rows)
-    { id: 'w-3', x: 50, y: 0, width: 25, height: 25, destinationOffset: 2 },
-    { id: 'w-4', x: 75, y: 0, width: 25, height: 25, destinationOffset: 3 },
-    { id: 'w-5', x: 50, y: 25, width: 25, height: 25, destinationOffset: 4 },
-    { id: 'w-6', x: 75, y: 25, width: 25, height: 25, destinationOffset: 5 },
-    { id: 'w-7', x: 50, y: 50, width: 25, height: 25, destinationOffset: 6 },
-    { id: 'w-8', x: 75, y: 50, width: 25, height: 25, destinationOffset: 7 },
-    { id: 'w-9', x: 50, y: 75, width: 25, height: 25, destinationOffset: 8 },
-    { id: 'w-10', x: 75, y: 75, width: 25, height: 25, destinationOffset: 9 },
+    // Top Row: 2 large equal 16:9 windows
+    { id: 'w-1', x: 8.0, y: 4.0, width: 40.5, height: 40.5, destinationOffset: 0 },
+    { id: 'w-2', x: 51.5, y: 4.0, width: 40.5, height: 40.5, destinationOffset: 1 },
+    // Middle Row: 4 small equal 16:9 windows
+    { id: 'w-3', x: 5.2, y: 48.0, width: 21.2, height: 21.2, destinationOffset: 2 },
+    { id: 'w-4', x: 28.0, y: 48.0, width: 21.2, height: 21.2, destinationOffset: 3 },
+    { id: 'w-5', x: 50.8, y: 48.0, width: 21.2, height: 21.2, destinationOffset: 4 },
+    { id: 'w-6', x: 73.6, y: 48.0, width: 21.2, height: 21.2, destinationOffset: 5 },
+    // Bottom Row: 4 small equal 16:9 windows
+    { id: 'w-7', x: 5.2, y: 73.0, width: 21.2, height: 21.2, destinationOffset: 6 },
+    { id: 'w-8', x: 28.0, y: 73.0, width: 21.2, height: 21.2, destinationOffset: 7 },
+    { id: 'w-9', x: 50.8, y: 73.0, width: 21.2, height: 21.2, destinationOffset: 8 },
+    { id: 'w-10', x: 73.6, y: 73.0, width: 21.2, height: 21.2, destinationOffset: 9 },
   ],
 };
 
