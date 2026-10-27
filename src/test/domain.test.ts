@@ -180,15 +180,16 @@ describe('Validation Engine', () => {
     expect(findings.some((f) => f.code === 'DESTINATION_NUMBER_OUT_OF_CAPACITY')).toBe(true);
   });
 
-  it('detects destination start greater than destination end', () => {
-    const badRangeOutput: MultiviewOutput = {
+  it('does NOT generate obsolete destination-mapping findings for outputs with layouts or production assignments', () => {
+    // 1. Layout + no destination mapping -> valid (no finding)
+    const outLayoutOnly: MultiviewOutput = {
       id: 'OUT:MV-01-01',
       multiviewId: 'MV-01',
       outputNumber: 1,
       layoutName: '4 BOX',
-      destinationStart: 10,
-      destinationEnd: 5,
-      assignmentName: 'TEST',
+      destinationStart: null,
+      destinationEnd: null,
+      assignmentName: null,
       notes: null,
       status: 'Assigned',
       locked: false,
@@ -196,53 +197,31 @@ describe('Validation Engine', () => {
       updatedBy: null,
     };
 
-    const findings = validateSnapshot(mockMultiviews, [badRangeOutput], [], []);
-    expect(findings.some((f) => f.code === 'DESTINATION_START_GREATER_THAN_END')).toBe(true);
-  });
-
-  it('detects mapped destinations exceeding multiview capacity', () => {
-    const overflowOutput: MultiviewOutput = {
-      id: 'OUT:MV-01-01',
+    // 2. Production assignment + no destination mapping -> valid (no finding)
+    const outAssignmentOnly: MultiviewOutput = {
+      id: 'OUT:MV-01-02',
       multiviewId: 'MV-01',
-      outputNumber: 1,
-      layoutName: '4 BOX',
-      destinationStart: 30,
-      destinationEnd: 40, // MV-01 has 36 destinations
-      assignmentName: 'TEST',
-      notes: null,
-      status: 'Assigned',
-      locked: false,
-      updatedAt: null,
-      updatedBy: null,
-    };
-
-    const findings = validateSnapshot(mockMultiviews, [overflowOutput], [], []);
-    expect(findings.some((f) => f.code === 'DESTINATION_CAPACITY_EXCEEDED')).toBe(true);
-  });
-
-  it('detects overlapping mapped destinations on the same multiview', () => {
-    const out1: MultiviewOutput = {
-      id: 'OUT:MV-02-01',
-      multiviewId: 'MV-02',
-      outputNumber: 1,
-      layoutName: '4 BOX',
-      destinationStart: 1,
-      destinationEnd: 10,
-      assignmentName: 'ASSIGN A',
-      notes: null,
-      status: 'Assigned',
-      locked: false,
-      updatedAt: null,
-      updatedBy: null,
-    };
-    const out2: MultiviewOutput = {
-      id: 'OUT:MV-02-02',
-      multiviewId: 'MV-02',
       outputNumber: 2,
+      layoutName: null,
+      destinationStart: null,
+      destinationEnd: null,
+      assignmentName: 'TEST PRODUCTION',
+      notes: null,
+      status: 'Available',
+      locked: false,
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    // 3. Layout + Production assignment + no destination mapping -> valid (no finding)
+    const outBoth: MultiviewOutput = {
+      id: 'OUT:MV-01-03',
+      multiviewId: 'MV-01',
+      outputNumber: 3,
       layoutName: '4 BOX',
-      destinationStart: 8,
-      destinationEnd: 14,
-      assignmentName: 'ASSIGN B',
+      destinationStart: null,
+      destinationEnd: null,
+      assignmentName: 'TEST PRODUCTION',
       notes: null,
       status: 'Assigned',
       locked: false,
@@ -250,18 +229,45 @@ describe('Validation Engine', () => {
       updatedBy: null,
     };
 
-    const findings = validateSnapshot(mockMultiviews, [out1, out2], [], []);
-    expect(findings.some((f) => f.code === 'OVERLAPPING_OUTPUT_RANGES')).toBe(true);
+    // 4. Production assignment + no layout + no destination mapping -> valid (no finding)
+    const outProdNoLayout: MultiviewOutput = {
+      id: 'OUT:MV-01-04',
+      multiviewId: 'MV-01',
+      outputNumber: 4,
+      layoutName: null,
+      destinationStart: null,
+      destinationEnd: null,
+      assignmentName: 'TEST PRODUCTION B',
+      notes: null,
+      status: 'Available',
+      locked: false,
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    const findings = validateSnapshot(
+      mockMultiviews,
+      [outLayoutOnly, outAssignmentOnly, outBoth, outProdNoLayout],
+      [],
+      []
+    );
+
+    // None of these generate obsolete destination mapping errors or warnings
+    expect(findings.filter((f) => f.code === 'LAYOUT_WITHOUT_RANGE')).toHaveLength(0);
+    expect(findings.filter((f) => f.code === 'RANGE_WITHOUT_LAYOUT')).toHaveLength(0);
+    expect(findings.filter((f) => f.code === 'ASSIGNMENT_WITHOUT_LAYOUT_OR_RANGE')).toHaveLength(0);
+    expect(findings.filter((f) => f.code === 'BOX_COUNT_RANGE_MISMATCH')).toHaveLength(0);
+    expect(findings).toHaveLength(0);
   });
 
-  it('flags box-count mismatch warnings including MV-03-03 preserving seed data', () => {
+  it('does NOT generate box-count mismatch warnings for output destination ranges since output destination-range mapping is retired', () => {
     const mv3Output: MultiviewOutput = {
       id: 'OUT:MV-03-03',
       multiviewId: 'MV-03',
       outputNumber: 3,
       layoutName: '11 BOX',
       destinationStart: 64,
-      destinationEnd: 64, // 1 destination vs 11 BOX
+      destinationEnd: 64,
       assignmentName: 'BOB TEST',
       notes: null,
       status: 'Assigned',
@@ -272,10 +278,7 @@ describe('Validation Engine', () => {
 
     const findings = validateSnapshot(mockMultiviews, [mv3Output], [], []);
     const mismatch = findings.find((f) => f.code === 'BOX_COUNT_RANGE_MISMATCH');
-    expect(mismatch).toBeDefined();
-    expect(mismatch?.severity).toBe('warning');
-    expect(mismatch?.message).toContain('11 boxes');
-    expect(mismatch?.message).toContain('1 destination');
+    expect(mismatch).toBeUndefined();
   });
 
   it('detects destination referencing unknown source', () => {
@@ -292,6 +295,26 @@ describe('Validation Engine', () => {
 
     const findings = validateSnapshot(mockMultiviews, [], [badDest], mockSources);
     expect(findings.some((f) => f.code === 'DESTINATION_UNKNOWN_SOURCE')).toBe(true);
+  });
+
+  it('preserves genuine findings such as unknown multiview and out-of-capacity numbers', () => {
+    const badOutput: MultiviewOutput = {
+      id: 'OUT:MV-99-01' as OutputId,
+      multiviewId: 'MV-99' as MultiviewId,
+      outputNumber: 1,
+      layoutName: '4 BOX',
+      destinationStart: null,
+      destinationEnd: null,
+      assignmentName: 'TEST PRODUCTION',
+      notes: null,
+      status: 'Assigned',
+      locked: false,
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    const findings = validateSnapshot(mockMultiviews, [badOutput], [], []);
+    expect(findings.some((f) => f.code === 'UNKNOWN_MULTIVIEW')).toBe(true);
   });
 });
 

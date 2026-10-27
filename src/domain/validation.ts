@@ -45,111 +45,14 @@ export function validateSnapshot(
       });
     }
 
-    const hasStart = out.destinationStart !== null && out.destinationStart !== undefined;
-    const hasEnd = out.destinationEnd !== null && out.destinationEnd !== undefined;
-    const hasLayout = Boolean(out.layoutName && out.layoutName.trim());
-    const hasAssignment = Boolean(out.assignmentName && out.assignmentName.trim());
-
-    // 7: Layout present without destination mapping
-    if (hasLayout && (!hasStart || !hasEnd)) {
-      findings.push({
-        id: `finding-${findings.length + 1}`,
-        severity: 'error',
-        code: 'LAYOUT_WITHOUT_RANGE',
-        message: `Output ${formatOutputDisplay(out.id)} has layout '${out.layoutName}' but lacks destination mapping.`,
-        entityType: 'output',
-        entityId: out.id,
-        relatedEntityIds: [],
-      });
-    }
-
-    // 8: Destination mapping present without layout
-    if ((hasStart || hasEnd) && !hasLayout) {
-      findings.push({
-        id: `finding-${findings.length + 1}`,
-        severity: 'error',
-        code: 'RANGE_WITHOUT_LAYOUT',
-        message: `Output ${formatOutputDisplay(out.id)} has mapped destinations but no layout assigned.`,
-        entityType: 'output',
-        entityId: out.id,
-        relatedEntityIds: [],
-      });
-    }
-
-    // 9: Assignment name present without layout or range
-    if (hasAssignment && (!hasLayout || !hasStart || !hasEnd)) {
-      findings.push({
-        id: `finding-${findings.length + 1}`,
-        severity: 'warning',
-        code: 'ASSIGNMENT_WITHOUT_LAYOUT_OR_RANGE',
-        message: `Output ${formatOutputDisplay(out.id)} has assignment '${out.assignmentName}' but missing layout or destination mapping.`,
-        entityType: 'output',
-        entityId: out.id,
-        relatedEntityIds: [],
-      });
-    }
-
-    // Range checks
-    if (hasStart && hasEnd && out.destinationStart !== null && out.destinationEnd !== null) {
-      // 4: Destination start greater than destination end
-      if (out.destinationStart > out.destinationEnd) {
-        findings.push({
-          id: `finding-${findings.length + 1}`,
-          severity: 'error',
-          code: 'DESTINATION_START_GREATER_THAN_END',
-          message: `Output ${formatOutputDisplay(out.id)} destination start (${out.destinationStart}) is greater than end (${out.destinationEnd}).`,
-          entityType: 'output',
-          entityId: out.id,
-          relatedEntityIds: [],
-        });
-      }
-
-      // 5: Destination outside multiview capacity
-      if (
-        out.destinationStart < 1 ||
-        out.destinationEnd > mv.inputCapacity ||
-        out.destinationStart > mv.inputCapacity
-      ) {
-        findings.push({
-          id: `finding-${findings.length + 1}`,
-          severity: 'error',
-          code: 'DESTINATION_CAPACITY_EXCEEDED',
-          message: `Output ${formatOutputDisplay(out.id)} mapped destinations (${out.destinationStart}-${out.destinationEnd}) exceed input capacity (${mv.inputCapacity}).`,
-          entityType: 'output',
-          entityId: out.id,
-          relatedEntityIds: [mv.id],
-        });
-      }
-
-      // 12: Box count mismatch warning
-      if (hasLayout && out.layoutName) {
-        const match = out.layoutName.match(/^(\d+)\s*BOX/i);
-        if (match) {
-          const declaredBoxes = parseInt(match[1], 10);
-          const inclusiveRangeSize = out.destinationEnd - out.destinationStart + 1;
-          if (declaredBoxes !== inclusiveRangeSize) {
-            findings.push({
-              id: `finding-${findings.length + 1}`,
-              severity: 'warning',
-              code: 'BOX_COUNT_RANGE_MISMATCH',
-              message: `Output ${formatOutputDisplay(out.id)} layout '${out.layoutName}' declares ${declaredBoxes} boxes, but mapped destinations ${out.destinationStart}-${out.destinationEnd} span ${inclusiveRangeSize} destination(s).`,
-              entityType: 'output',
-              entityId: out.id,
-              relatedEntityIds: [],
-            });
-          }
-        }
-      }
-    }
-
-    // 11: Locked assignment has incomplete tracking information
+    // 11: Locked assignment incomplete tracking check (assignment or layout missing)
     if (out.locked) {
-      if (!out.assignmentName || !out.layoutName || !hasStart || !hasEnd) {
+      if (!out.assignmentName || !out.layoutName) {
         findings.push({
           id: `finding-${findings.length + 1}`,
           severity: 'warning',
           code: 'LOCKED_ASSIGNMENT_INCOMPLETE_TRACKING',
-          message: `Locked output ${formatOutputDisplay(out.id)} is missing complete tracking details (assignment, layout, or destination mapping).`,
+          message: `Locked output ${formatOutputDisplay(out.id)} is missing complete tracking details (assignment or layout).`,
           entityType: 'output',
           entityId: out.id,
           relatedEntityIds: [],
