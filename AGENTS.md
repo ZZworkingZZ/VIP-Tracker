@@ -88,7 +88,10 @@ Use only the verified commands defined in `package.json`:
 ## Workspace
 
 - Authoritative repo: C:\dev\VIP-Tracker (local clone; same path on home and work PCs). GitHub is the sync point.
-- Never use Z:\ or any mirror/validation copy. Never copy files between workspaces.
+- Data repo: C:\dev\VIP-Tracker-Data (PRIVATE, same path on home and work PCs). Holds data/import/*.csv and tracker.json. Real source data lives ONLY here, never in the public app repo.
+- Agents may read and write the data repo when a task explicitly involves data. Commit and push data-repo changes from inside that repo, separately from app-repo commits.
+- Never use Z:\ or any mirror/validation copy. Never copy files between workspaces. The "no copying between workspaces" rule refers to old mirrors (Z:\, C:\temp); it does not apply to the data repo.
+- Never write, log, or commit GitHub tokens in either repo.
 - Session start: `git pull --ff-only`. If it fails, STOP and report — do not merge or rebase on your own.
 - Session end: all work committed and pushed. Unfinished work goes on a `wip/<feature>` branch, not main.
 
