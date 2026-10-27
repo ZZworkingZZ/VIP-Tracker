@@ -1,15 +1,42 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTrackerSnapshot } from '../../hooks/useTracker';
+import { buildFeedbackUrl } from '../../domain/feedback';
 
 export interface AppHeaderProps {
   readonly onToggleSidebar?: () => void;
   readonly sidebarOpen?: boolean;
 }
 
+function getViewName(pathname: string): string {
+  if (pathname === '/' || pathname === '') {
+    return 'Dashboard';
+  }
+  if (pathname.startsWith('/layouts')) {
+    return 'Layout Assignments';
+  }
+  if (pathname.startsWith('/sources')) {
+    return 'Sources';
+  }
+  if (pathname.startsWith('/productions')) {
+    return 'Assignments';
+  }
+  if (pathname.startsWith('/directory')) {
+    return 'Source Directory';
+  }
+  return 'VIP Tracker';
+}
+
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOpen = true }) => {
+  const location = useLocation();
   const { isEditMode, hasUnsavedChanges, currentOperator, openOperatorModal } =
     useTrackerSnapshot();
+
+  const handleFeedbackClick = () => {
+    const currentView = getViewName(location.pathname);
+    const url = buildFeedbackUrl(currentOperator?.displayName ?? null, currentView);
+    window.open(url, '_blank', 'noopener');
+  };
 
   let modeText = 'ACTIVE';
   let modeClass = 'ev-status-pill ev-pill-mode active-mode';
@@ -90,6 +117,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
             title="Switch operator"
           >
             Switch User
+          </button>
+          <button
+            type="button"
+            className="ev-switch-user-btn"
+            data-testid="feedback-btn"
+            onClick={handleFeedbackClick}
+            title="Open VIP Tracker Feedback form"
+          >
+            Feedback
           </button>
         </div>
       </div>
