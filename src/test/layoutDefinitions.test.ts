@@ -168,6 +168,74 @@ describe('Layout Definitions Domain Logic', () => {
     expect(resolved?.windows[1].pipId).toBe('PIP-02');
   });
 
+  it('correctly models Basic 3 BOX as 2-over-1 symmetric 16:9 windows matching real Evertz layout', () => {
+    // 1. Basic 3 Box contains exactly 3 PIPs
+    expect(LAYOUT_3_BOX.windowCount).toBe(3);
+    expect(LAYOUT_3_BOX.windows).toHaveLength(3);
+
+    const [pip1, pip2, pip3] = LAYOUT_3_BOX.windows;
+
+    // 2. All 3 PIPs have identical width
+    expect(pip1.width).toBe(pip2.width);
+    expect(pip2.width).toBe(pip3.width);
+
+    // 3. All 3 PIPs have identical height
+    expect(pip1.height).toBe(pip2.height);
+    expect(pip2.height).toBe(pip3.height);
+
+    // 4. PIP 1 and PIP 2 have identical Y positions
+    expect(pip1.y).toBe(pip2.y);
+
+    // 5. PIP 1 is left of PIP 2
+    expect(pip1.x).toBeLessThan(pip2.x);
+
+    // 6. PIP 3 is below the upper row
+    expect(pip3.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 7. PIP 3 is horizontally centered
+    const expectedCenteredX = Number(((100 - pip3.width) / 2).toFixed(4));
+    expect(pip3.x).toBe(expectedCenteredX);
+
+    // 8. None of the PIPs overlap
+    // PIP 1 and PIP 2 horizontal non-overlap:
+    expect(pip1.x + pip1.width).toBeLessThanOrEqual(pip2.x);
+    // PIP 3 is strictly below row 1:
+    expect(pip3.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 9. All PIPs are within layout bounds (0-100 canvas)
+    for (const pip of [pip1, pip2, pip3]) {
+      expect(pip.x).toBeGreaterThanOrEqual(0);
+      expect(pip.y).toBeGreaterThanOrEqual(0);
+      expect(pip.x + pip.width).toBeLessThanOrEqual(100);
+      expect(pip.y + pip.height).toBeLessThanOrEqual(100);
+    }
+
+    // 10. All three produce equivalent physical 16:9 geometry in the existing 16:9 canvas
+    expect(pip1.width).toBe(pip1.height);
+    expect(pip2.width).toBe(pip2.height);
+    expect(pip3.width).toBe(pip3.height);
+
+    // 11. The upper pair has balanced exterior margins
+    const topRowLeftMargin = pip1.x;
+    const topRowRightMargin = Number((100 - (pip2.x + pip2.width)).toFixed(4));
+    expect(topRowLeftMargin).toBe(topRowRightMargin);
+
+    // 12. Basic 3 Box resolves through canonical layout lookup
+    const resolved = getLayoutDefinition('3 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.id).toBe('3-BOX');
+    expect(resolved?.windows[0]).toMatchObject(LAYOUT_3_BOX.windows[0]);
+    expect(resolved?.windows[1]).toMatchObject(LAYOUT_3_BOX.windows[1]);
+    expect(resolved?.windows[2]).toMatchObject(LAYOUT_3_BOX.windows[2]);
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[1].pipId).toBe('PIP-02');
+    expect(resolved?.windows[2].pipId).toBe('PIP-03');
+
+    // 13. Basic 2 Box geometry remains unchanged
+    expect(LAYOUT_2_BOX.windows[0]).toMatchObject({ x: 0.2, y: 25.5, width: 49.6, height: 49.6 });
+    expect(LAYOUT_2_BOX.windows[1]).toMatchObject({ x: 50.2, y: 25.5, width: 49.6, height: 49.6 });
+  });
+
   it('correctly models 5 BOX as hero split with 4 auxiliary windows', () => {
     expect(LAYOUT_5_BOX.category).toBe('Hero Split');
     const hero = LAYOUT_5_BOX.windows[0];

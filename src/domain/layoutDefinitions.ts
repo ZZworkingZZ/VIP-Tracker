@@ -73,20 +73,19 @@ export const LAYOUT_2_BOX: LayoutDefinition = {
 };
 
 /**
- * 3 BOX (1 Hero Window Left, 2 Stacked Windows Right)
- * Standard broadcast control room preview/program geometry
+ * 3 BOX (2-over-1 layout: 2 equal upper windows, 1 centered lower window)
  */
 export const LAYOUT_3_BOX: LayoutDefinition = {
   id: '3-BOX',
   name: '3 BOX',
   windowCount: 3,
   aspectRatio: '16:9',
-  category: 'Hero Split',
-  description: '1 large hero window left with 2 stacked auxiliary windows right',
+  category: 'Standard Grid',
+  description: '2-over-1 layout with two equal upper windows and one centered lower window',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 66.666, height: 100, destinationOffset: 0 },
-    { id: 'w-2', x: 66.666, y: 0, width: 33.334, height: 50, destinationOffset: 1 },
-    { id: 'w-3', x: 66.666, y: 50, width: 33.334, height: 50, destinationOffset: 2 },
+    { id: 'w-1', x: 2.0, y: 2.0, width: 47.6, height: 47.6, destinationOffset: 0 },
+    { id: 'w-2', x: 50.4, y: 2.0, width: 47.6, height: 47.6, destinationOffset: 1 },
+    { id: 'w-3', x: 26.2, y: 51.0, width: 47.6, height: 47.6, destinationOffset: 2 },
   ],
 };
 

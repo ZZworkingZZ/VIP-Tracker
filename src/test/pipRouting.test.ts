@@ -244,22 +244,19 @@ describe('PIP Routing Domain Model & Lifecycle', () => {
     expect(pips[35].window.y).toBeGreaterThan(pips[0].window.y);
   });
 
-  // Requirement 12: Stable PIP IDs for asymmetric layout
-  it('12. verifies stable PIP IDs for asymmetric 3 BOX layout', () => {
+  // Requirement 12: Stable PIP IDs for 3 BOX layout
+  it('12. verifies stable PIP IDs for 3 BOX layout', () => {
     const pips = getLayoutPips(LAYOUT_3_BOX);
     expect(pips.length).toBe(3);
     expect(pips[0].pipId).toBe('PIP-01');
     expect(pips[1].pipId).toBe('PIP-02');
     expect(pips[2].pipId).toBe('PIP-03');
 
-    // Hero left window
-    expect(pips[0].window.width).toBeCloseTo(66.666, 1);
-    expect(pips[0].window.height).toBe(100);
-    // Stacked right windows
-    expect(pips[1].window.x).toBeCloseTo(66.666, 1);
-    expect(pips[1].window.y).toBe(0);
-    expect(pips[2].window.x).toBeCloseTo(66.666, 1);
-    expect(pips[2].window.y).toBe(50);
+    // 2-over-1 windows: all 3 windows have equal width and height
+    expect(pips[0].window.width).toBe(pips[1].window.width);
+    expect(pips[1].window.width).toBe(pips[2].window.width);
+    expect(pips[0].window.height).toBe(pips[1].window.height);
+    expect(pips[1].window.height).toBe(pips[2].window.height);
   });
 
   // Requirement 13: Custom layouts share the same assignment relationship
