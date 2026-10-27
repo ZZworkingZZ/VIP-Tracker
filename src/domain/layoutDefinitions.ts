@@ -137,12 +137,12 @@ export const LAYOUT_6_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '3 columns by 2 rows uniform grid',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 33.333, height: 50, destinationOffset: 0 },
-    { id: 'w-2', x: 33.333, y: 0, width: 33.333, height: 50, destinationOffset: 1 },
-    { id: 'w-3', x: 66.666, y: 0, width: 33.334, height: 50, destinationOffset: 2 },
-    { id: 'w-4', x: 0, y: 50, width: 33.333, height: 50, destinationOffset: 3 },
-    { id: 'w-5', x: 33.333, y: 50, width: 33.333, height: 50, destinationOffset: 4 },
-    { id: 'w-6', x: 66.666, y: 50, width: 33.334, height: 50, destinationOffset: 5 },
+    { id: 'w-1', x: 2.0, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 0 },
+    { id: 'w-2', x: 34.4, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 1 },
+    { id: 'w-3', x: 66.8, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 2 },
+    { id: 'w-4', x: 2.0, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 3 },
+    { id: 'w-5', x: 34.4, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 4 },
+    { id: 'w-6', x: 66.8, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 5 },
   ],
 };
 

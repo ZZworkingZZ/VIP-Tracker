@@ -345,6 +345,130 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
   });
 
+  it('correctly models Basic 6 BOX as symmetric 3x2 grid of equal 16:9 windows matching real Evertz layout', () => {
+    // 1. Basic 6 Box contains exactly 6 PIPs
+    expect(LAYOUT_6_BOX.windowCount).toBe(6);
+    expect(LAYOUT_6_BOX.windows).toHaveLength(6);
+
+    const [pip1, pip2, pip3, pip4, pip5, pip6] = LAYOUT_6_BOX.windows;
+
+    // 2. All 6 PIPs have identical width
+    expect(pip1.width).toBe(pip2.width);
+    expect(pip2.width).toBe(pip3.width);
+    expect(pip3.width).toBe(pip4.width);
+    expect(pip4.width).toBe(pip5.width);
+    expect(pip5.width).toBe(pip6.width);
+
+    // 3. All 6 PIPs have identical height
+    expect(pip1.height).toBe(pip2.height);
+    expect(pip2.height).toBe(pip3.height);
+    expect(pip3.height).toBe(pip4.height);
+    expect(pip4.height).toBe(pip5.height);
+    expect(pip5.height).toBe(pip6.height);
+
+    // 4. All 6 produce equivalent physical 16:9 geometry (width === height in 16:9 container)
+    for (const pip of [pip1, pip2, pip3, pip4, pip5, pip6]) {
+      expect(pip.width).toBe(pip.height);
+    }
+
+    // 5. PIPs 1–3 have identical Y positions
+    expect(pip1.y).toBe(pip2.y);
+    expect(pip2.y).toBe(pip3.y);
+
+    // 6. PIPs 4–6 have identical Y positions
+    expect(pip4.y).toBe(pip5.y);
+    expect(pip5.y).toBe(pip6.y);
+
+    // 7. Bottom row is below top row
+    expect(pip4.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 8. PIP 1 X === PIP 4 X
+    expect(pip1.x).toBe(pip4.x);
+
+    // 9. PIP 2 X === PIP 5 X
+    expect(pip2.x).toBe(pip5.x);
+
+    // 10. PIP 3 X === PIP 6 X
+    expect(pip3.x).toBe(pip6.x);
+
+    // 11. Top-row horizontal gaps are equal
+    const topGap1 = Number((pip2.x - (pip1.x + pip1.width)).toFixed(4));
+    const topGap2 = Number((pip3.x - (pip2.x + pip2.width)).toFixed(4));
+    expect(topGap1).toBe(topGap2);
+
+    // 12. Bottom-row horizontal gaps are equal
+    const bottomGap1 = Number((pip5.x - (pip4.x + pip4.width)).toFixed(4));
+    const bottomGap2 = Number((pip6.x - (pip5.x + pip5.width)).toFixed(4));
+    expect(bottomGap1).toBe(bottomGap2);
+
+    // 13. Top and bottom horizontal gaps match
+    expect(topGap1).toBe(bottomGap1);
+
+    // 14. Left/right outside margins are balanced
+    const leftMargin = pip1.x;
+    const rightMargin = Number((100 - (pip3.x + pip3.width)).toFixed(4));
+    expect(leftMargin).toBe(rightMargin);
+
+    // 15. No PIPs overlap
+    expect(pip1.x + pip1.width).toBeLessThanOrEqual(pip2.x);
+    expect(pip2.x + pip2.width).toBeLessThanOrEqual(pip3.x);
+    expect(pip4.x + pip4.width).toBeLessThanOrEqual(pip5.x);
+    expect(pip5.x + pip5.width).toBeLessThanOrEqual(pip6.x);
+    expect(pip4.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+    expect(pip5.y).toBeGreaterThanOrEqual(pip2.y + pip2.height);
+    expect(pip6.y).toBeGreaterThanOrEqual(pip3.y + pip3.height);
+
+    // 16. All PIPs remain within normalized layout bounds (0-100 canvas)
+    for (const pip of [pip1, pip2, pip3, pip4, pip5, pip6]) {
+      expect(pip.x).toBeGreaterThanOrEqual(0);
+      expect(pip.y).toBeGreaterThanOrEqual(0);
+      expect(pip.x + pip.width).toBeLessThanOrEqual(100);
+      expect(pip.y + pip.height).toBeLessThanOrEqual(100);
+    }
+
+    // 17. Canonical "6 BOX" lookup resolves to this definition
+    const resolved = getLayoutDefinition('6 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.id).toBe('6-BOX');
+    expect(resolved?.category).toBe('Standard Grid');
+    expect(resolved?.windows[0]).toMatchObject(LAYOUT_6_BOX.windows[0]);
+    expect(resolved?.windows[1]).toMatchObject(LAYOUT_6_BOX.windows[1]);
+    expect(resolved?.windows[2]).toMatchObject(LAYOUT_6_BOX.windows[2]);
+    expect(resolved?.windows[3]).toMatchObject(LAYOUT_6_BOX.windows[3]);
+    expect(resolved?.windows[4]).toMatchObject(LAYOUT_6_BOX.windows[4]);
+    expect(resolved?.windows[5]).toMatchObject(LAYOUT_6_BOX.windows[5]);
+
+    // 18. Stable PIP IDs remain PIP-01 through PIP-06
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[1].pipId).toBe('PIP-02');
+    expect(resolved?.windows[2].pipId).toBe('PIP-03');
+    expect(resolved?.windows[3].pipId).toBe('PIP-04');
+    expect(resolved?.windows[4].pipId).toBe('PIP-05');
+    expect(resolved?.windows[5].pipId).toBe('PIP-06');
+
+    // 19. Basic 2 geometry remains unchanged
+    expect(LAYOUT_2_BOX.windows[0]).toMatchObject({ x: 0.2, y: 25.5, width: 49.6, height: 49.6 });
+    expect(LAYOUT_2_BOX.windows[1]).toMatchObject({ x: 50.2, y: 25.5, width: 49.6, height: 49.6 });
+
+    // 20. Basic 3 geometry remains unchanged
+    expect(LAYOUT_3_BOX.windows[0]).toMatchObject({ x: 2.0, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[1]).toMatchObject({ x: 50.4, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[2]).toMatchObject({ x: 26.2, y: 51.0, width: 47.6, height: 47.6 });
+
+    // 21. Basic 4 geometry remains unchanged
+    expect(LAYOUT_4_BOX.windows[0]).toMatchObject({ x: 0, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[1]).toMatchObject({ x: 50, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[2]).toMatchObject({ x: 0, y: 50, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
+
+    // 22. Basic 5 geometry remains unchanged
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+  });
+
   it('correctly models 7 BOX as hero split with 6 auxiliary windows', () => {
     expect(LAYOUT_7_BOX.category).toBe('Hero Split');
     const hero = LAYOUT_7_BOX.windows[0];
