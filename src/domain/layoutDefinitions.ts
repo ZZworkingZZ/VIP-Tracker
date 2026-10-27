@@ -67,8 +67,8 @@ export const LAYOUT_2_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: 'Dual side-by-side 16:9 windows',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 50, height: 100, destinationOffset: 0 },
-    { id: 'w-2', x: 50, y: 0, width: 50, height: 100, destinationOffset: 1 },
+    { id: 'w-1', x: 0.2, y: 25.5, width: 49.6, height: 49.6, destinationOffset: 0 },
+    { id: 'w-2', x: 50.2, y: 25.5, width: 49.6, height: 49.6, destinationOffset: 1 },
   ],
 };
 

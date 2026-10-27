@@ -116,6 +116,58 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_36_BOX.windowCount).toBe(36);
   });
 
+  it('correctly models Basic 2 BOX as side-by-side equal 16:9 windows matching real Evertz layout', () => {
+    // 1. Basic 2 Box contains exactly two PIPs
+    expect(LAYOUT_2_BOX.windowCount).toBe(2);
+    expect(LAYOUT_2_BOX.windows).toHaveLength(2);
+
+    const [leftPip, rightPip] = LAYOUT_2_BOX.windows;
+
+    // 2. Both PIPs have identical width
+    expect(leftPip.width).toBe(rightPip.width);
+
+    // 3. Both PIPs have identical height
+    expect(leftPip.height).toBe(rightPip.height);
+
+    // 4. Both PIPs have identical Y position
+    expect(leftPip.y).toBe(rightPip.y);
+
+    // 5. Left PIP is positioned left of Right PIP
+    expect(leftPip.x).toBeLessThan(rightPip.x);
+
+    // 6. The two PIPs do not overlap
+    expect(leftPip.x + leftPip.width).toBeLessThanOrEqual(rightPip.x);
+
+    // 7. The two PIPs fit within layout bounds (0-100 canvas)
+    expect(leftPip.x).toBeGreaterThanOrEqual(0);
+    expect(leftPip.y).toBeGreaterThanOrEqual(0);
+    expect(leftPip.x + leftPip.width).toBeLessThanOrEqual(100);
+    expect(leftPip.y + leftPip.height).toBeLessThanOrEqual(100);
+
+    expect(rightPip.x).toBeGreaterThanOrEqual(0);
+    expect(rightPip.y).toBeGreaterThanOrEqual(0);
+    expect(rightPip.x + rightPip.width).toBeLessThanOrEqual(100);
+    expect(rightPip.y + rightPip.height).toBeLessThanOrEqual(100);
+
+    // 8. In a 16:9 canvas, width === height produces exact 16:9 video aspect ratio
+    expect(leftPip.width).toBe(leftPip.height);
+    expect(rightPip.width).toBe(rightPip.height);
+
+    // 9. Composition is horizontally symmetric within canvas
+    const leftMargin = leftPip.x;
+    const rightMargin = Number((100 - (rightPip.x + rightPip.width)).toFixed(4));
+    expect(leftMargin).toBe(rightMargin);
+
+    // 10. Resolves through canonical layout lookup path
+    const resolved = getLayoutDefinition('2 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.id).toBe('2-BOX');
+    expect(resolved?.windows[0]).toMatchObject(LAYOUT_2_BOX.windows[0]);
+    expect(resolved?.windows[1]).toMatchObject(LAYOUT_2_BOX.windows[1]);
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[1].pipId).toBe('PIP-02');
+  });
+
   it('correctly models 5 BOX as hero split with 4 auxiliary windows', () => {
     expect(LAYOUT_5_BOX.category).toBe('Hero Split');
     const hero = LAYOUT_5_BOX.windows[0];
