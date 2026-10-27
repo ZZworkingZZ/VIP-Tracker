@@ -178,14 +178,14 @@ export const LAYOUT_8_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '4 columns by 2 rows uniform grid',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 25, height: 50, destinationOffset: 0 },
-    { id: 'w-2', x: 25, y: 0, width: 25, height: 50, destinationOffset: 1 },
-    { id: 'w-3', x: 50, y: 0, width: 25, height: 50, destinationOffset: 2 },
-    { id: 'w-4', x: 75, y: 0, width: 25, height: 50, destinationOffset: 3 },
-    { id: 'w-5', x: 0, y: 50, width: 25, height: 50, destinationOffset: 4 },
-    { id: 'w-6', x: 25, y: 50, width: 25, height: 50, destinationOffset: 5 },
-    { id: 'w-7', x: 50, y: 50, width: 25, height: 50, destinationOffset: 6 },
-    { id: 'w-8', x: 75, y: 50, width: 25, height: 50, destinationOffset: 7 },
+    { id: 'w-1', x: 2.0, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 0 },
+    { id: 'w-2', x: 26.3, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 1 },
+    { id: 'w-3', x: 50.6, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 2 },
+    { id: 'w-4', x: 74.9, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 3 },
+    { id: 'w-5', x: 2.0, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 4 },
+    { id: 'w-6', x: 26.3, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 5 },
+    { id: 'w-7', x: 50.6, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 6 },
+    { id: 'w-8', x: 74.9, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 7 },
   ],
 };
 
