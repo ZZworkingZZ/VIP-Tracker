@@ -74,6 +74,44 @@ export class GitHubTrackerRepository implements TrackerRepository {
   }
 
   /**
+   * Checks GitHub for remote revisions.
+   * Compares the remote file SHA against lastLoadedSha.
+   * If unchanged, returns hasUpdate: false without reparsing or mutating state.
+   */
+  async checkForRemoteUpdate(): Promise<{
+    hasUpdate: boolean;
+    sha: string;
+    snapshot: TrackerSnapshot;
+  }> {
+    const payload = await this.client.fetchFileContents();
+    const hasUpdate = Boolean(this.lastLoadedSha && payload.sha !== this.lastLoadedSha);
+    if (!hasUpdate && this.cachedSnapshot) {
+      return {
+        hasUpdate: false,
+        sha: payload.sha,
+        snapshot: this.cachedSnapshot,
+      };
+    }
+
+    const snapshot = this.parseAndValidatePayload(payload);
+    return {
+      hasUpdate,
+      sha: payload.sha,
+      snapshot,
+    };
+  }
+
+  /**
+   * Applies an externally received snapshot and updates lastLoadedSha and cachedSnapshot.
+   */
+  applyLoadedSnapshot(snapshot: TrackerSnapshot, sha: string): void {
+    this.cachedSnapshot = snapshot;
+    this.lastLoadedSha = sha;
+    const customLayouts = snapshot.customLayouts ?? [];
+    setCustomLayoutRegistry(customLayouts);
+  }
+
+  /**
    * Fetches, validates, and decodes the tracker file from GitHub.
    */
   async loadSnapshot(): Promise<GitHubSnapshotLoadResult> {

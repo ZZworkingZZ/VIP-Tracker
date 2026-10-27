@@ -35,4 +35,10 @@ export interface TrackerRepository {
   readonly isReadOnly?: boolean;
   getLastLoadedSha?(): string | null;
   refreshSnapshot?(): Promise<TrackerSnapshot>;
+  checkForRemoteUpdate?(): Promise<{
+    hasUpdate: boolean;
+    sha: string;
+    snapshot: TrackerSnapshot;
+  }>;
+  applyLoadedSnapshot?(snapshot: TrackerSnapshot, sha: string): void;
 }

@@ -11,6 +11,7 @@ export const EditModeBanner: React.FC = () => {
     saveDraftChanges,
     isSaving,
     isConflict,
+    isNewerSharedDataAvailable,
     reloadLatestSharedData,
   } = useTrackerSnapshot();
 
@@ -191,6 +192,51 @@ export const EditModeBanner: React.FC = () => {
               backgroundColor: '#991b1b',
               color: '#ffffff',
               border: '1px solid #f87171',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            Reload Latest Shared Data
+          </button>
+        </div>
+      )}
+      {!isConflict && isNewerSharedDataAvailable && (
+        <div
+          className="ev-update-banner"
+          data-testid="edit-mode-update-banner"
+          role="status"
+          style={{
+            position: 'sticky',
+            top: '41px',
+            zIndex: 99,
+            backgroundColor: '#1e3a5a',
+            borderBottom: '1px solid #38bdf8',
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: '#e0f2fe',
+            fontFamily: 'var(--ev-font)',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span aria-hidden="true" style={{ fontSize: '14px' }}>
+              ℹ️
+            </span>
+            <span>Newer shared data is available.</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleReloadLatest}
+            data-testid="banner-reload-latest-btn"
+            style={{
+              padding: '4px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: '#0284c7',
+              color: '#ffffff',
+              border: '1px solid #38bdf8',
               borderRadius: '2px',
               cursor: 'pointer',
             }}

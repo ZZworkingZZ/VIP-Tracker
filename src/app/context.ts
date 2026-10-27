@@ -24,6 +24,8 @@ export interface TrackerRepositoryContextValue {
   isReadOnly: boolean;
   /** Whether a revision conflict occurred on save */
   isConflict: boolean;
+  /** Whether a newer shared revision was detected while operator is in edit mode */
+  isNewerSharedDataAvailable: boolean;
   /** GitHub blob SHA of the current tracker file when loaded from remote */
   lastLoadedSha: string | null;
   refresh: () => Promise<void>;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
 import { createDefaultTrackerRepository } from '../services/repositoryConfig';
 import { TrackerSnapshot, MultiviewOutput, Source } from '../domain/models';
@@ -43,7 +43,20 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isConflict, setIsConflict] = useState<boolean>(false);
+  const [isNewerSharedDataAvailable, setIsNewerSharedDataAvailable] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditModeRef = useRef<boolean>(isEditMode);
+  useEffect(() => {
+    isEditModeRef.current = isEditMode;
+  }, [isEditMode]);
+
+  const isSavingRef = useRef<boolean>(isSaving);
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
+
+  const isCheckInProgressRef = useRef<boolean>(false);
 
   // Trust-based Operator Identity State
   const [currentOperator, setCurrentOperator] = useState<Operator | null>(() =>
@@ -115,6 +128,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setIsLoading(true);
       setError(null);
       setIsConflict(false);
+      setIsNewerSharedDataAvailable(false);
       setDraftSnapshot(null);
       setIsEditMode(false);
       const data = repository.refreshSnapshot
@@ -136,6 +150,86 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   useEffect(() => {
     fetchSnapshot();
   }, [fetchSnapshot]);
+
+  // Periodic background synchronization for shared repository (Phase 4A)
+  useEffect(() => {
+    if (typeof repository.checkForRemoteUpdate !== 'function') {
+      return;
+    }
+
+    let isCancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const performSyncCheck = async () => {
+      if (isCancelled) return;
+      if (isSavingRef.current) return;
+      if (isCheckInProgressRef.current) return;
+
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      try {
+        isCheckInProgressRef.current = true;
+        const result = await repository.checkForRemoteUpdate!();
+        if (isCancelled) return;
+
+        if (result.hasUpdate) {
+          if (isEditModeRef.current) {
+            // Edit mode safety: preserve user draft, do not replace state or update lastLoadedSha
+            setIsNewerSharedDataAvailable(true);
+          } else if (!isSavingRef.current) {
+            if (repository.applyLoadedSnapshot) {
+              repository.applyLoadedSnapshot(result.snapshot, result.sha);
+            }
+            setSnapshot(result.snapshot);
+            setLastLoadedSha(result.sha);
+            setIsNewerSharedDataAvailable(false);
+          }
+        }
+      } catch (err) {
+        console.warn('Automatic background synchronization check failed:', err);
+      } finally {
+        isCheckInProgressRef.current = false;
+      }
+    };
+
+    const scheduleNext = () => {
+      if (isCancelled) return;
+      timerId = setTimeout(async () => {
+        await performSyncCheck();
+        scheduleNext();
+      }, 5000);
+    };
+
+    scheduleNext();
+
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        void performSyncCheck();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleVisibilityOrFocus);
+    }
+
+    return () => {
+      isCancelled = true;
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+      }
+    };
+  }, [repository]);
 
   // Compute staged differences
   const stagedChanges = useMemo(() => {
@@ -184,7 +278,11 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const discardChanges = useCallback(() => {
     setDraftSnapshot(null);
     setIsEditMode(false);
-  }, []);
+    if (isNewerSharedDataAvailable) {
+      setIsNewerSharedDataAvailable(false);
+      void fetchSnapshot();
+    }
+  }, [isNewerSharedDataAvailable, fetchSnapshot]);
 
   // Update a single output in draft state
   const updateDraftOutput = useCallback(
@@ -463,6 +561,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setDraftSnapshot(null);
       setIsEditMode(false);
       setIsConflict(false);
+      setIsNewerSharedDataAvailable(false);
     } catch (err) {
       if (
         (err instanceof GitHubTrackerRepositoryError && err.code === 'REVISION_CONFLICT') ||
@@ -604,6 +703,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       isLoading,
       isSaving,
       isConflict,
+      isNewerSharedDataAvailable,
       error,
       isReadOnly,
       lastLoadedSha,
@@ -645,6 +745,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       isLoading,
       isSaving,
       isConflict,
+      isNewerSharedDataAvailable,
       error,
       isReadOnly,
       lastLoadedSha,

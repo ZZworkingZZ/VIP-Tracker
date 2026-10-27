@@ -17,7 +17,8 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
   onSave,
   isSaving = false,
 }) => {
-  const { currentOperator, isConflict, error, reloadLatestSharedData } = useTrackerSnapshot();
+  const { currentOperator, isConflict, isNewerSharedDataAvailable, error, reloadLatestSharedData } =
+    useTrackerSnapshot();
 
   // Close on Escape key
   useEffect(() => {
@@ -209,6 +210,55 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
             {error}
           </div>
         ) : null}
+
+        {!isConflict && isNewerSharedDataAvailable && (
+          <div
+            role="status"
+            data-testid="newer-shared-data-modal-banner"
+            style={{
+              margin: '12px 16px 0 16px',
+              padding: '10px 14px',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid #38bdf8',
+              borderRadius: '3px',
+              color: '#e0f2fe',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+              <span aria-hidden="true">ℹ️</span>
+              <span>Newer shared data is available.</span>
+            </div>
+            <button
+              type="button"
+              data-testid="modal-reload-latest-shared-btn"
+              onClick={async () => {
+                const confirmReload = window.confirm(
+                  'Reload latest shared data? Your current unsaved edits will be discarded.'
+                );
+                if (!confirmReload) return;
+                await reloadLatestSharedData();
+                onClose();
+              }}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                border: '1px solid #38bdf8',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              Reload Latest Shared Data
+            </button>
+          </div>
+        )}
 
         {/* Change List */}
         <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
