@@ -29,8 +29,14 @@ function getViewName(pathname: string): string {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOpen = true }) => {
   const location = useLocation();
-  const { isEditMode, hasUnsavedChanges, isReadOnly, currentOperator, openOperatorModal } =
-    useTrackerSnapshot();
+  const {
+    repository,
+    isEditMode,
+    hasUnsavedChanges,
+    isReadOnly,
+    currentOperator,
+    openOperatorModal,
+  } = useTrackerSnapshot();
 
   const handleFeedbackClick = () => {
     const currentView = getViewName(location.pathname);
@@ -53,6 +59,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
       modeTitle = 'Operational mode: Edit Mode';
     }
   }
+
+  const isShared = Boolean(repository.getLastLoadedSha);
+  const dataBadgeLabel = isShared
+    ? isReadOnly
+      ? 'Shared Data (Read-Only)'
+      : 'Shared Data'
+    : 'Local Data';
+  const dataBadgeTitle = isShared
+    ? `Displaying authoritative shared GitHub tracker data${isReadOnly ? ' (Read-Only mode)' : ''}`
+    : 'Displaying tracked repository baseline data, not direct live hardware state';
 
   return (
     <header className="ev-top-bar" role="banner">
@@ -83,16 +99,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
         {/* Operational Tracking Baseline Indicator */}
         <span
           className="ev-status-pill ev-pill-local"
-          title={
-            isReadOnly
-              ? 'Displaying authoritative shared GitHub tracker data (Read-Only mode)'
-              : 'Displaying tracked repository baseline data, not direct live hardware state'
-          }
+          title={dataBadgeTitle}
           role="status"
           data-testid="data-mode-badge"
         >
           <span className="ev-led-dot green" aria-hidden="true" />
-          <span className="pill-text">{isReadOnly ? 'Shared Data (Read-Only)' : 'Local Data'}</span>
+          <span className="pill-text">{dataBadgeLabel}</span>
         </span>
 
         <span className={modeClass} title={modeTitle} data-testid="app-mode-pill">

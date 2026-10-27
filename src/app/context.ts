@@ -18,12 +18,16 @@ export interface TrackerRepositoryContextValue {
   /** Structured list of staged differences */
   stagedChanges: FieldChange[];
   isLoading: boolean;
+  isSaving: boolean;
   error: string | null;
-  /** Whether the underlying repository is read-only (e.g. Phase 3A shared GitHub repository) */
+  /** Whether the underlying repository is read-only */
   isReadOnly: boolean;
+  /** Whether a revision conflict occurred on save */
+  isConflict: boolean;
   /** GitHub blob SHA of the current tracker file when loaded from remote */
   lastLoadedSha: string | null;
   refresh: () => Promise<void>;
+  reloadLatestSharedData: () => Promise<void>;
   enterEditMode: () => void;
   exitEditMode: () => void;
   discardChanges: () => void;

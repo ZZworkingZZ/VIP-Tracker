@@ -34,4 +34,5 @@ export interface TrackerRepository {
   deleteCustomLayout?(layoutId: string): Promise<TrackerSnapshot>;
   readonly isReadOnly?: boolean;
   getLastLoadedSha?(): string | null;
+  refreshSnapshot?(): Promise<TrackerSnapshot>;
 }

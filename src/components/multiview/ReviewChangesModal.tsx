@@ -17,7 +17,7 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
   onSave,
   isSaving = false,
 }) => {
-  const { currentOperator } = useTrackerSnapshot();
+  const { currentOperator, isConflict, error, reloadLatestSharedData } = useTrackerSnapshot();
 
   // Close on Escape key
   useEffect(() => {
@@ -140,6 +140,75 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
             ×
           </button>
         </div>
+
+        {/* Conflict / Error Banner */}
+        {isConflict ? (
+          <div
+            role="alert"
+            data-testid="revision-conflict-banner"
+            style={{
+              margin: '12px 16px 0 16px',
+              padding: '10px 14px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid #ef4444',
+              borderRadius: '3px',
+              color: '#fca5a5',
+              fontSize: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+              <span aria-hidden="true">⚠️</span>
+              <span>
+                Shared data changed after you began editing. Your changes have not been saved.
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                data-testid="reload-latest-shared-btn"
+                onClick={async () => {
+                  const confirmReload = window.confirm(
+                    'Reload latest shared data? Your current unsaved edits will be discarded.'
+                  );
+                  if (!confirmReload) return;
+                  await reloadLatestSharedData();
+                  onClose();
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: '#991b1b',
+                  color: '#ffffff',
+                  border: '1px solid #f87171',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                }}
+              >
+                Reload Latest Shared Data
+              </button>
+            </div>
+          </div>
+        ) : error ? (
+          <div
+            role="alert"
+            data-testid="save-error-banner"
+            style={{
+              margin: '12px 16px 0 16px',
+              padding: '10px 14px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid #ef4444',
+              borderRadius: '3px',
+              color: '#fca5a5',
+              fontSize: '12px',
+            }}
+          >
+            {error}
+          </div>
+        ) : null}
 
         {/* Change List */}
         <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>

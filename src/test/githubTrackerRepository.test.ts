@@ -531,6 +531,7 @@ describe('Phase 2: GitHubTrackerRepository — Safe Read Foundation', () => {
     const payload = createSyntheticSnapshotPayload();
     const mockFetch = createMockFetch({ body: createGitHubFileApiResponse(payload) });
     const repo = new GitHubTrackerRepository({
+      isReadOnly: true,
       tokenProvider: () => 'synth-token',
       fetchFn: mockFetch,
     });

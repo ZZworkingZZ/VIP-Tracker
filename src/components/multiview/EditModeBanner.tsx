@@ -3,11 +3,18 @@ import { useTrackerSnapshot } from '../../hooks/useTracker';
 import { ReviewChangesModal } from './ReviewChangesModal';
 
 export const EditModeBanner: React.FC = () => {
-  const { isEditMode, hasUnsavedChanges, stagedChanges, discardChanges, saveDraftChanges } =
-    useTrackerSnapshot();
+  const {
+    isEditMode,
+    hasUnsavedChanges,
+    stagedChanges,
+    discardChanges,
+    saveDraftChanges,
+    isSaving,
+    isConflict,
+    reloadLatestSharedData,
+  } = useTrackerSnapshot();
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   if (!isEditMode) return null;
 
@@ -23,12 +30,20 @@ export const EditModeBanner: React.FC = () => {
 
   const handleConfirmSave = async () => {
     try {
-      setIsSaving(true);
       await saveDraftChanges();
       setIsReviewOpen(false);
-    } finally {
-      setIsSaving(false);
+    } catch {
+      // Retain review modal open or let user see error in modal / banner
     }
+  };
+
+  const handleReloadLatest = async () => {
+    const confirmReload = window.confirm(
+      'Reload latest shared data? Your current unsaved edits will be discarded.'
+    );
+    if (!confirmReload) return;
+    await reloadLatestSharedData();
+    setIsReviewOpen(false);
   };
 
   return (
@@ -137,6 +152,53 @@ export const EditModeBanner: React.FC = () => {
           </button>
         </div>
       </div>
+      {isConflict && (
+        <div
+          className="ev-conflict-banner"
+          data-testid="edit-mode-conflict-banner"
+          role="alert"
+          style={{
+            position: 'sticky',
+            top: '41px',
+            zIndex: 99,
+            backgroundColor: '#7f1d1d',
+            borderBottom: '1px solid #ef4444',
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: '#fecaca',
+            fontFamily: 'var(--ev-font)',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span aria-hidden="true" style={{ fontSize: '14px' }}>
+              ⚠️
+            </span>
+            <span>
+              Shared data changed after you began editing. Your changes have not been saved.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleReloadLatest}
+            data-testid="banner-reload-latest-btn"
+            style={{
+              padding: '4px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              backgroundColor: '#991b1b',
+              color: '#ffffff',
+              border: '1px solid #f87171',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            Reload Latest Shared Data
+          </button>
+        </div>
+      )}
 
       <ReviewChangesModal
         isOpen={isReviewOpen}

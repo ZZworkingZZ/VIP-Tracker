@@ -63,7 +63,7 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
     expect(repo.config.repo).toBe('VIP-Tracker-Data');
     expect(repo.config.branch).toBe('main');
     expect(repo.config.path).toBe('data/tracker.json');
-    expect(repo.isReadOnly).toBe(true);
+    expect(repo.isReadOnly).toBe(false);
     expect(repo.getLastLoadedSha()).toBeNull();
   });
 
@@ -74,7 +74,7 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
     });
 
     expect(repo).toBeInstanceOf(GitHubTrackerRepository);
-    expect((repo as GitHubTrackerRepository).isReadOnly).toBe(true);
+    expect((repo as GitHubTrackerRepository).isReadOnly).toBe(false);
   });
 
   // 3. Shared configuration absent -> LocalTrackerRepository selected
@@ -108,9 +108,9 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
     // Initial loading message displayed
     expect(screen.getByText('Loading VIP Tracker operational baseline...')).toBeInTheDocument();
 
-    // After success, shell renders and header displays shared read-only badge
+    // After success, shell renders and header displays shared data badge
     await waitFor(() => {
-      expect(screen.getByTestId('data-mode-badge')).toHaveTextContent('Shared Data (Read-Only)');
+      expect(screen.getByTestId('data-mode-badge')).toHaveTextContent('Shared Data');
     });
 
     expect(
@@ -171,7 +171,7 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
 
     // Remains in error state, never displays "Local Data"
     expect(screen.queryByText('Local Data')).not.toBeInTheDocument();
-    expect(screen.getByTestId('data-mode-badge')).toHaveTextContent('Shared Data (Read-Only)');
+    expect(screen.getByTestId('data-mode-badge')).toHaveTextContent('Shared Data');
   });
 
   // 7. Loading state is represented correctly
@@ -220,6 +220,7 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
     const mockFetch = createMockFetchResponse(payload);
 
     const repo = new GitHubTrackerRepository({
+      isReadOnly: true,
       tokenProvider: () => 'synthetic-token-8',
       fetchFn: mockFetch as unknown as typeof fetch,
     });
@@ -393,6 +394,7 @@ describe('Phase 3A — Shared GitHub Tracker Reads', () => {
     const mockFetch = createMockFetchResponse(payload);
 
     const repo = new GitHubTrackerRepository({
+      isReadOnly: true,
       tokenProvider: () => 'synthetic-token-modals',
       fetchFn: mockFetch as unknown as typeof fetch,
     });

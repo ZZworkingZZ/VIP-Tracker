@@ -9,7 +9,10 @@ import {
   ValidationFinding,
   TrackerSnapshot,
   TrackerSnapshotMetadata,
+  ChangeSet,
 } from '../domain/models';
+import { Operator } from '../domain/operator';
+import { changeSetToChangeRecords } from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
 import {
   LayoutDefinition,
@@ -25,7 +28,9 @@ import {
 } from './githubClient';
 import { GitHubTrackerRepositoryError } from './githubErrors';
 
-export type GitHubTrackerRepositoryOptions = GitHubClientOptions;
+export interface GitHubTrackerRepositoryOptions extends GitHubClientOptions {
+  isReadOnly?: boolean;
+}
 
 export interface GitHubSnapshotLoadResult {
   snapshot: TrackerSnapshot;
@@ -35,17 +40,18 @@ export interface GitHubSnapshotLoadResult {
 }
 
 /**
- * Read-only TrackerRepository implementation that loads authoritative tracker snapshots
- * from private GitHub repositories via injected authenticated requests.
+ * Conflict-safe TrackerRepository implementation that loads and updates authoritative
+ * tracker snapshots in private GitHub repositories via optimistic concurrency based on file SHA.
  */
 export class GitHubTrackerRepository implements TrackerRepository {
-  readonly isReadOnly = true;
+  readonly isReadOnly: boolean;
   private client: GitHubClient;
   private cachedSnapshot: TrackerSnapshot | null = null;
   private lastLoadedSha: string | null = null;
 
   constructor(options: GitHubTrackerRepositoryOptions = {}) {
     this.client = new GitHubClient(options);
+    this.isReadOnly = options.isReadOnly ?? false;
   }
 
   get config(): GitHubRepositoryConfig {
@@ -57,6 +63,14 @@ export class GitHubTrackerRepository implements TrackerRepository {
    */
   getLastLoadedSha(): string | null {
     return this.lastLoadedSha;
+  }
+
+  /**
+   * Refreshes the tracker file from GitHub, bypassing any cached snapshot and updating lastLoadedSha.
+   */
+  async refreshSnapshot(): Promise<TrackerSnapshot> {
+    const res = await this.loadSnapshot();
+    return res.snapshot;
   }
 
   /**
@@ -327,28 +341,203 @@ export class GitHubTrackerRepository implements TrackerRepository {
     return snap.validationFindings;
   }
 
-  // --- Read-Only Mutation Guards ---
-
-  async saveSnapshot(
-    _snapshot?: TrackerSnapshot,
-    _changeSet?: import('../domain/models').ChangeSet,
-    _operator?: import('../domain/operator').Operator | null
-  ): Promise<TrackerSnapshot> {
-    throw new GitHubTrackerRepositoryError(
-      'Mutation operation "saveSnapshot" is not supported by read-only GitHubTrackerRepository.',
-      {
-        code: 'READ_ONLY_OPERATION',
+  private validatePreWriteIntegrity(snapshot: TrackerSnapshot): void {
+    if (!snapshot || typeof snapshot !== 'object') {
+      throw new GitHubTrackerRepositoryError('Invalid snapshot: payload must be an object.', {
+        code: 'VALIDATION_FAILURE',
         owner: this.config.owner,
         repo: this.config.repo,
         path: this.config.path,
         branch: this.config.branch,
+      });
+    }
+
+    const requiredArrays = [
+      'multiviews',
+      'outputs',
+      'destinations',
+      'sources',
+      'operationalAssignments',
+    ];
+
+    for (const key of requiredArrays) {
+      if (!Array.isArray((snapshot as unknown as Record<string, unknown>)[key])) {
+        throw new GitHubTrackerRepositoryError(
+          `Invalid snapshot: missing required collection "${key}".`,
+          {
+            code: 'VALIDATION_FAILURE',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+          }
+        );
       }
+    }
+
+    const checkUniqueIds = (items: { id: string }[], name: string) => {
+      const seen = new Set<string>();
+      for (const item of items) {
+        if (!item || typeof item.id !== 'string' || !item.id.trim()) {
+          throw new GitHubTrackerRepositoryError(`Item in ${name} missing string id.`, {
+            code: 'VALIDATION_FAILURE',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+          });
+        }
+        if (seen.has(item.id)) {
+          throw new GitHubTrackerRepositoryError(`Duplicate ID "${item.id}" in ${name}.`, {
+            code: 'VALIDATION_FAILURE',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+          });
+        }
+        seen.add(item.id);
+      }
+    };
+
+    checkUniqueIds(snapshot.multiviews, 'multiviews');
+    checkUniqueIds(snapshot.outputs, 'outputs');
+    checkUniqueIds(snapshot.destinations, 'destinations');
+    checkUniqueIds(snapshot.sources, 'sources');
+    checkUniqueIds(snapshot.operationalAssignments, 'operationalAssignments');
+
+    const sourceIds = new Set(snapshot.sources.map((s) => s.id));
+    for (const dest of snapshot.destinations) {
+      if (dest.assignedSourceId !== null && dest.assignedSourceId !== undefined) {
+        if (!sourceIds.has(dest.assignedSourceId)) {
+          throw new GitHubTrackerRepositoryError(
+            `Destination "${dest.id}" references unresolvable source ID "${dest.assignedSourceId}".`,
+            {
+              code: 'VALIDATION_FAILURE',
+              owner: this.config.owner,
+              repo: this.config.repo,
+              path: this.config.path,
+              branch: this.config.branch,
+            }
+          );
+        }
+      }
+    }
+  }
+
+  async saveSnapshot(
+    updatedSnapshot: TrackerSnapshot,
+    changeSet?: ChangeSet,
+    operator?: Operator | null
+  ): Promise<TrackerSnapshot> {
+    if (this.isReadOnly) {
+      throw new GitHubTrackerRepositoryError(
+        'Mutation operation "saveSnapshot" is not supported by read-only GitHubTrackerRepository.',
+        {
+          code: 'READ_ONLY_OPERATION',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
+
+    if (!this.lastLoadedSha) {
+      throw new GitHubTrackerRepositoryError(
+        'Cannot save tracker snapshot: no initial revision SHA loaded from GitHub.',
+        {
+          code: 'VALIDATION_FAILURE',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
+
+    const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(updatedSnapshot));
+
+    if (changeSet && changeSet.changes.length > 0) {
+      const newRecords = changeSetToChangeRecords(changeSet, operator);
+      cloned.changeRecords = [...(cloned.changeRecords ?? []), ...newRecords];
+
+      if (operator) {
+        const affectedOutputIds = new Set<string>();
+        const affectedDestinationIds = new Set<string>();
+
+        for (const change of changeSet.changes) {
+          if (change.entityType === 'output') {
+            affectedOutputIds.add(change.entityId);
+          } else if (change.entityType === 'destination') {
+            affectedDestinationIds.add(change.entityId);
+          }
+        }
+
+        if (affectedOutputIds.size > 0) {
+          cloned.outputs = cloned.outputs.map((out) => {
+            if (affectedOutputIds.has(out.id)) {
+              return {
+                ...out,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return out;
+          });
+        }
+
+        if (affectedDestinationIds.size > 0) {
+          cloned.destinations = cloned.destinations.map((dest) => {
+            if (affectedDestinationIds.has(dest.id)) {
+              return {
+                ...dest,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return dest;
+          });
+        }
+      }
+    }
+
+    cloned.validationFindings = validateSnapshot(
+      cloned.multiviews,
+      cloned.outputs,
+      cloned.destinations,
+      cloned.sources
     );
+
+    cloned.generatedAt = new Date().toISOString();
+
+    this.validatePreWriteIntegrity(cloned);
+
+    const operatorName = operator?.displayName?.trim() || 'Operator';
+    const commitMessage = `VIP Tracker update by ${operatorName}`;
+
+    const serialized = JSON.stringify(cloned, null, 2) + '\n';
+
+    const result = await this.client.updateFileContents({
+      content: serialized,
+      expectedSha: this.lastLoadedSha,
+      commitMessage,
+    });
+
+    this.lastLoadedSha = result.newSha;
+    this.cachedSnapshot = cloned;
+
+    const customLayouts = cloned.customLayouts ?? [];
+    setCustomLayoutRegistry(customLayouts);
+
+    return JSON.parse(JSON.stringify(cloned));
   }
 
   async resetToBaseline(): Promise<TrackerSnapshot> {
     throw new GitHubTrackerRepositoryError(
-      'Mutation operation "resetToBaseline" is not supported by read-only GitHubTrackerRepository.',
+      'Mutation operation "resetToBaseline" is not supported by shared GitHubTrackerRepository.',
       {
         code: 'READ_ONLY_OPERATION',
         owner: this.config.owner,
@@ -359,31 +548,31 @@ export class GitHubTrackerRepository implements TrackerRepository {
     );
   }
 
-  async saveCustomLayout(
-    _layout?: import('../domain/layoutDefinitions').LayoutDefinition
-  ): Promise<TrackerSnapshot> {
-    throw new GitHubTrackerRepositoryError(
-      'Mutation operation "saveCustomLayout" is not supported by read-only GitHubTrackerRepository.',
-      {
-        code: 'READ_ONLY_OPERATION',
-        owner: this.config.owner,
-        repo: this.config.repo,
-        path: this.config.path,
-        branch: this.config.branch,
-      }
+  async saveCustomLayout(layout: LayoutDefinition): Promise<TrackerSnapshot> {
+    const current = await this.getSnapshot();
+    const customList = [...(current.customLayouts ?? [])];
+    const idx = customList.findIndex(
+      (l) => l.id === layout.id || l.name.toUpperCase() === layout.name.toUpperCase()
     );
+    if (idx >= 0) {
+      customList[idx] = layout;
+    } else {
+      customList.push(layout);
+    }
+    const nextSnapshot: TrackerSnapshot = {
+      ...current,
+      customLayouts: customList,
+    };
+    return this.saveSnapshot(nextSnapshot);
   }
 
-  async deleteCustomLayout(_layoutId?: string): Promise<TrackerSnapshot> {
-    throw new GitHubTrackerRepositoryError(
-      'Mutation operation "deleteCustomLayout" is not supported by read-only GitHubTrackerRepository.',
-      {
-        code: 'READ_ONLY_OPERATION',
-        owner: this.config.owner,
-        repo: this.config.repo,
-        path: this.config.path,
-        branch: this.config.branch,
-      }
-    );
+  async deleteCustomLayout(layoutId: string): Promise<TrackerSnapshot> {
+    const current = await this.getSnapshot();
+    const customList = (current.customLayouts ?? []).filter((l) => l.id !== layoutId);
+    const nextSnapshot: TrackerSnapshot = {
+      ...current,
+      customLayouts: customList,
+    };
+    return this.saveSnapshot(nextSnapshot);
   }
 }

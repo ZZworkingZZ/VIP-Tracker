@@ -11,6 +11,7 @@ export type GitHubTrackerErrorCode =
   | 'INCOMPATIBLE_SCHEMA'
   | 'VALIDATION_FAILURE'
   | 'NETWORK_ERROR'
+  | 'REVISION_CONFLICT'
   | 'READ_ONLY_OPERATION';
 
 export interface GitHubTrackerErrorDetails {

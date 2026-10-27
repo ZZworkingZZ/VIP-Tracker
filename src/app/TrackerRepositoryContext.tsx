@@ -18,6 +18,7 @@ import { getLayoutDefinition } from '../domain/layoutDefinitions';
 import { Operator, createOperator } from '../domain/operator';
 import { isRosterOperatorId } from '../domain/operatorRoster';
 import { OperatorStorage, defaultOperatorStorage } from '../services/operatorStorage';
+import { GitHubTrackerRepositoryError } from '../services/githubErrors';
 
 export interface TrackerRepositoryProviderProps {
   repository?: TrackerRepository;
@@ -40,6 +41,8 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const [lastLoadedSha, setLastLoadedSha] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isConflict, setIsConflict] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Trust-based Operator Identity State
@@ -93,13 +96,38 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     try {
       setIsLoading(true);
       setError(null);
-      const data = await repository.getSnapshot();
+      const data = repository.refreshSnapshot
+        ? await repository.refreshSnapshot()
+        : await repository.getSnapshot();
       setSnapshot(data);
       if (repository.getLastLoadedSha) {
         setLastLoadedSha(repository.getLastLoadedSha());
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load VIP Tracker snapshot.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [repository]);
+
+  const reloadLatestSharedData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setIsConflict(false);
+      setDraftSnapshot(null);
+      setIsEditMode(false);
+      const data = repository.refreshSnapshot
+        ? await repository.refreshSnapshot()
+        : await repository.getSnapshot();
+      setSnapshot(data);
+      if (repository.getLastLoadedSha) {
+        setLastLoadedSha(repository.getLastLoadedSha());
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to reload latest shared VIP Tracker data.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -416,24 +444,42 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
       return;
     }
+    if (isSaving) {
+      return;
+    }
     if (!snapshot || !draftSnapshot) return;
 
     try {
-      setIsLoading(true);
+      setIsSaving(true);
       setError(null);
 
       const changeSet = createChangeSet(snapshot, draftSnapshot);
       const updated = await repository.saveSnapshot(draftSnapshot, changeSet, currentOperator);
 
       setSnapshot(updated);
+      if (repository.getLastLoadedSha) {
+        setLastLoadedSha(repository.getLastLoadedSha());
+      }
       setDraftSnapshot(null);
       setIsEditMode(false);
+      setIsConflict(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save changes.');
+      if (
+        (err instanceof GitHubTrackerRepositoryError && err.code === 'REVISION_CONFLICT') ||
+        (err instanceof Error &&
+          (err.message.toLowerCase().includes('revision conflict') ||
+            err.message.toLowerCase().includes('conflict')))
+      ) {
+        setIsConflict(true);
+        setError('Shared data changed after you began editing. Your changes have not been saved.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save changes.');
+      }
+      throw err;
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
-  }, [isReadOnly, repository, snapshot, draftSnapshot, currentOperator]);
+  }, [isReadOnly, isSaving, repository, snapshot, draftSnapshot, currentOperator]);
 
   // Reset local data back to baseline repository seed
   const resetToBaseline = useCallback(async () => {
@@ -468,6 +514,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         if (repository.saveCustomLayout) {
           const updated = await repository.saveCustomLayout(layout);
           setSnapshot(updated);
+          if (repository.getLastLoadedSha) {
+            setLastLoadedSha(repository.getLastLoadedSha());
+          }
           if (draftSnapshot) {
             setDraftSnapshot((prev) => {
               if (!prev) return null;
@@ -509,6 +558,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         if (repository.deleteCustomLayout) {
           const updated = await repository.deleteCustomLayout(layoutId);
           setSnapshot(updated);
+          if (repository.getLastLoadedSha) {
+            setLastLoadedSha(repository.getLastLoadedSha());
+          }
           if (draftSnapshot) {
             setDraftSnapshot((prev) => {
               if (!prev) return null;
@@ -550,10 +602,13 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       hasUnsavedChanges,
       stagedChanges,
       isLoading,
+      isSaving,
+      isConflict,
       error,
       isReadOnly,
       lastLoadedSha,
       refresh: fetchSnapshot,
+      reloadLatestSharedData,
       enterEditMode,
       exitEditMode,
       discardChanges,
@@ -588,10 +643,13 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       hasUnsavedChanges,
       stagedChanges,
       isLoading,
+      isSaving,
+      isConflict,
       error,
       isReadOnly,
       lastLoadedSha,
       fetchSnapshot,
+      reloadLatestSharedData,
       enterEditMode,
       exitEditMode,
       discardChanges,
