@@ -397,11 +397,11 @@ export const LAYOUT_16_BOX: LayoutDefinition = {
 };
 
 /**
- * 20 Box Audio (5 Columns x 4 Rows with audio metering spaces)
+ * 20 BOX (5 Columns x 4 Rows with audio metering spaces)
  */
 export const LAYOUT_20_BOX_AUDIO: LayoutDefinition = {
   id: '20-BOX-AUDIO',
-  name: '20 Box Audio',
+  name: '20 BOX',
   windowCount: 20,
   aspectRatio: '16:9',
   category: 'Audio / Metering',
@@ -532,9 +532,7 @@ export const STANDARD_LAYOUTS: readonly LayoutDefinition[] = [
   LAYOUT_8_BOX,
   LAYOUT_9_BOX,
   LAYOUT_10_BOX,
-  LAYOUT_11_BOX,
   LAYOUT_12_BOX,
-  LAYOUT_13_BOX,
   LAYOUT_14_BOX,
   LAYOUT_15_BOX,
   LAYOUT_16_BOX,

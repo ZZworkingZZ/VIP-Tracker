@@ -16,9 +16,7 @@ import {
   LAYOUT_8_BOX,
   LAYOUT_9_BOX,
   LAYOUT_10_BOX,
-  LAYOUT_11_BOX,
   LAYOUT_12_BOX,
-  LAYOUT_13_BOX,
   LAYOUT_14_BOX,
   LAYOUT_15_BOX,
   LAYOUT_16_BOX,
@@ -34,8 +32,8 @@ describe('Layout Definitions Domain Logic', () => {
     clearCustomLayoutRegistry();
   });
 
-  it('defines 21 standard Evertz layouts with valid, bounded geometry', () => {
-    expect(STANDARD_LAYOUTS.length).toBe(21);
+  it('defines 19 standard Evertz layouts with valid, bounded geometry', () => {
+    expect(STANDARD_LAYOUTS.length).toBe(19);
 
     for (const layout of STANDARD_LAYOUTS) {
       expect(layout.id).toBeTruthy();
@@ -73,7 +71,7 @@ describe('Layout Definitions Domain Logic', () => {
   });
 
   it('verifies explicit standard layout box counts and window counts', () => {
-    // Required Phase 1 catalog additions
+    // Standard catalog additions
     expect(LAYOUT_5_BOX.windowCount).toBe(5);
     expect(LAYOUT_5_BOX.windows.length).toBe(5);
 
@@ -82,9 +80,6 @@ describe('Layout Definitions Domain Logic', () => {
 
     expect(LAYOUT_9_BOX.windowCount).toBe(9);
     expect(LAYOUT_9_BOX.windows.length).toBe(9);
-
-    expect(LAYOUT_13_BOX.windowCount).toBe(13);
-    expect(LAYOUT_13_BOX.windows.length).toBe(13);
 
     expect(LAYOUT_14_BOX.windowCount).toBe(14);
     expect(LAYOUT_14_BOX.windows.length).toBe(14);
@@ -109,11 +104,18 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_6_BOX.windowCount).toBe(6);
     expect(LAYOUT_8_BOX.windowCount).toBe(8);
     expect(LAYOUT_10_BOX.windowCount).toBe(10);
-    expect(LAYOUT_11_BOX.windowCount).toBe(11);
     expect(LAYOUT_12_BOX.windowCount).toBe(12);
     expect(LAYOUT_16_BOX.windowCount).toBe(16);
     expect(LAYOUT_20_BOX_AUDIO.windowCount).toBe(20);
     expect(LAYOUT_36_BOX.windowCount).toBe(36);
+
+    // 11 BOX and 13 BOX are removed from standard selectable catalog
+    const standardIds = STANDARD_LAYOUTS.map((l) => l.id);
+    const standardNames = STANDARD_LAYOUTS.map((l) => l.name);
+    expect(standardIds).not.toContain('11-BOX');
+    expect(standardNames).not.toContain('11 BOX');
+    expect(standardIds).not.toContain('13-BOX');
+    expect(standardNames).not.toContain('13 BOX');
   });
 
   it('correctly models Basic 2 BOX as side-by-side equal 16:9 windows matching real Evertz layout', () => {
@@ -925,10 +927,7 @@ describe('Layout Definitions Domain Logic', () => {
     }
   });
 
-  it('correctly models 13 BOX and 14 BOX hero split layouts', () => {
-    expect(LAYOUT_13_BOX.category).toBe('Hero Split');
-    expect(LAYOUT_13_BOX.windows.length).toBe(13);
-
+  it('correctly models 14 BOX hero split layout', () => {
     expect(LAYOUT_14_BOX.category).toBe('Hero Split');
     expect(LAYOUT_14_BOX.windows.length).toBe(14);
     // 14 BOX has dual hero PGM/PVW windows on top
@@ -937,6 +936,38 @@ describe('Layout Definitions Domain Logic', () => {
     expect(hero1.height).toBe(50);
     expect(hero2.x).toBe(50);
     expect(hero2.width).toBe(50);
+  });
+
+  it('correctly models 20 BOX with exact name "20 BOX", unchanged geometry, and stable PIP IDs', () => {
+    // 1. User-facing layout name is exactly "20 BOX"
+    expect(LAYOUT_20_BOX_AUDIO.name).toBe('20 BOX');
+    expect(LAYOUT_20_BOX_AUDIO.id).toBe('20-BOX-AUDIO');
+    expect(LAYOUT_20_BOX_AUDIO.windowCount).toBe(20);
+    expect(LAYOUT_20_BOX_AUDIO.windows).toHaveLength(20);
+
+    // 2. Unchanged geometry: 5 cols x 4 rows (20% x 25%)
+    for (let i = 0; i < 20; i++) {
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      const win = LAYOUT_20_BOX_AUDIO.windows[i];
+      expect(win.x).toBe(col * 20);
+      expect(win.y).toBe(row * 25);
+      expect(win.width).toBe(20);
+      expect(win.height).toBe(25);
+      expect(win.destinationOffset).toBe(i);
+    }
+
+    // 3. Resolution works for '20 BOX' and legacy '20 Box Audio' alias
+    const resolved = getLayoutDefinition('20 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.name).toBe('20 BOX');
+    expect(resolved?.id).toBe('20-BOX-AUDIO');
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[19].pipId).toBe('PIP-20');
+
+    const legacyResolved = getLayoutDefinition('20 Box Audio');
+    expect(legacyResolved).toBeDefined();
+    expect(legacyResolved?.id).toBe('20-BOX-AUDIO');
   });
 
   it('correctly models 15 BOX, 24 BOX, 28 BOX, and 32 BOX layouts', () => {
@@ -958,7 +989,6 @@ describe('Layout Definitions Domain Logic', () => {
     expect(getLayoutDefinition('5 BOX')?.id).toBe('5-BOX');
     expect(getLayoutDefinition('7 BOX')?.id).toBe('7-BOX');
     expect(getLayoutDefinition('9 BOX')?.id).toBe('9-BOX');
-    expect(getLayoutDefinition('13 BOX')?.id).toBe('13-BOX');
     expect(getLayoutDefinition('14 BOX')?.id).toBe('14-BOX');
     expect(getLayoutDefinition('15 BOX')?.id).toBe('15-BOX');
     expect(getLayoutDefinition('24 BOX')?.id).toBe('24-BOX');
