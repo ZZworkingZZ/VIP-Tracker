@@ -86,12 +86,14 @@ Use only the verified commands defined in `package.json`:
 > Never run `npm run test:watch` or interactive `vitest` in automated workflows; it will hang indefinitely waiting for input.
 
 ## Workspace
+
 - Authoritative repo: C:\dev\VIP-Tracker (local clone; same path on home and work PCs). GitHub is the sync point.
 - Never use Z:\ or any mirror/validation copy. Never copy files between workspaces.
 - Session start: `git pull --ff-only`. If it fails, STOP and report — do not merge or rebase on your own.
 - Session end: all work committed and pushed. Unfinished work goes on a `wip/<feature>` branch, not main.
 
 ## Architecture map (read only what the task touches)
+
 - Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, attribution.ts
 - Persistence: src/services/ — TrackerRepository.ts, LocalTrackerRepository.ts, storage.ts, operatorStorage.ts
 - State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
@@ -100,10 +102,11 @@ Use only the verified commands defined in `package.json`:
 - Tests: src/test/
 
 ## Efficiency rules
+
 - Do not re-read a file range already read this session.
 - No baseline test run before changes.
 - While iterating: run only the targeted test file.
-- Before commit: `npx prettier --write <changed files>`, then `npm run validate` ONCE. Do not run lint/typecheck/test/format separately.
+- Before commit: applies to ALL changes including docs: always run `npx prettier --write <changed files>`, then `npm run validate` ONCE before committing. Do not run lint/typecheck/test/format separately.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
 - Final report: max 10 lines — files changed, validate result, commit hash.
