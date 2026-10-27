@@ -108,21 +108,21 @@ export const LAYOUT_4_BOX: LayoutDefinition = {
 };
 
 /**
- * 5 BOX (1 Hero Window Top-Left, 4 Auxiliary Windows)
+ * 5 BOX (3-over-2 layout: 3 equal upper windows, 2 centered lower windows)
  */
 export const LAYOUT_5_BOX: LayoutDefinition = {
   id: '5-BOX',
   name: '5 BOX',
   windowCount: 5,
   aspectRatio: '16:9',
-  category: 'Hero Split',
-  description: '1 large hero window top-left with 4 surrounding auxiliary windows',
+  category: 'Standard Grid',
+  description: '3-over-2 layout with three equal upper windows and two centered lower windows',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 66.666, height: 66.666, destinationOffset: 0 },
-    { id: 'w-2', x: 66.666, y: 0, width: 33.334, height: 33.333, destinationOffset: 1 },
-    { id: 'w-3', x: 66.666, y: 33.333, width: 33.334, height: 33.333, destinationOffset: 2 },
-    { id: 'w-4', x: 0, y: 66.666, width: 50, height: 33.334, destinationOffset: 3 },
-    { id: 'w-5', x: 50, y: 66.666, width: 50, height: 33.334, destinationOffset: 4 },
+    { id: 'w-1', x: 2.0, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 0 },
+    { id: 'w-2', x: 34.4, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 1 },
+    { id: 'w-3', x: 66.8, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 2 },
+    { id: 'w-4', x: 18.2, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 3 },
+    { id: 'w-5', x: 50.6, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 4 },
   ],
 };
 

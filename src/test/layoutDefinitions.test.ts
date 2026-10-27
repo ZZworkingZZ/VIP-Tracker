@@ -236,12 +236,113 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_2_BOX.windows[1]).toMatchObject({ x: 50.2, y: 25.5, width: 49.6, height: 49.6 });
   });
 
-  it('correctly models 5 BOX as hero split with 4 auxiliary windows', () => {
-    expect(LAYOUT_5_BOX.category).toBe('Hero Split');
-    const hero = LAYOUT_5_BOX.windows[0];
-    expect(hero.width).toBeCloseTo(66.666, 1);
-    expect(hero.height).toBeCloseTo(66.666, 1);
-    expect(LAYOUT_5_BOX.windows.map((w) => w.destinationOffset)).toEqual([0, 1, 2, 3, 4]);
+  it('correctly models Basic 5 BOX as 3-over-2 symmetric equal 16:9 windows', () => {
+    // 1. Basic 5 Box contains exactly 5 PIPs
+    expect(LAYOUT_5_BOX.windowCount).toBe(5);
+    expect(LAYOUT_5_BOX.windows).toHaveLength(5);
+
+    const [pip1, pip2, pip3, pip4, pip5] = LAYOUT_5_BOX.windows;
+
+    // 2. All 5 PIPs have identical width
+    expect(pip1.width).toBe(pip2.width);
+    expect(pip2.width).toBe(pip3.width);
+    expect(pip3.width).toBe(pip4.width);
+    expect(pip4.width).toBe(pip5.width);
+
+    // 3. All 5 PIPs have identical height
+    expect(pip1.height).toBe(pip2.height);
+    expect(pip2.height).toBe(pip3.height);
+    expect(pip3.height).toBe(pip4.height);
+    expect(pip4.height).toBe(pip5.height);
+
+    // 4. All 5 PIPs represent equivalent physical 16:9 windows (width === height in 16:9 container)
+    for (const pip of [pip1, pip2, pip3, pip4, pip5]) {
+      expect(pip.width).toBe(pip.height);
+    }
+
+    // 5. PIPs 1–3 share the same Y coordinate
+    expect(pip1.y).toBe(pip2.y);
+    expect(pip2.y).toBe(pip3.y);
+
+    // 6. PIPs 4–5 share the same Y coordinate
+    expect(pip4.y).toBe(pip5.y);
+
+    // 7. Bottom row is below top row
+    expect(pip4.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 8. Top-row PIPs are ordered left-to-right
+    expect(pip1.x).toBeLessThan(pip2.x);
+    expect(pip2.x).toBeLessThan(pip3.x);
+
+    // 9. Bottom-row PIPs are ordered left-to-right
+    expect(pip4.x).toBeLessThan(pip5.x);
+
+    // 10. Top-row horizontal gaps are equal
+    const topGap1 = Number((pip2.x - (pip1.x + pip1.width)).toFixed(4));
+    const topGap2 = Number((pip3.x - (pip2.x + pip2.width)).toFixed(4));
+    expect(topGap1).toBe(topGap2);
+
+    // 11. Top-row outside margins are balanced
+    const topRowLeftMargin = pip1.x;
+    const topRowRightMargin = Number((100 - (pip3.x + pip3.width)).toFixed(4));
+    expect(topRowLeftMargin).toBe(topRowRightMargin);
+
+    // 12. Bottom-row pair is horizontally centered as a GROUP
+    const bottomGroupWidth = pip5.x + pip5.width - pip4.x;
+    const expectedBottomGroupX = Number(((100 - bottomGroupWidth) / 2).toFixed(4));
+    expect(pip4.x).toBe(expectedBottomGroupX);
+
+    // 13. Bottom-row gap is consistent with intended visual spacing (matches top gap)
+    const bottomGap = Number((pip5.x - (pip4.x + pip4.width)).toFixed(4));
+    expect(bottomGap).toBe(topGap1);
+
+    // 14. No PIPs overlap
+    expect(pip1.x + pip1.width).toBeLessThanOrEqual(pip2.x);
+    expect(pip2.x + pip2.width).toBeLessThanOrEqual(pip3.x);
+    expect(pip4.x + pip4.width).toBeLessThanOrEqual(pip5.x);
+    expect(pip4.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+    expect(pip5.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 15. Every PIP remains within the 0–100 layout bounds
+    for (const pip of [pip1, pip2, pip3, pip4, pip5]) {
+      expect(pip.x).toBeGreaterThanOrEqual(0);
+      expect(pip.y).toBeGreaterThanOrEqual(0);
+      expect(pip.x + pip.width).toBeLessThanOrEqual(100);
+      expect(pip.y + pip.height).toBeLessThanOrEqual(100);
+    }
+
+    // 16. Canonical lookup for "5 BOX" resolves to this definition
+    const resolved = getLayoutDefinition('5 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.id).toBe('5-BOX');
+    expect(resolved?.category).toBe('Standard Grid');
+    expect(resolved?.windows[0]).toMatchObject(LAYOUT_5_BOX.windows[0]);
+    expect(resolved?.windows[1]).toMatchObject(LAYOUT_5_BOX.windows[1]);
+    expect(resolved?.windows[2]).toMatchObject(LAYOUT_5_BOX.windows[2]);
+    expect(resolved?.windows[3]).toMatchObject(LAYOUT_5_BOX.windows[3]);
+    expect(resolved?.windows[4]).toMatchObject(LAYOUT_5_BOX.windows[4]);
+
+    // 17. Stable PIP IDs remain PIP-01 through PIP-05
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[1].pipId).toBe('PIP-02');
+    expect(resolved?.windows[2].pipId).toBe('PIP-03');
+    expect(resolved?.windows[3].pipId).toBe('PIP-04');
+    expect(resolved?.windows[4].pipId).toBe('PIP-05');
+
+    // 18. Basic 2 Box remains unchanged
+    expect(LAYOUT_2_BOX.windows[0]).toMatchObject({ x: 0.2, y: 25.5, width: 49.6, height: 49.6 });
+    expect(LAYOUT_2_BOX.windows[1]).toMatchObject({ x: 50.2, y: 25.5, width: 49.6, height: 49.6 });
+
+    // 19. Basic 3 Box remains unchanged
+    expect(LAYOUT_3_BOX.windows[0]).toMatchObject({ x: 2.0, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[1]).toMatchObject({ x: 50.4, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[2]).toMatchObject({ x: 26.2, y: 51.0, width: 47.6, height: 47.6 });
+
+    // 20. Basic 4 Box remains unchanged
+    expect(LAYOUT_4_BOX.windows[0]).toMatchObject({ x: 0, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[1]).toMatchObject({ x: 50, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[2]).toMatchObject({ x: 0, y: 50, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
   });
 
   it('correctly models 7 BOX as hero split with 6 auxiliary windows', () => {
