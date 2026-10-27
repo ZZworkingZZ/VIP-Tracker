@@ -48,6 +48,7 @@ export class GitHubTrackerRepository implements TrackerRepository {
   private client: GitHubClient;
   private cachedSnapshot: TrackerSnapshot | null = null;
   private lastLoadedSha: string | null = null;
+  private revisionGeneration = 0;
 
   constructor(options: GitHubTrackerRepositoryOptions = {}) {
     this.client = new GitHubClient(options);
@@ -83,7 +84,24 @@ export class GitHubTrackerRepository implements TrackerRepository {
     sha: string;
     snapshot: TrackerSnapshot;
   }> {
+    const requestedSha = this.lastLoadedSha;
+    const startGeneration = this.revisionGeneration;
+
     const payload = await this.client.fetchFileContents();
+
+    // Freshness guard: If a local save or snapshot update occurred while this fetch was in flight,
+    // this response represents state requested prior to that mutation.
+    if (
+      this.revisionGeneration !== startGeneration ||
+      (requestedSha && payload.sha === requestedSha)
+    ) {
+      return {
+        hasUpdate: false,
+        sha: this.lastLoadedSha ?? payload.sha,
+        snapshot: this.cachedSnapshot ?? this.parseAndValidatePayload(payload),
+      };
+    }
+
     const hasUpdate = Boolean(this.lastLoadedSha && payload.sha !== this.lastLoadedSha);
     if (!hasUpdate && this.cachedSnapshot) {
       return {
@@ -105,6 +123,7 @@ export class GitHubTrackerRepository implements TrackerRepository {
    * Applies an externally received snapshot and updates lastLoadedSha and cachedSnapshot.
    */
   applyLoadedSnapshot(snapshot: TrackerSnapshot, sha: string): void {
+    this.revisionGeneration++;
     this.cachedSnapshot = snapshot;
     this.lastLoadedSha = sha;
     const customLayouts = snapshot.customLayouts ?? [];
@@ -118,6 +137,7 @@ export class GitHubTrackerRepository implements TrackerRepository {
     const payload = await this.client.fetchFileContents();
     const snapshot = this.parseAndValidatePayload(payload);
 
+    this.revisionGeneration++;
     this.cachedSnapshot = snapshot;
     this.lastLoadedSha = payload.sha;
 
@@ -564,6 +584,7 @@ export class GitHubTrackerRepository implements TrackerRepository {
       commitMessage,
     });
 
+    this.revisionGeneration++;
     this.lastLoadedSha = result.newSha;
     this.cachedSnapshot = cloned;
 

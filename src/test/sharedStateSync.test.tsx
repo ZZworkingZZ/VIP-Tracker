@@ -507,4 +507,271 @@ describe('Phase 4A — Automatic Shared-State Synchronization', () => {
     screen.unmount();
     vi.useRealTimers();
   });
+
+  it('Phase 4B: In-flight poll started before save completes after save; old poll cannot roll state back; normal poll after save loads genuinely newer revision', async () => {
+    vi.useFakeTimers();
+
+    let resolvePendingPollFetch: ((resp: Response) => void) | null = null;
+    let pollCount = 0;
+
+    const initialSha = 'sha_rev_initial';
+    const oldPayload = {
+      name: 'tracker.json',
+      path: 'data/tracker.json',
+      sha: initialSha,
+      size: JSON.stringify(mockSnapshot).length,
+      encoding: 'base64',
+      type: 'file',
+      content: Buffer.from(JSON.stringify(mockSnapshot), 'utf8').toString('base64'),
+    };
+
+    let currentRemoteSha = initialSha;
+    let currentRemoteSnapshot = JSON.parse(JSON.stringify(mockSnapshot));
+
+    const gitHubRepo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synthetic-offline-token',
+      fetchFn: vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT') {
+          const body = JSON.parse(init.body as string);
+          currentRemoteSha = 'sha_rev_saved_2';
+          currentRemoteSnapshot = JSON.parse(Buffer.from(body.content, 'base64').toString('utf8'));
+          return Promise.resolve(
+            createMockFetchResponse(
+              {
+                content: { sha: currentRemoteSha },
+                commit: { sha: 'commit_sha_2' },
+              },
+              200,
+              true
+            )
+          );
+        }
+
+        // GET requests
+        pollCount++;
+        if (pollCount === 1) {
+          // Initial load
+          return Promise.resolve(createMockFetchResponse(oldPayload, 200, true));
+        }
+
+        if (pollCount === 2) {
+          // Second GET request is delayed in flight
+          return new Promise<Response>((resolve) => {
+            resolvePendingPollFetch = resolve;
+          });
+        }
+
+        // Subsequent polls return the current remote state
+        const payload = {
+          name: 'tracker.json',
+          path: 'data/tracker.json',
+          sha: currentRemoteSha,
+          size: JSON.stringify(currentRemoteSnapshot).length,
+          encoding: 'base64',
+          type: 'file',
+          content: Buffer.from(JSON.stringify(currentRemoteSnapshot), 'utf8').toString('base64'),
+        };
+        return Promise.resolve(createMockFetchResponse(payload, 200, true));
+      }) as unknown as typeof fetch,
+    });
+
+    const operatorStorage = new MemoryOperatorStorage();
+    operatorStorage.saveOperator({ id: 'op_zach_z', displayName: 'Zach Z' });
+
+    const screen = render(
+      <TrackerRepositoryProvider repository={gitHubRepo} operatorStorage={operatorStorage}>
+        <TestConsumer />
+      </TrackerRepositoryProvider>
+    );
+
+    // Initial mount hydration
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('sha').textContent).toBe(initialSha);
+    expect(screen.getByTestId('output-assignment').textContent).toBe('BR ALERT 1');
+
+    // Advance 5 seconds to trigger background poll #2 (which stays in flight)
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    expect(resolvePendingPollFetch).not.toBeNull();
+
+    // While poll #2 is still in flight:
+    // Operator enters edit mode, mutates draft, and saves
+    await act(async () => {
+      screen.getByTestId('btn-enter-edit').click();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      screen.getByTestId('btn-mutate-draft').click();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      screen.getByTestId('btn-save').click();
+      await Promise.resolve();
+    });
+
+    // Save has completed
+    expect(screen.getByTestId('sha').textContent).toBe('sha_rev_saved_2');
+    expect(screen.getByTestId('output-assignment').textContent).toBe('LOCAL DRAFT CHANGE');
+
+    // NOW, the in-flight poll #2 (which fetched oldPayload before save) finishes!
+    await act(async () => {
+      resolvePendingPollFetch!(createMockFetchResponse(oldPayload, 200, true));
+      await Promise.resolve();
+    });
+
+    // EXPECTATION: The old poll response MUST NOT overwrite the newly saved state!
+    expect(screen.getByTestId('sha').textContent).toBe('sha_rev_saved_2');
+    expect(screen.getByTestId('output-assignment').textContent).toBe('LOCAL DRAFT CHANGE');
+
+    // Browser B or remote updates with a genuinely newer revision sha_rev_3
+    currentRemoteSha = 'sha_rev_3';
+    currentRemoteSnapshot.outputs[0].assignmentName = 'GENUINELY NEWER FROM BROWSER B';
+
+    // Normal poll after save triggers at next 5s cycle
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    // Genuinely newer revision is loaded correctly
+    expect(screen.getByTestId('sha').textContent).toBe('sha_rev_3');
+    expect(screen.getByTestId('output-assignment').textContent).toBe(
+      'GENUINELY NEWER FROM BROWSER B'
+    );
+
+    screen.unmount();
+    vi.useRealTimers();
+  });
+
+  it('Phase 4B: Multiple poll responses completing out of order cannot roll state backwards', async () => {
+    vi.useFakeTimers();
+
+    let resolveSlowPoll: ((resp: Response) => void) | null = null;
+    let pollCount = 0;
+
+    const snapshotV1 = JSON.parse(JSON.stringify(mockSnapshot));
+    snapshotV1.outputs[0].assignmentName = 'STATE V1';
+    const payloadV1 = {
+      name: 'tracker.json',
+      path: 'data/tracker.json',
+      sha: 'sha_v1',
+      size: JSON.stringify(snapshotV1).length,
+      encoding: 'base64',
+      type: 'file',
+      content: Buffer.from(JSON.stringify(snapshotV1), 'utf8').toString('base64'),
+    };
+
+    const snapshotV2 = JSON.parse(JSON.stringify(mockSnapshot));
+    snapshotV2.outputs[0].assignmentName = 'STATE V2';
+    const payloadV2 = {
+      name: 'tracker.json',
+      path: 'data/tracker.json',
+      sha: 'sha_v2',
+      size: JSON.stringify(snapshotV2).length,
+      encoding: 'base64',
+      type: 'file',
+      content: Buffer.from(JSON.stringify(snapshotV2), 'utf8').toString('base64'),
+    };
+
+    const gitHubRepo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synthetic-offline-token',
+      fetchFn: vi.fn().mockImplementation(() => {
+        pollCount++;
+        if (pollCount === 1) {
+          // Mount
+          return Promise.resolve(createMockFetchResponse(payloadV1, 200, true));
+        }
+        if (pollCount === 2) {
+          // Slow poll 1: delayed
+          return new Promise<Response>((resolve) => {
+            resolveSlowPoll = resolve;
+          });
+        }
+        // Fast poll 2: returns V2
+        return Promise.resolve(createMockFetchResponse(payloadV2, 200, true));
+      }) as unknown as typeof fetch,
+    });
+
+    const operatorStorage = new MemoryOperatorStorage();
+    operatorStorage.saveOperator({ id: 'op_zach_z', displayName: 'Zach Z' });
+
+    const screen = render(
+      <TrackerRepositoryProvider repository={gitHubRepo} operatorStorage={operatorStorage}>
+        <TestConsumer />
+      </TrackerRepositoryProvider>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('sha').textContent).toBe('sha_v1');
+
+    // Trigger slow poll (poll #2)
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+    expect(resolveSlowPoll).not.toBeNull();
+
+    // While slow poll is in flight, user or app triggers reload/refresh returning V2
+    await act(async () => {
+      screen.getByTestId('btn-reload').click();
+      await Promise.resolve();
+    });
+
+    // Reload applied V2
+    expect(screen.getByTestId('sha').textContent).toBe('sha_v2');
+    expect(screen.getByTestId('output-assignment').textContent).toBe('STATE V2');
+
+    // Now slow poll (which carries older V1) resolves out of order
+    await act(async () => {
+      resolveSlowPoll!(createMockFetchResponse(payloadV1, 200, true));
+      await Promise.resolve();
+    });
+
+    // State MUST NOT roll back to V1
+    expect(screen.getByTestId('sha').textContent).toBe('sha_v2');
+    expect(screen.getByTestId('output-assignment').textContent).toBe('STATE V2');
+
+    screen.unmount();
+    vi.useRealTimers();
+  });
+
+  it('Phase 4B: fetchFileContents specifies cache: no-store and Cache-Control: no-cache to prevent browser/CDN staleness', async () => {
+    let capturedInit: RequestInit | undefined;
+    const mockFetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      capturedInit = init;
+      const payload = {
+        name: 'tracker.json',
+        path: 'data/tracker.json',
+        sha: 'sha_test',
+        size: JSON.stringify(mockSnapshot).length,
+        encoding: 'base64',
+        type: 'file',
+        content: Buffer.from(JSON.stringify(mockSnapshot), 'utf8').toString('base64'),
+      };
+      return Promise.resolve(createMockFetchResponse(payload, 200, true));
+    });
+
+    const gitHubRepo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synthetic-offline-token',
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    await gitHubRepo.getSnapshot();
+
+    expect(capturedInit).toBeDefined();
+    expect(capturedInit?.cache).toBe('no-store');
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers['Cache-Control']).toBe('no-cache');
+    expect(headers['Pragma']).toBe('no-cache');
+  });
 });

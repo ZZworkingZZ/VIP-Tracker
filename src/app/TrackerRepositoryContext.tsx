@@ -57,6 +57,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   }, [isSaving]);
 
   const isCheckInProgressRef = useRef<boolean>(false);
+  const syncGenerationRef = useRef<number>(0);
 
   // Trust-based Operator Identity State
   const [currentOperator, setCurrentOperator] = useState<Operator | null>(() =>
@@ -113,6 +114,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         ? await repository.refreshSnapshot()
         : await repository.getSnapshot();
       setSnapshot(data);
+      syncGenerationRef.current++;
       if (repository.getLastLoadedSha) {
         setLastLoadedSha(repository.getLastLoadedSha());
       }
@@ -135,6 +137,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         ? await repository.refreshSnapshot()
         : await repository.getSnapshot();
       setSnapshot(data);
+      syncGenerationRef.current++;
       if (repository.getLastLoadedSha) {
         setLastLoadedSha(repository.getLastLoadedSha());
       }
@@ -169,10 +172,17 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         return;
       }
 
+      const checkGeneration = syncGenerationRef.current;
+
       try {
         isCheckInProgressRef.current = true;
         const result = await repository.checkForRemoteUpdate!();
         if (isCancelled) return;
+
+        // Freshness guard: If a save, reload, or newer sync completed while check was in flight, discard result
+        if (syncGenerationRef.current !== checkGeneration) {
+          return;
+        }
 
         if (result.hasUpdate) {
           if (isEditModeRef.current) {
@@ -182,6 +192,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
             if (repository.applyLoadedSnapshot) {
               repository.applyLoadedSnapshot(result.snapshot, result.sha);
             }
+            syncGenerationRef.current++;
             setSnapshot(result.snapshot);
             setLastLoadedSha(result.sha);
             setIsNewerSharedDataAvailable(false);
@@ -555,6 +566,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       const updated = await repository.saveSnapshot(draftSnapshot, changeSet, currentOperator);
 
       setSnapshot(updated);
+      syncGenerationRef.current++;
       if (repository.getLastLoadedSha) {
         setLastLoadedSha(repository.getLastLoadedSha());
       }

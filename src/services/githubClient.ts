@@ -183,6 +183,8 @@ export class GitHubClient {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'VIP-Tracker',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
     };
 
     if (token) {
@@ -194,6 +196,7 @@ export class GitHubClient {
       response = await this.fetchFn(url, {
         method: 'GET',
         headers,
+        cache: 'no-store',
       });
     } catch (networkErr) {
       throw new GitHubTrackerRepositoryError(
