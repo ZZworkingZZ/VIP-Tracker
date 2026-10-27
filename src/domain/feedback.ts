@@ -17,9 +17,5 @@ export const FEEDBACK_PARAM_VIEW = 'r9736afc4d81c441fb7c070cf4f6c30c9';
  * @returns Fully constructed and encoded feedback form URL.
  */
 export function buildFeedbackUrl(operatorName: string | null, currentView: string): string {
-  const url = new URL(FEEDBACK_FORM_BASE);
-  url.searchParams.set('id', FEEDBACK_FORM_ID);
-  url.searchParams.set(FEEDBACK_PARAM_REPORTED_BY, operatorName ?? '');
-  url.searchParams.set(FEEDBACK_PARAM_VIEW, currentView);
-  return url.toString();
+  return `${FEEDBACK_FORM_BASE}?id=${encodeURIComponent(FEEDBACK_FORM_ID)}&${FEEDBACK_PARAM_REPORTED_BY}=${encodeURIComponent(operatorName ?? '')}&${FEEDBACK_PARAM_VIEW}=${encodeURIComponent(currentView)}`;
 }

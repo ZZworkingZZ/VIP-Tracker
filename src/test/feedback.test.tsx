@@ -12,34 +12,32 @@ import { renderWithProviders, createOpenSpy } from './helpers/renderWithProvider
 
 describe('Feedback domain logic', () => {
   it('builds URL with the correct base, form id, and both param keys', () => {
-    const urlString = buildFeedbackUrl('Jane Doe', 'Dashboard');
-    const parsed = new URL(urlString);
+    const rawUrl = buildFeedbackUrl('Jane Doe', 'Dashboard');
 
-    expect(`${parsed.origin}${parsed.pathname}`).toBe(FEEDBACK_FORM_BASE);
-    expect(parsed.searchParams.get('id')).toBe(FEEDBACK_FORM_ID);
-    expect(parsed.searchParams.has(FEEDBACK_PARAM_REPORTED_BY)).toBe(true);
-    expect(parsed.searchParams.has(FEEDBACK_PARAM_VIEW)).toBe(true);
+    expect(rawUrl.startsWith(`${FEEDBACK_FORM_BASE}?`)).toBe(true);
+    expect(rawUrl).toContain(`id=${FEEDBACK_FORM_ID}`);
+    expect(rawUrl).toContain(`${FEEDBACK_PARAM_REPORTED_BY}=`);
+    expect(rawUrl).toContain(`${FEEDBACK_PARAM_VIEW}=`);
   });
 
-  it('substitutes and encodes operator name and view including spaces and special characters', () => {
-    const operatorName = 'Jane Doe';
-    const view = 'Layouts & Assignments';
-    const urlString = buildFeedbackUrl(operatorName, view);
-    const parsed = new URL(urlString);
+  it('substitutes and encodes operator name and view including spaces and special characters as %20 and %26', () => {
+    const operatorName = 'Maddie P';
+    const view = 'Layout Assignments & BR Alert';
+    const rawUrl = buildFeedbackUrl(operatorName, view);
 
-    expect(parsed.searchParams.get(FEEDBACK_PARAM_REPORTED_BY)).toBe(operatorName);
-    expect(parsed.searchParams.get(FEEDBACK_PARAM_VIEW)).toBe(view);
+    expect(rawUrl).toContain(`${FEEDBACK_PARAM_REPORTED_BY}=Maddie%20P`);
+    expect(rawUrl).not.toContain('Maddie+P');
 
-    // Verify raw query string encoding
-    expect(urlString).toContain(`${FEEDBACK_PARAM_REPORTED_BY}=Jane+Doe`);
-    expect(urlString).toContain(`${FEEDBACK_PARAM_VIEW}=Layouts+%26+Assignments`);
+    expect(rawUrl).toContain('Layout%20Assignments');
+    expect(rawUrl).not.toContain('Layout+Assignments');
+
+    expect(rawUrl).toContain('%26');
   });
 
   it('produces an empty Reported By value when operator is null', () => {
-    const urlString = buildFeedbackUrl(null, 'Dashboard');
-    const parsed = new URL(urlString);
+    const rawUrl = buildFeedbackUrl(null, 'Dashboard');
 
-    expect(parsed.searchParams.get(FEEDBACK_PARAM_REPORTED_BY)).toBe('');
+    expect(rawUrl).toContain(`${FEEDBACK_PARAM_REPORTED_BY}=&`);
   });
 });
 
