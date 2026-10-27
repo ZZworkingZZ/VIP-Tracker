@@ -98,6 +98,7 @@ Use only the verified commands defined in `package.json`:
 - Persistence: src/services/ — TrackerRepository.ts, LocalTrackerRepository.ts, storage.ts, operatorStorage.ts
 - State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
 - UI: src/components/layout/ (AppShell, AppHeader, OperatorModal), src/components/multiview/ (OutputDetailModal, OutputDisplayCard, ReviewChangesModal, EditModeBanner)
+- Pages: src/pages/ — DashboardPage.tsx (includes the operational status strip / top stats: VIP Cards count), LayoutAssignmentsPage.tsx, DestinationSourcesPage.tsx, NotFoundPage.tsx, ProductionsPage.tsx, SourceDirectoryPage.tsx
 - Styles: src/styles/components.css
 - Tests: src/test/ (UI tests: use src/test/helpers/renderWithProviders.tsx; do not hand-build providers.)
 
