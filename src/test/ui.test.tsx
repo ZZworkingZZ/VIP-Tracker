@@ -11,6 +11,7 @@ import { ProductionsPage } from '../pages/ProductionsPage';
 import { SourceDirectoryPage } from '../pages/SourceDirectoryPage';
 import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
+import { renderWithProviders } from './helpers/renderWithProviders';
 
 function renderWithRepository(
   ui: React.ReactElement,
@@ -44,8 +45,8 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     renderWithRepository(<DashboardPage />);
 
     // Compact status strip
-    expect(await screen.findByText('Multiviews')).toBeInTheDocument();
-    expect(screen.getByText('Destinations')).toBeInTheDocument();
+    expect(await screen.findByText('VIP Cards')).toBeInTheDocument();
+    expect(screen.queryByText('Destinations')).not.toBeInTheDocument();
 
     // 5 Evertz multiviewer columns present
     expect(screen.getByTestId('mv-column-MV-01')).toBeInTheDocument();
@@ -196,5 +197,20 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
 
     // Filter bar has MV label
     expect(screen.getByLabelText('MV')).toBeInTheDocument();
+  });
+
+  it('header stats bar does not render a Destinations stat, and renders "VIP Cards" with the correct count', async () => {
+    renderWithProviders(<DashboardPage />);
+
+    expect(await screen.findByText('VIP Cards')).toBeInTheDocument();
+    const vipCardsLabel = screen.getByText('VIP Cards');
+    const stripItem = vipCardsLabel.closest('.strip-item');
+    expect(stripItem).toHaveTextContent('VIP Cards');
+    expect(stripItem).toHaveTextContent('5');
+
+    // Header stats bar does not render a Destinations stat
+    const statusStrip = screen.getByLabelText('System Metrics Summary');
+    expect(statusStrip).not.toHaveTextContent('Destinations');
+    expect(screen.queryByText('Destinations')).not.toBeInTheDocument();
   });
 });

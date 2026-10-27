@@ -27,14 +27,6 @@ export const DashboardPage: React.FC = () => {
     () => (snapshot ? selectMultiviewSummaries(snapshot) : []),
     [snapshot]
   );
-  const destTotals = useMemo(() => {
-    if (!snapshot) return { total: 0, assigned: 0, pct: 0 };
-    const total = snapshot.destinations.length;
-    const assigned = snapshot.destinations.filter((d) => d.assignedSourceId).length;
-    const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
-    return { total, assigned, pct };
-  }, [snapshot]);
-
   // Filter multiview summaries based on MV selection and search query
   const filteredSummaries = useMemo(() => {
     return multiviewSummaries
@@ -91,7 +83,7 @@ export const DashboardPage: React.FC = () => {
       <section className="operational-status-strip" aria-label="System Metrics Summary">
         <div className="status-strip-metrics">
           <div className="strip-item">
-            <span className="strip-label">Multiviews</span>
+            <span className="strip-label">VIP Cards</span>
             <span className="strip-val">{totals.totalMultiviews}</span>
           </div>
           <div className="strip-item">
@@ -100,15 +92,6 @@ export const DashboardPage: React.FC = () => {
               {totals.totalOutputs}{' '}
               <span className="strip-subval">
                 ({totals.assignedOutputs} assigned · {totals.availableOutputs} avail)
-              </span>
-            </span>
-          </div>
-          <div className="strip-item">
-            <span className="strip-label">Destinations</span>
-            <span className="strip-val">
-              {destTotals.total}{' '}
-              <span className="strip-subval">
-                ({destTotals.assigned} active · {destTotals.pct}%)
               </span>
             </span>
           </div>
