@@ -2,10 +2,12 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
 import { defaultRepository } from '../services/LocalTrackerRepository';
 import { TrackerSnapshot, MultiviewOutput, Source } from '../domain/models';
-import { MultiviewId, SourceId, createAssignmentId } from '../domain/identifiers';
+import { MultiviewId, SourceId, OutputId, DestinationId, PipId, createAssignmentId } from '../domain/identifiers';
 import { TrackerRepositoryContext } from './context';
 import { diffSnapshots, createChangeSet } from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
+import { assignPipInput, clearPipInput, movePipInput } from '../domain/pipRouting';
+import { getLayoutDefinition } from '../domain/layoutDefinitions';
 
 export interface TrackerRepositoryProviderProps {
   repository?: TrackerRepository;
@@ -123,6 +125,80 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
           ...current,
           outputs: nextOutputs,
           operationalAssignments: nextAssignments,
+          validationFindings: findings,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [snapshot]
+  );
+
+  // Assign an MV Input to a specific PIP on an output in draft state
+  const assignDraftPipInput = useCallback(
+    (outputId: OutputId, pipId: PipId, destinationId: DestinationId | null) => {
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const nextOutputs = current.outputs.map((o: MultiviewOutput) => {
+          if (o.id === outputId) {
+            const layout = getLayoutDefinition(o.layoutName, current.customLayouts);
+            return assignPipInput(o, pipId, destinationId, layout);
+          }
+          return o;
+        });
+
+        const findings = validateSnapshot(
+          current.multiviews,
+          nextOutputs,
+          current.destinations,
+          current.sources
+        );
+
+        return {
+          ...current,
+          outputs: nextOutputs,
+          validationFindings: findings,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [snapshot]
+  );
+
+  // Clear an MV Input from a PIP on an output in draft state
+  const clearDraftPipInput = useCallback(
+    (outputId: OutputId, pipId: PipId) => {
+      assignDraftPipInput(outputId, pipId, null);
+    },
+    [assignDraftPipInput]
+  );
+
+  // Move an MV Input from one PIP to another on an output in draft state
+  const moveDraftPipInput = useCallback(
+    (outputId: OutputId, fromPipId: PipId, toPipId: PipId) => {
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const nextOutputs = current.outputs.map((o: MultiviewOutput) => {
+          if (o.id === outputId) {
+            const layout = getLayoutDefinition(o.layoutName, current.customLayouts);
+            return movePipInput(o, fromPipId, toPipId, layout);
+          }
+          return o;
+        });
+
+        const findings = validateSnapshot(
+          current.multiviews,
+          nextOutputs,
+          current.destinations,
+          current.sources
+        );
+
+        return {
+          ...current,
+          outputs: nextOutputs,
           validationFindings: findings,
         };
       });
@@ -395,6 +471,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       exitEditMode,
       discardChanges,
       updateDraftOutput,
+      assignDraftPipInput,
+      clearDraftPipInput,
+      moveDraftPipInput,
       updateDraftDestination,
       updateDraftDestinationsBatch,
       addDraftSource,
@@ -420,6 +499,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       exitEditMode,
       discardChanges,
       updateDraftOutput,
+      assignDraftPipInput,
+      clearDraftPipInput,
+      moveDraftPipInput,
       updateDraftDestination,
       updateDraftDestinationsBatch,
       addDraftSource,

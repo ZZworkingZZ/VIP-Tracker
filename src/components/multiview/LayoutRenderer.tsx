@@ -1,8 +1,10 @@
-import React from 'react';
-import { LayoutDefinition, LayoutWindowDefinition } from '../../domain/layoutDefinitions';
+import React, { useState } from 'react';
+import { LayoutDefinition, LayoutWindowDefinition, getWindowPipId } from '../../domain/layoutDefinitions';
 import { SourceCategory, getSourceCategoryColor } from '../../domain/sourceCategories';
+import { PipId, DestinationId } from '../../domain/identifiers';
 
 export interface LayoutWindowData {
+  readonly pipId?: PipId | string;
   readonly destinationOffset: number;
   readonly destinationNumber?: number | null;
   readonly destinationId?: string | null;
@@ -19,6 +21,10 @@ export interface LayoutRendererProps {
   readonly onClickWindow?: (window: LayoutWindowDefinition, data?: LayoutWindowData) => void;
   readonly highlightWindowId?: string;
   readonly className?: string;
+  readonly onDropDestinationOnPip?: (pipId: PipId, destinationId: DestinationId) => void;
+  readonly onMovePip?: (fromPipId: PipId, toPipId: PipId) => void;
+  readonly onClearPip?: (pipId: PipId) => void;
+  readonly isEditable?: boolean;
 }
 
 export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
@@ -28,12 +34,21 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
   onClickWindow,
   highlightWindowId,
   className = '',
+  onDropDestinationOnPip,
+  onMovePip,
+  onClearPip,
+  isEditable = false,
 }) => {
-  // Map window data by offset for O(1) lookup
-  const dataByOffset = React.useMemo(() => {
-    const map = new Map<number, LayoutWindowData>();
+  const [dragOverPipId, setDragOverPipId] = useState<string | null>(null);
+
+  // Map window data by pipId (primary) and destinationOffset (fallback)
+  const dataByPipOrOffset = React.useMemo(() => {
+    const map = new Map<string, LayoutWindowData>();
     for (const d of windowsData) {
-      map.set(d.destinationOffset, d);
+      if (d.pipId) {
+        map.set(String(d.pipId), d);
+      }
+      map.set(String(d.destinationOffset), d);
     }
     return map;
   }, [windowsData]);
@@ -57,19 +72,63 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
             : '0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px #2a2a2a',
       }}
     >
-      {layout.windows.map((win) => {
-        const winData = dataByOffset.get(win.destinationOffset);
+      {layout.windows.map((win, idx) => {
+        const pipId = getWindowPipId(win, idx);
+        const winData = dataByPipOrOffset.get(pipId) ?? dataByPipOrOffset.get(String(win.destinationOffset));
+        const hasInput = Boolean(winData?.destinationId || winData?.destinationNumber);
         const hasSource = Boolean(winData?.sourceName);
         const categoryColor = winData?.sourceCategory
           ? getSourceCategoryColor(winData.sourceCategory)
           : undefined;
-        const isHighlighted = highlightWindowId === win.id;
+        const isHighlighted = highlightWindowId === win.id || highlightWindowId === pipId;
+        const isDragOver = dragOverPipId === pipId;
+
+        // Display labels
+        const inputLabel = winData?.destinationLabel || (winData?.destinationId ? winData.destinationId.replace(/^DEST:/, '') + ' Input' : null);
 
         return (
           <div
-            key={win.id}
+            key={win.id || pipId}
             data-testid={`layout-window-${win.destinationOffset}`}
+            data-pip-id={pipId}
             onClick={() => onClickWindow && onClickWindow(win, winData)}
+            onDragOver={(e) => {
+              if (isEditable && (onDropDestinationOnPip || onMovePip)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverPipId !== pipId) {
+                  setDragOverPipId(pipId);
+                }
+              }
+            }}
+            onDragLeave={() => {
+              if (dragOverPipId === pipId) {
+                setDragOverPipId(null);
+              }
+            }}
+            onDrop={(e) => {
+              if (!isEditable) return;
+              e.preventDefault();
+              setDragOverPipId(null);
+
+              const moveFromPip = e.dataTransfer.getData('application/vip-pip-move');
+              if (moveFromPip && onMovePip) {
+                onMovePip(moveFromPip as PipId, pipId);
+                return;
+              }
+
+              const droppedDest = e.dataTransfer.getData('application/vip-dest-id');
+              if (droppedDest && onDropDestinationOnPip) {
+                onDropDestinationOnPip(pipId, droppedDest as DestinationId);
+              }
+            }}
+            draggable={isEditable && Boolean(winData?.destinationId) && Boolean(onMovePip)}
+            onDragStart={(e) => {
+              if (isEditable && winData?.destinationId) {
+                e.dataTransfer.setData('application/vip-pip-move', pipId);
+                e.dataTransfer.effectAllowed = 'move';
+              }
+            }}
             className={`layout-window ${onClickWindow ? 'interactive' : ''} ${
               isHighlighted ? 'highlighted' : ''
             }`}
@@ -81,21 +140,29 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               height: `${win.height}%`,
               boxSizing: 'border-box',
               padding: mode === 'thumbnail' ? '2px' : isHighDensity ? '1px' : '3px 4px',
-              border: '1px solid #363636',
-              backgroundColor: hasSource ? '#131313' : '#080808',
+              border: isDragOver
+                ? '2px solid #38bdf8'
+                : isHighlighted
+                ? '2px solid #f59e0b'
+                : '1px solid #363636',
+              backgroundColor: isDragOver
+                ? 'rgba(56, 189, 248, 0.15)'
+                : hasSource
+                ? '#131313'
+                : hasInput
+                ? '#0d0d0d'
+                : '#060606',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
               overflow: 'hidden',
-              cursor: onClickWindow ? 'pointer' : 'default',
+              cursor: onClickWindow || (isEditable && hasInput) ? 'pointer' : 'default',
               transition: 'background-color 0.15s ease, border-color 0.15s ease',
             }}
             title={
               winData
-                ? `Dest: ${winData.destinationLabel || winData.destinationNumber || win.destinationOffset + 1} | Source: ${
-                    winData.sourceName || 'Unassigned'
-                  }`
-                : `Window ${win.destinationOffset + 1}`
+                ? `${pipId} | ${inputLabel || 'No MV Input assigned'} | ${winData.sourceName || 'No routed Source'}`
+                : `${pipId} (Unassigned)`
             }
           >
             {/* THUMBNAIL MODE (Used in Layout Library) */}
@@ -113,14 +180,14 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   fontWeight: 700,
                 }}
               >
-                {win.destinationOffset + 1}
+                {pipId}
               </div>
             )}
 
             {/* CARD MODE (Evertz Miniature Display Card) */}
             {mode === 'card' && (
               <>
-                {/* Header: Destination number / label (e.g. Src 47 or Dest 47) */}
+                {/* Header: PIP ID on left, status dot on right */}
                 <div
                   style={{
                     display: 'flex',
@@ -133,16 +200,14 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     style={{
                       fontSize: isHighDensity ? '7px' : '9px',
                       fontFamily: 'var(--ev-font)',
-                      fontWeight: 600,
-                      color: hasSource ? '#9e9e9e' : '#555555',
+                      fontWeight: 700,
+                      color: hasInput ? '#cbd5e1' : '#555555',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {winData?.destinationNumber
-                      ? `Src ${winData.destinationNumber}`
-                      : winData?.destinationLabel || win.destinationOffset + 1}
+                    {pipId}
                   </span>
                   {categoryColor && !isHighDensity && (
                     <span
@@ -157,11 +222,12 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   )}
                 </div>
 
-                {/* Body: Routed Source Name */}
+                {/* Body: Routed Source Name & Input */}
                 <div
                   style={{
                     flex: 1,
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     textAlign: 'center',
@@ -184,6 +250,20 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                       }}
                     >
                       {winData?.sourceName}
+                    </span>
+                  ) : hasInput ? (
+                    <span
+                      style={{
+                        fontSize: isHighDensity ? '6px' : '8px',
+                        color: '#94a3b8',
+                        fontFamily: 'var(--ev-font)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                      }}
+                    >
+                      {inputLabel || 'MV Input'}
                     </span>
                   ) : (
                     <span
@@ -225,42 +305,90 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   padding: '6px',
                 }}
               >
+                {/* Header: PIP ID + MV Input + Category/Actions */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
-                  <span
-                    style={{
-                      fontFamily: 'var(--ev-font)',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: '#b8b8b8',
-                      backgroundColor: '#1f1f1f',
-                      padding: '2px 6px',
-                      borderRadius: '2px',
-                      border: '1px solid #444444',
-                    }}
-                  >
-                    {winData?.destinationLabel || `DEST-${win.destinationOffset + 1}`}
-                  </span>
-                  {winData?.sourceCategory && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span
                       style={{
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        color: categoryColor || '#38bdf8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
+                        fontFamily: 'var(--ev-font)',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        color: '#f8fafc',
+                        backgroundColor: '#1e293b',
+                        padding: '2px 5px',
+                        borderRadius: '2px',
+                        border: '1px solid #475569',
                       }}
                     >
-                      {winData.sourceCategory}
+                      {pipId}
                     </span>
-                  )}
+                    <span
+                      style={{
+                        fontFamily: 'var(--ev-font)',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: hasInput ? '#cbd5e1' : '#64748b',
+                        backgroundColor: hasInput ? '#1f1f1f' : '#141414',
+                        padding: '2px 5px',
+                        borderRadius: '2px',
+                        border: '1px solid #333333',
+                        maxWidth: '110px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {hasInput ? (inputLabel || 'MV Input') : 'No MV Input assigned'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {winData?.sourceCategory && (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          color: categoryColor || '#38bdf8',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        {winData.sourceCategory}
+                      </span>
+                    )}
+                    {isEditable && hasInput && onClearPip && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClearPip(pipId);
+                        }}
+                        title={`Clear MV Input from ${pipId}`}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '0 2px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
 
+                {/* Body: Visual clarity per Phase 2F */}
                 <div
                   style={{
                     flex: 1,
@@ -268,47 +396,65 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '8px 0',
+                    padding: '6px 0',
+                    textAlign: 'center',
                   }}
                 >
-                  {hasSource ? (
-                    <>
-                      <span
-                        style={{
-                          fontFamily: 'var(--ev-font)',
-                          fontSize: layout.windowCount <= 4 ? '20px' : '15px',
-                          fontWeight: 800,
-                          color: '#ffffff',
-                          letterSpacing: '-0.3px',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '95%',
-                        }}
-                      >
-                        {winData?.sourceName}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          color: '#858585',
-                          marginTop: '2px',
-                        }}
-                      >
-                        Destination Pin #{winData?.destinationNumber}
-                      </span>
-                    </>
+                  {hasInput ? (
+                    hasSource ? (
+                      <>
+                        <span
+                          style={{
+                            fontFamily: 'var(--ev-font)',
+                            fontSize: layout.windowCount <= 4 ? '18px' : '14px',
+                            fontWeight: 800,
+                            color: '#ffffff',
+                            letterSpacing: '-0.3px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '95%',
+                          }}
+                        >
+                          {winData?.sourceName}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            color: '#94a3b8',
+                            marginTop: '2px',
+                          }}
+                        >
+                          {inputLabel}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          style={{
+                            fontSize: layout.windowCount <= 4 ? '13px' : '11px',
+                            fontWeight: 600,
+                            color: '#cbd5e1',
+                          }}
+                        >
+                          {inputLabel}
+                        </span>
+                        <span
+                          style={{
+                            color: '#64748b',
+                            fontSize: '10px',
+                            fontStyle: 'italic',
+                            marginTop: '2px',
+                          }}
+                        >
+                          No routed Source
+                        </span>
+                      </>
+                    )
                   ) : (
-                    <span
-                      style={{
-                        color: '#555555',
-                        fontSize: '12px',
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      No Route Assigned
-                    </span>
+                    <div style={{ color: '#475569', fontSize: '11px', fontStyle: 'italic' }}>
+                      No MV Input assigned
+                    </div>
                   )}
                 </div>
 

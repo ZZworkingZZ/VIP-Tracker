@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MultiviewOutput, Destination, Source } from '../../domain/models';
-import { getLayoutDefinition } from '../../domain/layoutDefinitions';
+import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
 import { LayoutRenderer, LayoutWindowData } from './LayoutRenderer';
-import { formatOutputDisplay, formatDestinationDisplay } from '../../domain/identifiers';
+import {
+  formatOutputDisplay,
+  formatDestinationDisplay,
+  formatInputDisplay,
+  formatOutputLabel,
+  PipId,
+  DestinationId,
+} from '../../domain/identifiers';
 import { useTrackerSnapshot } from '../../hooks/useTracker';
 import { LayoutSelectorModal } from './LayoutSelectorModal';
 import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
-import { findNextAvailableInputBlock } from '../../domain/rangeUtils';
 import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
+import { normalizeOutputPipAssignments, handleOutputLayoutChange } from '../../domain/pipRouting';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
@@ -29,15 +36,22 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   const {
     activeSnapshot,
     isEditMode,
+    hasUnsavedChanges,
     enterEditMode,
     updateDraftOutput,
+    assignDraftPipInput,
+    clearDraftPipInput,
+    moveDraftPipInput,
     updateDraftDestination,
-    updateDraftDestinationsBatch,
     addDraftSource,
     customLayouts,
   } = useTrackerSnapshot();
 
   const [isLayoutSelectorOpen, setIsLayoutSelectorOpen] = useState(false);
+  const [selectedPipId, setSelectedPipId] = useState<PipId | null>(null);
+  const [inputPaletteFilter, setInputPaletteFilter] = useState<'ALL' | 'AVAILABLE' | 'ASSIGNED'>('ALL');
+  const [inputSearchQuery, setInputSearchQuery] = useState<string>('');
+
   const [routingWindow, setRoutingWindow] = useState<{
     windowIndex: number;
     destinationNumber: number;
@@ -66,33 +80,93 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   const sources = activeSnapshot?.sources ?? propSources ?? [];
   const allOutputs = activeSnapshot?.outputs ?? propAllOutputs ?? [];
 
-  const layout = getLayoutDefinition(output.layoutName);
+  const layout = getLayoutDefinition(output.layoutName, customLayouts);
   const isAvailable = output.status === 'Available' || !output.layoutName;
   const outputLabel = formatOutputDisplay(output.id);
+  const operatorOutputTitle = formatOutputLabel(output.id);
 
-  // Derive window destination records
-  const windowsData: LayoutWindowData[] = [];
-  if (output.destinationStart && output.destinationEnd && layout) {
-    for (let i = 0; i < layout.windowCount; i++) {
-      const destNumber = output.destinationStart + i;
-      const dest = destinations.find(
-        (d) => d.multiviewId === output.multiviewId && d.destinationNumber === destNumber
-      );
-      const source = dest?.assignedSourceId
-        ? sources.find((s) => s.id === dest.assignedSourceId)
-        : null;
+  const pips = useMemo(() => (layout ? getLayoutPips(layout) : []), [layout]);
+  const pipAssignments = useMemo(
+    () => output.pipAssignments || normalizeOutputPipAssignments(output, layout),
+    [output, layout]
+  );
 
-      windowsData.push({
+  const destMap = useMemo(() => new Map(destinations.map((d) => [d.id, d])), [destinations]);
+  const sourceMap = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources]);
+
+  // Derive window destination records for LayoutRenderer and Table
+  const windowsData: LayoutWindowData[] = useMemo(() => {
+    if (!layout) return [];
+
+    return pips.map((p, i) => {
+      const assignedDestId = pipAssignments[p.pipId] ?? null;
+      const dest = assignedDestId ? destMap.get(assignedDestId) : null;
+      const source = dest?.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+
+      return {
+        pipId: p.pipId,
         destinationOffset: i,
-        destinationNumber: destNumber,
-        destinationId: dest?.id,
-        destinationLabel: dest ? formatDestinationDisplay(dest.id) : `Src ${destNumber}`,
+        destinationNumber: dest?.destinationNumber ?? null,
+        destinationId: dest?.id ?? null,
+        destinationLabel: dest ? formatInputDisplay(dest.id) : null,
         sourceName: source?.name || null,
         sourceCategory: source?.category || null,
         isLocked: dest?.locked || false,
-      });
+      };
+    });
+  }, [layout, pips, pipAssignments, destMap, sourceMap]);
+
+  // Available frame inputs for this multiview
+  const frameInputs = useMemo(() => {
+    return destinations
+      .filter((d) => d.multiviewId === output.multiviewId)
+      .sort((a, b) => a.destinationNumber - b.destinationNumber);
+  }, [destinations, output.multiviewId]);
+
+  // Map each destinationId to the PIP on this output it is assigned to, if any
+  const destToPipMap = useMemo(() => {
+    const map = new Map<DestinationId, PipId>();
+    for (const [pId, dId] of Object.entries(pipAssignments)) {
+      if (dId) {
+        map.set(dId as DestinationId, pId as PipId);
+      }
     }
-  }
+    return map;
+  }, [pipAssignments]);
+
+  const assignedCount = useMemo(() => {
+    return Object.values(pipAssignments).filter(Boolean).length;
+  }, [pipAssignments]);
+
+  const unassignedCount = Math.max(0, pips.length - assignedCount);
+
+  // Filtered available MV Inputs for palette
+  const filteredPaletteInputs = useMemo(() => {
+    const query = inputSearchQuery.trim().toLowerCase();
+
+    return frameInputs.filter((dest) => {
+      const isAssignedHere = destToPipMap.has(dest.id);
+
+      if (inputPaletteFilter === 'AVAILABLE' && isAssignedHere) {
+        return false;
+      }
+      if (inputPaletteFilter === 'ASSIGNED' && !isAssignedHere) {
+        return false;
+      }
+
+      if (query) {
+        const destLabel = formatInputDisplay(dest.id).toLowerCase();
+        const sourceName = dest.assignedSourceId
+          ? sourceMap.get(dest.assignedSourceId)?.name.toLowerCase() ?? ''
+          : '';
+        if (!destLabel.includes(query) && !sourceName.includes(query) && !String(dest.destinationNumber).includes(query)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [frameInputs, destToPipMap, inputPaletteFilter, inputSearchQuery, sourceMap]);
 
   // Find previous/next outputs within same multiview
   const siblingOutputs = allOutputs.filter((o) => o.multiviewId === output.multiviewId);
@@ -111,114 +185,46 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   // Handle Layout Selection
   const handleSelectLayout = (newLayoutName: string) => {
-    const newDef = getLayoutDefinition(newLayoutName);
+    setIsLayoutSelectorOpen(false);
+    const newDef = getLayoutDefinition(newLayoutName, customLayouts);
     if (!newDef) return;
 
     if (newDef.windowCount > inputCapacity) {
+      alert(`Selected layout (${newDef.windowCount} windows) exceeds frame capacity of ${inputCapacity} inputs.`);
       return;
     }
 
-    let start = output.destinationStart;
-    if (start === null) {
-      // Find contiguous block
-      const freeRange = findNextAvailableInputBlock(
-        output.multiviewId,
-        newDef.windowCount,
-        allOutputs as MultiviewOutput[],
-        output.id
-      );
-      start = freeRange ? freeRange.start : 1;
-    }
-
-    // Ensure range fits within inputCapacity
-    if (start + newDef.windowCount - 1 > inputCapacity) {
-      const freeRange = findNextAvailableInputBlock(
-        output.multiviewId,
-        newDef.windowCount,
-        allOutputs as MultiviewOutput[],
-        output.id
-      );
-      if (freeRange) {
-        start = freeRange.start;
-      } else {
-        start = Math.max(1, inputCapacity - newDef.windowCount + 1);
-      }
-    }
-
-    const end = start + newDef.windowCount - 1;
-
-    // Reject if range is invalid or exceeds processor frame capacity
-    if (start < 1 || end > inputCapacity) {
-      return;
-    }
-
+    const updated = handleOutputLayoutChange(output, newDef);
     updateDraftOutput({
-      ...output,
-      layoutName: newLayoutName,
-      destinationStart: start,
-      destinationEnd: end,
-      status: 'Assigned',
+      ...updated,
       assignmentName: output.assignmentName || 'Unassigned Show',
     });
   };
 
   // Handle Releasing Output to AVAILABLE
   const handleReleaseToAvailable = () => {
-    const routedWindows = windowsData.filter((w) => w.sourceName !== null);
-
-    if (routedWindows.length > 0) {
-      const confirmRelease = window.confirm(
-        `Release output ${outputLabel} to AVAILABLE?\n\nNotice: This output currently covers ${routedWindows.length} routed destination feed${
-          routedWindows.length === 1 ? '' : 's'
-        }. Destination routes will be preserved unless explicitly cleared.`
-      );
-      if (!confirmRelease) return;
-
-      const clearRoutes = window.confirm(
-        `Do you also want to clear (unroute) the ${routedWindows.length} destination source assignment${
-          routedWindows.length === 1 ? '' : 's'
-        }?\n\n• Click OK to unroute all sources.\n• Click Cancel to PRESERVE source routing on these destinations.`
-      );
-
-      if (clearRoutes) {
-        const batchUpdates = routedWindows
-          .filter(
-            (w): w is typeof w & { destinationNumber: number } =>
-              typeof w.destinationNumber === 'number'
-          )
-          .map((w) => ({
-            multiviewId: output.multiviewId,
-            destinationNumber: w.destinationNumber,
-            sourceId: null,
-          }));
-        updateDraftDestinationsBatch(batchUpdates);
-      }
-    } else {
-      const confirmRelease = window.confirm(
-        `Release output ${outputLabel} to AVAILABLE?\nThis will clear the assigned layout and production assignment.`
-      );
-      if (!confirmRelease) return;
-    }
+    const confirmRelease = window.confirm(
+      `Release output ${operatorOutputTitle} to AVAILABLE?\nThis will clear the assigned layout and PIP mappings on this output.`
+    );
+    if (!confirmRelease) return;
 
     updateDraftOutput({
       ...output,
       layoutName: null,
+      pipAssignments: {},
       destinationStart: null,
       destinationEnd: null,
-      assignmentName: null,
       status: 'Available',
+      assignmentName: null,
+      updatedAt: new Date().toISOString(),
     });
   };
 
   return (
     <>
       <div
-        className="output-modal-backdrop"
-        onClick={onClose}
+        className="modal-backdrop"
         data-testid="output-detail-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-output-title"
         style={{
           position: 'fixed',
           top: 0,
@@ -226,7 +232,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -235,45 +240,44 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         }}
       >
         <div
-          className="output-modal-content"
-          onClick={(e) => e.stopPropagation()}
+          className="modal-content"
           style={{
-            backgroundColor: '#1c1c1c',
-            border: '1px solid #444444',
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #383838',
             borderRadius: '4px',
-            maxWidth: '960px',
             width: '100%',
+            maxWidth: '1280px',
             maxHeight: '94vh',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
             overflow: 'hidden',
-            fontFamily: 'var(--ev-font)',
           }}
         >
           {/* Modal Header */}
           <div
             style={{
+              padding: '12px 18px',
+              backgroundColor: '#202020',
+              borderBottom: '1px solid #333333',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '12px 16px',
-              backgroundColor: '#272727',
-              borderBottom: '1px solid #383838',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span
-                id="modal-output-title"
+              <h2
                 style={{
-                  fontSize: '16px',
+                  margin: 0,
+                  fontSize: '15px',
                   fontWeight: 700,
                   color: '#ffffff',
-                  letterSpacing: '-0.2px',
+                  fontFamily: 'var(--ev-font)',
+                  letterSpacing: '0.3px',
                 }}
               >
-                {outputLabel}
-              </span>
+                {operatorOutputTitle}
+              </h2>
 
               <span
                 style={{
@@ -281,14 +285,12 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   borderRadius: '2px',
                   fontSize: '11px',
                   fontWeight: 700,
-                  backgroundColor: isAvailable
-                    ? 'rgba(84, 213, 74, 0.2)'
-                    : 'rgba(40, 100, 163, 0.4)',
-                  color: isAvailable ? '#54d54a' : '#60a5fa',
-                  border: `1px solid ${isAvailable ? '#54d54a' : '#3378c2'}`,
+                  backgroundColor: isAvailable ? '#333333' : '#1e3a5f',
+                  color: isAvailable ? '#9e9e9e' : '#38bdf8',
+                  border: isAvailable ? '1px solid #444' : '1px solid #2864a3',
                 }}
               >
-                {isAvailable ? 'AVAILABLE' : output.assignmentName || 'ASSIGNED'}
+                {output.layoutName || 'AVAILABLE'}
               </span>
 
               {isEditMode && (
@@ -298,13 +300,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     borderRadius: '2px',
                     fontSize: '10px',
                     fontWeight: 700,
-                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                    color: '#38bdf8',
-                    border: '1px solid #38bdf8',
+                    backgroundColor: hasUnsavedChanges ? 'rgba(245, 158, 11, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                    color: hasUnsavedChanges ? '#f59e0b' : '#38bdf8',
+                    border: hasUnsavedChanges ? '1px solid #f59e0b' : '1px solid #38bdf8',
                   }}
                   data-testid="editing-indicator"
                 >
-                  EDITING OUTPUT
+                  {hasUnsavedChanges ? 'STAGED EDITS (Unsaved)' : 'EDIT MODE'}
                 </span>
               )}
 
@@ -413,11 +415,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
           {/* Modal Body */}
           <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
-            {/* Metadata & Editing Grid */}
+            {/* Phase 2A: Metadata & Editing Grid */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
                 gap: '12px',
                 marginBottom: '16px',
                 padding: '12px 14px',
@@ -426,7 +428,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 border: '1px solid #333333',
               }}
             >
-              {/* Output Identity (Read-only Hardware Identity) */}
+              {/* Output Identity (Hardware) */}
               <div>
                 <div
                   style={{
@@ -436,7 +438,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Output Identity (Hardware)
+                  MV Output Identifier
                 </div>
                 <div
                   style={{
@@ -446,12 +448,14 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     marginTop: '2px',
                   }}
                 >
-                  {output.multiviewId} • Output {output.outputNumber}
+                  {operatorOutputTitle}
                 </div>
-                <span style={{ fontSize: '10px', color: '#64748b' }}>Fixed physical output</span>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>
+                  {output.multiviewId} Physical Output #{output.outputNumber}
+                </span>
               </div>
 
-              {/* Layout Assignment */}
+              {/* Layout & PIP Count */}
               <div>
                 <div
                   style={{
@@ -461,7 +465,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Layout Assignment
+                  Selected Layout & PIPs
                 </div>
                 <div
                   style={{
@@ -503,12 +507,12 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 </div>
                 {layout && (
                   <span style={{ fontSize: '10px', color: '#64748b' }}>
-                    {layout.windowCount} windows ({layout.category})
+                    {layout.windowCount} PIPs ({pips[0]?.pipId} – {pips[pips.length - 1]?.pipId})
                   </span>
                 )}
               </div>
 
-              {/* Production / Show Assignment */}
+              {/* Assignment Status */}
               <div>
                 <div
                   style={{
@@ -518,7 +522,34 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Production Assignment
+                  PIP Input Assignments
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: assignedCount > 0 ? '#38bdf8' : '#858585',
+                    marginTop: '2px',
+                  }}
+                >
+                  {assignedCount} Assigned • {unassignedCount} Unassigned
+                </div>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>
+                  {hasUnsavedChanges ? 'Staged in active draft' : 'Saved baseline'}
+                </span>
+              </div>
+
+              {/* Production Assignment */}
+              <div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#858585',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                  }}
+                >
+                  Production / Show
                 </div>
                 {isEditMode ? (
                   <div style={{ marginTop: '2px' }}>
@@ -667,82 +698,312 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               </div>
             )}
 
-            {/* Visual Multiview Display */}
-            <div style={{ marginBottom: '18px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '6px',
-                }}
-              >
-                <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-                  Visual Multiview Output Display
-                </h3>
-                <span style={{ fontSize: '11px', color: '#858585' }}>
-                  Aspect Ratio 16:9 Broadcast Monitor
-                </span>
-              </div>
-
-              {layout ? (
-                <LayoutRenderer layout={layout} windowsData={windowsData} mode="detail" />
-              ) : (
+            {/* Main Interactive Stage: Layout Monitor + Available MV Inputs Palette */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: layout ? (isEditMode ? 'minmax(0, 1.8fr) minmax(300px, 1.2fr)' : '1fr') : '1fr',
+                gap: '16px',
+                marginBottom: '18px',
+              }}
+            >
+              {/* Left Column: Visual Multiview Display */}
+              <div>
                 <div
                   style={{
-                    aspectRatio: '16 / 9',
-                    backgroundColor: '#111111',
-                    borderRadius: '2px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                    Visual Multiview Output Display ({operatorOutputTitle})
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#858585' }}>
+                    {isEditMode ? 'Drag MV Input to PIP, drag PIP to PIP to move' : 'Aspect Ratio 16:9 Broadcast Monitor'}
+                  </span>
+                </div>
+
+                {layout ? (
+                  <LayoutRenderer
+                    layout={layout}
+                    windowsData={windowsData}
+                    mode="detail"
+                    isEditable={isEditMode}
+                    highlightWindowId={selectedPipId ?? undefined}
+                    onClickWindow={(win) => {
+                      const pipId = win.pipId as PipId;
+                      setSelectedPipId(selectedPipId === pipId ? null : pipId);
+                    }}
+                    onDropDestinationOnPip={(pipId, destId) => {
+                      assignDraftPipInput(output.id, pipId, destId);
+                    }}
+                    onMovePip={(fromPipId, toPipId) => {
+                      moveDraftPipInput(output.id, fromPipId, toPipId);
+                    }}
+                    onClearPip={(pipId) => {
+                      clearDraftPipInput(output.id, pipId);
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      aspectRatio: '16 / 9',
+                      backgroundColor: '#111111',
+                      borderRadius: '2px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px dashed #383838',
+                      color: '#858585',
+                      padding: '24px',
+                    }}
+                    data-testid="available-output-placeholder"
+                  >
+                    <span
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: '#54d54a',
+                        marginBottom: '6px',
+                        letterSpacing: '1px',
+                      }}
+                    >
+                      AVAILABLE OUTPUT
+                    </span>
+                    <span style={{ fontSize: '11px', marginBottom: '14px' }}>
+                      No layout has been assigned to {operatorOutputTitle}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isEditMode) enterEditMode();
+                        setIsLayoutSelectorOpen(true);
+                      }}
+                      data-testid="assign-layout-placeholder-btn"
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        backgroundColor: '#2864a3',
+                        color: '#ffffff',
+                        border: '1px solid #38bdf8',
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Assign Layout & Windows
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Phase 2B Available MV Inputs Palette (in Edit Mode) */}
+              {isEditMode && layout && (
+                <div
+                  style={{
+                    backgroundColor: '#141414',
+                    border: '1px solid #2d2d2d',
+                    borderRadius: '3px',
+                    padding: '12px',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px dashed #383838',
-                    color: '#858585',
-                    padding: '24px',
+                    maxHeight: '480px',
                   }}
-                  data-testid="available-output-placeholder"
+                  data-testid="mv-inputs-palette"
                 >
-                  <span
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      color: '#54d54a',
-                      marginBottom: '6px',
-                      letterSpacing: '1px',
-                    }}
-                  >
-                    AVAILABLE OUTPUT
-                  </span>
-                  <span style={{ fontSize: '11px', marginBottom: '14px' }}>
-                    No layout has been assigned to {outputLabel}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
+                      Available MV Inputs ({output.multiviewId})
+                    </h4>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                      Drag onto PIP or click Assign
+                    </span>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isEditMode) enterEditMode();
-                      setIsLayoutSelectorOpen(true);
-                    }}
-                    data-testid="assign-layout-placeholder-btn"
-                    style={{
-                      padding: '6px 14px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor: '#2864a3',
-                      color: '#ffffff',
-                      border: '1px solid #38bdf8',
-                      borderRadius: '2px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    + Assign Layout & Windows
-                  </button>
+                  {/* Search and Filters */}
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      value={inputSearchQuery}
+                      onChange={(e) => setInputSearchQuery(e.target.value)}
+                      placeholder="Search MV Input or Source..."
+                      data-testid="input-palette-search"
+                      style={{
+                        flex: 1,
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        backgroundColor: '#1f1f1f',
+                        border: '1px solid #383838',
+                        color: '#ffffff',
+                        borderRadius: '2px',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                    {(['ALL', 'AVAILABLE', 'ASSIGNED'] as const).map((filter) => (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => setInputPaletteFilter(filter)}
+                        style={{
+                          flex: 1,
+                          padding: '3px 6px',
+                          fontSize: '10px',
+                          fontWeight: inputPaletteFilter === filter ? 700 : 500,
+                          backgroundColor: inputPaletteFilter === filter ? '#2563eb' : '#222222',
+                          color: inputPaletteFilter === filter ? '#ffffff' : '#94a3b8',
+                          border: '1px solid #333333',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Input items list */}
+                  <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {filteredPaletteInputs.length === 0 ? (
+                      <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '11px' }}>
+                        No MV Inputs match filter
+                      </div>
+                    ) : (
+                      filteredPaletteInputs.map((dest) => {
+                        const assignedPip = destToPipMap.get(dest.id);
+                        const source = dest.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+                        const isSelectedForTarget = selectedPipId !== null;
+
+                        return (
+                          <div
+                            key={dest.id}
+                            data-testid={`palette-input-${dest.id}`}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('application/vip-dest-id', dest.id);
+                              e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: assignedPip ? '#181818' : '#1f1f1f',
+                              border: assignedPip ? '1px solid #333333' : '1px solid #3b82f6',
+                              borderRadius: '2px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'grab',
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}>
+                                  {formatInputDisplay(dest.id)}
+                                </span>
+                                {assignedPip ? (
+                                  <span
+                                    style={{
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      padding: '1px 4px',
+                                      borderRadius: '2px',
+                                      backgroundColor: '#334155',
+                                      color: '#93c5fd',
+                                    }}
+                                  >
+                                    Assigned to {assignedPip}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      padding: '1px 4px',
+                                      borderRadius: '2px',
+                                      backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                                      color: '#4ade80',
+                                    }}
+                                  >
+                                    Available
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  color: source ? '#cbd5e1' : '#64748b',
+                                  fontStyle: source ? 'normal' : 'italic',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {source ? `Source: ${source.name}` : 'No routed Source'}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {isSelectedForTarget ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (selectedPipId) {
+                                      assignDraftPipInput(output.id, selectedPipId, dest.id);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '2px 6px',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    backgroundColor: '#2563eb',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '2px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  → {selectedPipId}
+                                </button>
+                              ) : (
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      assignDraftPipInput(output.id, e.target.value as PipId, dest.id);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '2px 4px',
+                                    fontSize: '9px',
+                                    backgroundColor: '#262626',
+                                    color: '#94a3b8',
+                                    border: '1px solid #444',
+                                    borderRadius: '2px',
+                                  }}
+                                >
+                                  <option value="">Assign to...</option>
+                                  {pips.map((p) => (
+                                    <option key={p.pipId} value={p.pipId}>
+                                      {p.pipId}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Destination Breakdown Table */}
+            {/* Covered PIPs & Assigned MV Inputs Table */}
             {windowsData.length > 0 && (
               <div>
                 <div
@@ -761,11 +1022,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                       margin: 0,
                     }}
                   >
-                    Covered Destinations & Routed Sources ({windowsData.length})
+                    Layout PIPs & Assigned MV Inputs ({windowsData.length})
                   </h3>
                   {isEditMode && (
                     <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 600 }}>
-                      Click &ldquo;Route Source&rdquo; on any row to patch broadcast feeds
+                      Assign MV Input to each PIP, or Route Source directly to assigned inputs
                     </span>
                   )}
                 </div>
@@ -783,201 +1044,175 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   >
                     <thead>
                       <tr style={{ backgroundColor: '#242424', borderBottom: '1px solid #383838' }}>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            textAlign: 'left',
-                            color: '#b8b8b8',
-                            fontWeight: 700,
-                          }}
-                        >
-                          Window #
+                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                          PIP ID
                         </th>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            textAlign: 'left',
-                            color: '#b8b8b8',
-                            fontWeight: 700,
-                          }}
-                        >
-                          Destination
+                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                          Assigned MV Input
                         </th>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            textAlign: 'left',
-                            color: '#b8b8b8',
-                            fontWeight: 700,
-                          }}
-                        >
-                          Destination ID
-                        </th>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            textAlign: 'left',
-                            color: '#b8b8b8',
-                            fontWeight: 700,
-                          }}
-                        >
+                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
                           Routed Source
                         </th>
-                        <th
-                          style={{
-                            padding: '6px 10px',
-                            textAlign: 'left',
-                            color: '#b8b8b8',
-                            fontWeight: 700,
-                          }}
-                        >
+                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
                           Category
                         </th>
                         {isEditMode && (
-                          <th
-                            style={{
-                              padding: '6px 10px',
-                              textAlign: 'center',
-                              color: '#b8b8b8',
-                              fontWeight: 700,
-                              width: '140px',
-                            }}
-                          >
-                            Routing Action
+                          <th style={{ padding: '6px 10px', textAlign: 'center', color: '#b8b8b8', fontWeight: 700, width: '220px' }}>
+                            Assignment & Routing Actions
                           </th>
                         )}
                       </tr>
                     </thead>
                     <tbody>
-                      {windowsData.map((win, idx) => (
-                        <tr
-                          key={win.destinationOffset}
-                          data-testid={`window-row-${win.destinationOffset}`}
-                          style={{
-                            borderBottom: '1px solid #282828',
-                            backgroundColor: idx % 2 === 0 ? '#191919' : '#141414',
-                          }}
-                        >
-                          <td style={{ padding: '6px 10px', color: '#858585' }}>
-                            Window {win.destinationOffset + 1}
-                          </td>
-                          <td
+                      {windowsData.map((win, idx) => {
+                        const pipId = (win.pipId ?? `PIP-${String(idx + 1).padStart(2, '0')}`) as PipId;
+                        const hasInput = Boolean(win.destinationId);
+
+                        return (
+                          <tr
+                            key={pipId}
+                            data-testid={`window-row-${win.destinationOffset}`}
+                            data-pip-id={pipId}
                             style={{
-                              padding: '6px 10px',
-                              fontWeight: 700,
-                              color: '#ffffff',
+                              borderBottom: '1px solid #282828',
+                              backgroundColor: idx % 2 === 0 ? '#191919' : '#141414',
                             }}
                           >
-                            #{win.destinationNumber}
-                          </td>
-                          <td style={{ padding: '6px 10px', color: '#60a5fa' }}>
-                            {win.destinationLabel || '—'}
-                          </td>
-                          <td
-                            style={{
-                              padding: '6px 10px',
-                              fontWeight: 700,
-                              color: win.sourceName ? '#ffffff' : '#555555',
-                            }}
-                          >
-                            {win.sourceName || '— [Unrouted]'}
-                          </td>
-                          <td style={{ padding: '6px 10px' }}>
-                            {win.sourceCategory ? (
+                            <td style={{ padding: '6px 10px', fontWeight: 700, color: '#f8fafc' }}>
                               <span
                                 style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '1px 5px',
+                                  backgroundColor: '#1e293b',
+                                  padding: '2px 6px',
                                   borderRadius: '2px',
-                                  backgroundColor: 'rgba(40, 100, 163, 0.3)',
-                                  color: '#60a5fa',
+                                  border: '1px solid #475569',
                                 }}
                               >
-                                {win.sourceCategory}
+                                {pipId}
                               </span>
-                            ) : (
-                              <span style={{ color: '#555555' }}>—</span>
-                            )}
-                          </td>
-
-                          {isEditMode && (
-                            <td style={{ padding: '4px 10px', textAlign: 'center' }}>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'center',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                }}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const destNum =
-                                      win.destinationNumber ??
-                                      (output.destinationStart
-                                        ? output.destinationStart + win.destinationOffset
-                                        : 1);
-                                    setRoutingWindow({
-                                      windowIndex: win.destinationOffset,
-                                      destinationNumber: destNum,
-                                      destinationId: win.destinationLabel ?? undefined,
-                                      currentSourceId:
-                                        destinations.find(
-                                          (d) =>
-                                            d.multiviewId === output.multiviewId &&
-                                            d.destinationNumber === destNum
-                                        )?.assignedSourceId ?? null,
-                                    });
-                                  }}
-                                  data-testid={`route-btn-${win.destinationOffset}`}
+                            </td>
+                            <td style={{ padding: '6px 10px', fontWeight: 700, color: hasInput ? '#60a5fa' : '#64748b' }}>
+                              {win.destinationLabel || 'No MV Input assigned'}
+                            </td>
+                            <td
+                              style={{
+                                padding: '6px 10px',
+                                fontWeight: 700,
+                                color: win.sourceName ? '#ffffff' : '#64748b',
+                                fontStyle: win.sourceName ? 'normal' : 'italic',
+                              }}
+                            >
+                              {win.sourceName || (hasInput ? 'No routed Source' : '—')}
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              {win.sourceCategory ? (
+                                <span
                                   style={{
-                                    padding: '2px 8px',
                                     fontSize: '10px',
                                     fontWeight: 700,
-                                    backgroundColor: '#2864a3',
-                                    color: '#ffffff',
-                                    border: '1px solid #38bdf8',
+                                    padding: '1px 5px',
                                     borderRadius: '2px',
-                                    cursor: 'pointer',
+                                    backgroundColor: 'rgba(40, 100, 163, 0.3)',
+                                    color: '#60a5fa',
                                   }}
                                 >
-                                  Route
-                                </button>
+                                  {win.sourceCategory}
+                                </span>
+                              ) : (
+                                <span style={{ color: '#555555' }}>—</span>
+                              )}
+                            </td>
 
-                                {win.sourceName && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const destNum =
-                                        win.destinationNumber ??
-                                        (output.destinationStart
-                                          ? output.destinationStart + win.destinationOffset
-                                          : 1);
-                                      updateDraftDestination(output.multiviewId, destNum, null);
+                            {isEditMode && (
+                              <td style={{ padding: '4px 10px', textAlign: 'center' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                  }}
+                                >
+                                  {/* Select MV Input to assign */}
+                                  <select
+                                    value={win.destinationId || ''}
+                                    onChange={(e) => {
+                                      const nextDestId = e.target.value ? (e.target.value as DestinationId) : null;
+                                      assignDraftPipInput(output.id, pipId, nextDestId);
                                     }}
-                                    data-testid={`clear-source-btn-${win.destinationOffset}`}
                                     style={{
-                                      padding: '2px 6px',
+                                      padding: '2px 4px',
                                       fontSize: '10px',
-                                      fontWeight: 600,
                                       backgroundColor: '#262626',
-                                      color: '#94a3b8',
+                                      color: '#ffffff',
                                       border: '1px solid #444',
                                       borderRadius: '2px',
-                                      cursor: 'pointer',
+                                      maxWidth: '120px',
                                     }}
-                                    title="Unroute source"
                                   >
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
+                                    <option value="">(Unassigned)</option>
+                                    {frameInputs.map((d) => (
+                                      <option key={d.id} value={d.id}>
+                                        {formatInputDisplay(d.id)}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  {/* Clear button */}
+                                  {hasInput && (
+                                    <button
+                                      type="button"
+                                      onClick={() => clearDraftPipInput(output.id, pipId)}
+                                      data-testid={`clear-pip-btn-${pipId}`}
+                                      style={{
+                                        padding: '2px 6px',
+                                        fontSize: '10px',
+                                        fontWeight: 600,
+                                        backgroundColor: '#3b1c1c',
+                                        color: '#f87171',
+                                        border: '1px solid #ef4444',
+                                        borderRadius: '2px',
+                                        cursor: 'pointer',
+                                      }}
+                                      title={`Clear MV Input from ${pipId}`}
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+
+                                  {/* Route Source button (if MV Input is assigned) */}
+                                  {hasInput && win.destinationNumber && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRoutingWindow({
+                                          windowIndex: win.destinationOffset,
+                                          destinationNumber: win.destinationNumber!,
+                                          destinationId: win.destinationId ?? undefined,
+                                          currentSourceId:
+                                            destinations.find((d) => d.id === win.destinationId)?.assignedSourceId ?? null,
+                                        });
+                                      }}
+                                      data-testid={`route-btn-${win.destinationOffset}`}
+                                      style={{
+                                        padding: '2px 8px',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        backgroundColor: '#2864a3',
+                                        color: '#ffffff',
+                                        border: '1px solid #38bdf8',
+                                        borderRadius: '2px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Route
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

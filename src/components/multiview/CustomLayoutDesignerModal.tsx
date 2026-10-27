@@ -4,6 +4,7 @@ import {
   LayoutWindowDefinition,
   LayoutCategory,
 } from '../../domain/layoutDefinitions';
+import { createPipId } from '../../domain/identifiers';
 
 export interface CustomLayoutDesignerModalProps {
   readonly isOpen: boolean;
@@ -102,10 +103,11 @@ export const CustomLayoutDesignerModal: React.FC<CustomLayoutDesignerModalProps>
 
   const selectedWindow = windows.find((w) => w.id === selectedWindowId) ?? null;
 
-  // Re-index destination offsets deterministically (0 to count - 1)
+  // Re-index destination offsets and ensure stable pipId deterministically
   const reindexWindows = (wins: LayoutWindowDefinition[]): LayoutWindowDefinition[] => {
     return wins.map((w, idx) => ({
       ...w,
+      pipId: w.pipId || createPipId(idx + 1),
       destinationOffset: idx,
     }));
   };

@@ -1,8 +1,9 @@
 import React from 'react';
 import { MultiviewOutput, Destination, Source } from '../../domain/models';
-import { getLayoutDefinition } from '../../domain/layoutDefinitions';
+import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
 import { LayoutRenderer, LayoutWindowData } from './LayoutRenderer';
-import { formatOutputDisplay, formatDestinationDisplay } from '../../domain/identifiers';
+import { formatOutputDisplay, formatInputDisplay } from '../../domain/identifiers';
+import { normalizeOutputPipAssignments } from '../../domain/pipRouting';
 
 export interface OutputDisplayCardProps {
   readonly output: MultiviewOutput;
@@ -22,34 +23,34 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
   const isAvailable = output.status === 'Available' || !output.layoutName;
   const layout = React.useMemo(() => getLayoutDefinition(output.layoutName), [output.layoutName]);
 
-  // Compute window data by matching destinations covering this output range
+  // Compute window data from output.pipAssignments (falling back to legacy destination range if unpopulated)
   const windowsData = React.useMemo(() => {
-    if (!output.destinationStart || !output.destinationEnd || !layout) {
+    if (!layout) {
       return [];
     }
 
-    const data: LayoutWindowData[] = [];
-    for (let i = 0; i < layout.windowCount; i++) {
-      const destNumber = output.destinationStart + i;
-      const dest = destinations.find(
-        (d) => d.multiviewId === output.multiviewId && d.destinationNumber === destNumber
-      );
-      const source = dest?.assignedSourceId
-        ? sources.find((s) => s.id === dest.assignedSourceId)
-        : null;
+    const pips = getLayoutPips(layout);
+    const pipAssignments = output.pipAssignments || normalizeOutputPipAssignments(output, layout);
 
-      data.push({
+    const destMap = new Map(destinations.map((d) => [d.id, d]));
+    const sourceMap = new Map(sources.map((s) => [s.id, s]));
+
+    return pips.map((p, i) => {
+      const assignedDestId = pipAssignments[p.pipId] ?? null;
+      const dest = assignedDestId ? destMap.get(assignedDestId) : null;
+      const source = dest?.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+
+      return {
+        pipId: p.pipId,
         destinationOffset: i,
-        destinationNumber: destNumber,
-        destinationId: dest?.id,
-        destinationLabel: dest ? formatDestinationDisplay(dest.id) : `Src ${destNumber}`,
+        destinationNumber: dest?.destinationNumber ?? null,
+        destinationId: dest?.id ?? null,
+        destinationLabel: dest ? formatInputDisplay(dest.id) : null,
         sourceName: source?.name || null,
         sourceCategory: source?.category || null,
         isLocked: dest?.locked || false,
-      });
-    }
-
-    return data;
+      };
+    });
   }, [output, destinations, sources, layout]);
 
   const outputDisplayLabel = formatOutputDisplay(output.id);

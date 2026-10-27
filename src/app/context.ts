@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
 import { TrackerSnapshot, MultiviewOutput, Source, FieldChange } from '../domain/models';
-import { MultiviewId, SourceId } from '../domain/identifiers';
+import { MultiviewId, SourceId, OutputId, DestinationId, PipId } from '../domain/identifiers';
 
 export interface TrackerRepositoryContextValue {
   repository: TrackerRepository;
@@ -24,6 +24,13 @@ export interface TrackerRepositoryContextValue {
   exitEditMode: () => void;
   discardChanges: () => void;
   updateDraftOutput: (output: MultiviewOutput) => void;
+  assignDraftPipInput: (
+    outputId: OutputId,
+    pipId: PipId,
+    destinationId: DestinationId | null
+  ) => void;
+  clearDraftPipInput: (outputId: OutputId, pipId: PipId) => void;
+  moveDraftPipInput: (outputId: OutputId, fromPipId: PipId, toPipId: PipId) => void;
   updateDraftDestination: (
     multiviewId: MultiviewId,
     destinationNumber: number,
