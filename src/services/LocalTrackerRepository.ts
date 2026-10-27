@@ -106,6 +106,7 @@ export class LocalTrackerRepository implements TrackerRepository {
       }
     } else {
       this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
+      this.snapshot.operationalAssignments = this.snapshot.operationalAssignments ?? [];
       const customLayouts = this.snapshot.customLayouts ?? [];
       setCustomLayoutRegistry(customLayouts);
 
@@ -158,6 +159,17 @@ export class LocalTrackerRepository implements TrackerRepository {
     operator?: Operator | null
   ): Promise<TrackerSnapshot> {
     const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(updatedSnapshot));
+
+    // Operational/production assignment names are reusable across multiple MultiviewOutputs.
+    // Deduplicate operational assignments by canonical ID so label reuse across outputs never creates duplicate assignment entities.
+    const seenAssignmentIds = new Set<string>();
+    cloned.operationalAssignments = (cloned.operationalAssignments ?? []).filter((a) => {
+      if (!a || !a.id || seenAssignmentIds.has(a.id)) {
+        return false;
+      }
+      seenAssignmentIds.add(a.id);
+      return true;
+    });
 
     if (changeSet && changeSet.changes.length > 0) {
       const newRecords = changeSetToChangeRecords(changeSet, operator);

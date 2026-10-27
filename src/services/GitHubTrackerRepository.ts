@@ -343,7 +343,9 @@ export class GitHubTrackerRepository implements TrackerRepository {
       outputs: normalizedOutputs,
       destinations,
       sources,
-      operationalAssignments: data.operationalAssignments as OperationalAssignment[],
+      operationalAssignments: Array.isArray(data.operationalAssignments)
+        ? (data.operationalAssignments as OperationalAssignment[])
+        : [],
       changeRecords: Array.isArray(data.changeRecords)
         ? (data.changeRecords as ChangeRecord[])
         : [],
@@ -515,6 +517,17 @@ export class GitHubTrackerRepository implements TrackerRepository {
     }
 
     const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(updatedSnapshot));
+
+    // Operational/production assignment names are reusable across multiple MultiviewOutputs.
+    // Deduplicate operational assignments by canonical ID so label reuse across outputs never creates duplicate assignment entities.
+    const seenAssignmentIds = new Set<string>();
+    cloned.operationalAssignments = (cloned.operationalAssignments ?? []).filter((a) => {
+      if (!a || !a.id || seenAssignmentIds.has(a.id)) {
+        return false;
+      }
+      seenAssignmentIds.add(a.id);
+      return true;
+    });
 
     if (changeSet && changeSet.changes.length > 0) {
       const newRecords = changeSetToChangeRecords(changeSet, operator);

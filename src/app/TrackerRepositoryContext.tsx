@@ -44,7 +44,13 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isConflict, setIsConflict] = useState<boolean>(false);
   const [isNewerSharedDataAvailable, setIsNewerSharedDataAvailable] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const error = saveError ?? loadError;
+
+  const clearSaveError = useCallback(() => {
+    setSaveError(null);
+  }, []);
 
   const isEditModeRef = useRef<boolean>(isEditMode);
   useEffect(() => {
@@ -109,7 +115,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const fetchSnapshot = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null);
+      setLoadError(null);
       const data = repository.refreshSnapshot
         ? await repository.refreshSnapshot()
         : await repository.getSnapshot();
@@ -119,7 +125,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         setLastLoadedSha(repository.getLastLoadedSha());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load VIP Tracker snapshot.');
+      setLoadError(err instanceof Error ? err.message : 'Failed to load VIP Tracker snapshot.');
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +134,8 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const reloadLatestSharedData = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null);
+      setLoadError(null);
+      setSaveError(null);
       setIsConflict(false);
       setIsNewerSharedDataAvailable(false);
       setDraftSnapshot(null);
@@ -142,7 +149,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         setLastLoadedSha(repository.getLastLoadedSha());
       }
     } catch (err) {
-      setError(
+      setLoadError(
         err instanceof Error ? err.message : 'Failed to reload latest shared VIP Tracker data.'
       );
     } finally {
@@ -306,18 +313,34 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
           o.id === output.id ? output : o
         );
 
-        // If assignment name changed and is not in operational assignments, track it
-        const nextAssignments = [...current.operationalAssignments];
-        if (
-          output.assignmentName &&
-          !nextAssignments.some((a) => a.rawName === output.assignmentName)
-        ) {
-          nextAssignments.push({
-            id: createAssignmentId(output.assignmentName),
-            rawName: output.assignmentName,
-            displayName: output.assignmentName,
-            active: true,
-          });
+        // Operational/production assignment names are reusable across multiple MultiviewOutputs.
+        // Label reuse across outputs must never create duplicate OperationalAssignment entities.
+        const nextAssignments = [...(current.operationalAssignments ?? [])];
+        if (output.assignmentName && output.assignmentName.trim()) {
+          const trimmed = output.assignmentName.trim();
+          const targetId = createAssignmentId(trimmed);
+          const normalized = trimmed.toUpperCase();
+          const alreadyExists = nextAssignments.some(
+            (a) => a.id === targetId || a.rawName.trim().toUpperCase() === normalized
+          );
+          if (!alreadyExists) {
+            nextAssignments.push({
+              id: targetId,
+              rawName: trimmed,
+              displayName: trimmed,
+              active: true,
+            });
+          }
+        }
+
+        // Canonical deduplication of operational assignments by ID
+        const seenAssignmentIds = new Set<string>();
+        const deduplicatedAssignments: import('../domain/models').OperationalAssignment[] = [];
+        for (const a of nextAssignments) {
+          if (a && a.id && !seenAssignmentIds.has(a.id)) {
+            seenAssignmentIds.add(a.id);
+            deduplicatedAssignments.push(a);
+          }
         }
 
         const findings = validateSnapshot(
@@ -330,7 +353,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         return {
           ...current,
           outputs: nextOutputs,
-          operationalAssignments: nextAssignments,
+          operationalAssignments: deduplicatedAssignments,
           validationFindings: findings,
         };
       });
@@ -550,7 +573,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   // Save all staged changes to repository with active operator attribution
   const saveDraftChanges = useCallback(async () => {
     if (isReadOnly) {
-      setError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
+      setSaveError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
       return;
     }
     if (isSaving) {
@@ -560,11 +583,12 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
 
     try {
       setIsSaving(true);
-      setError(null);
+      setSaveError(null);
 
       const changeSet = createChangeSet(snapshot, draftSnapshot);
       const updated = await repository.saveSnapshot(draftSnapshot, changeSet, currentOperator);
 
+      // Invariant: Never clear an operator draft until remote save has successfully completed.
       setSnapshot(updated);
       syncGenerationRef.current++;
       if (repository.getLastLoadedSha) {
@@ -574,7 +598,10 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setIsEditMode(false);
       setIsConflict(false);
       setIsNewerSharedDataAvailable(false);
+      setSaveError(null);
     } catch (err) {
+      // Invariant: On any failed save (validation, network, auth, HTTP, conflict, unexpected error),
+      // preserve draftSnapshot byte-for-byte and remain in edit mode.
       if (
         (err instanceof GitHubTrackerRepositoryError && err.code === 'REVISION_CONFLICT') ||
         (err instanceof Error &&
@@ -582,9 +609,11 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
             err.message.toLowerCase().includes('conflict')))
       ) {
         setIsConflict(true);
-        setError('Shared data changed after you began editing. Your changes have not been saved.');
+        setSaveError(
+          'Shared data changed after you began editing. Your changes have not been saved.'
+        );
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to save changes.');
+        setSaveError(err instanceof Error ? err.message : 'Failed to save changes.');
       }
       throw err;
     } finally {
@@ -595,18 +624,18 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   // Reset local data back to baseline repository seed
   const resetToBaseline = useCallback(async () => {
     if (isReadOnly) {
-      setError('VIP Tracker is in read-only shared mode. Resetting baseline is not supported.');
+      setSaveError('VIP Tracker is in read-only shared mode. Resetting baseline is not supported.');
       return;
     }
     try {
       setIsLoading(true);
-      setError(null);
+      setSaveError(null);
       const baseline = await repository.resetToBaseline();
       setSnapshot(baseline);
       setDraftSnapshot(null);
       setIsEditMode(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset local data.');
+      setSaveError(err instanceof Error ? err.message : 'Failed to reset local data.');
     } finally {
       setIsLoading(false);
     }
@@ -616,12 +645,12 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const saveCustomLayout = useCallback(
     async (layout: import('../domain/layoutDefinitions').LayoutDefinition) => {
       if (isReadOnly) {
-        setError('VIP Tracker is in read-only shared mode. Custom layouts cannot be saved.');
+        setSaveError('VIP Tracker is in read-only shared mode. Custom layouts cannot be saved.');
         return;
       }
       try {
         setIsLoading(true);
-        setError(null);
+        setSaveError(null);
         if (repository.saveCustomLayout) {
           const updated = await repository.saveCustomLayout(layout);
           setSnapshot(updated);
@@ -648,7 +677,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save custom layout.');
+        setSaveError(err instanceof Error ? err.message : 'Failed to save custom layout.');
       } finally {
         setIsLoading(false);
       }
@@ -660,12 +689,12 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const deleteCustomLayout = useCallback(
     async (layoutId: string) => {
       if (isReadOnly) {
-        setError('VIP Tracker is in read-only shared mode. Custom layouts cannot be deleted.');
+        setSaveError('VIP Tracker is in read-only shared mode. Custom layouts cannot be deleted.');
         return;
       }
       try {
         setIsLoading(true);
-        setError(null);
+        setSaveError(null);
         if (repository.deleteCustomLayout) {
           const updated = await repository.deleteCustomLayout(layoutId);
           setSnapshot(updated);
@@ -683,7 +712,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete custom layout.');
+        setSaveError(err instanceof Error ? err.message : 'Failed to delete custom layout.');
       } finally {
         setIsLoading(false);
       }
@@ -717,6 +746,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       isConflict,
       isNewerSharedDataAvailable,
       error,
+      loadError,
+      saveError,
+      clearSaveError,
       isReadOnly,
       lastLoadedSha,
       refresh: fetchSnapshot,
@@ -759,6 +791,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       isConflict,
       isNewerSharedDataAvailable,
       error,
+      loadError,
+      saveError,
+      clearSaveError,
       isReadOnly,
       lastLoadedSha,
       fetchSnapshot,

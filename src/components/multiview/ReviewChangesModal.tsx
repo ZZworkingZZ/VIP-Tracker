@@ -17,8 +17,15 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
   onSave,
   isSaving = false,
 }) => {
-  const { currentOperator, isConflict, isNewerSharedDataAvailable, error, reloadLatestSharedData } =
-    useTrackerSnapshot();
+  const {
+    currentOperator,
+    isConflict,
+    isNewerSharedDataAvailable,
+    error,
+    saveError,
+    clearSaveError,
+    reloadLatestSharedData,
+  } = useTrackerSnapshot();
 
   // Close on Escape key
   useEffect(() => {
@@ -193,7 +200,7 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
               </button>
             </div>
           </div>
-        ) : error ? (
+        ) : saveError || error ? (
           <div
             role="alert"
             data-testid="save-error-banner"
@@ -205,9 +212,35 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
               borderRadius: '3px',
               color: '#fca5a5',
               fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
             }}
           >
-            {error}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span aria-hidden="true">⚠️</span>
+              <span>{saveError || error}</span>
+            </div>
+            {clearSaveError && (
+              <button
+                type="button"
+                onClick={clearSaveError}
+                aria-label="Dismiss save error"
+                data-testid="dismiss-save-error-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fca5a5',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  lineHeight: 1,
+                  padding: '2px 4px',
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
         ) : null}
 

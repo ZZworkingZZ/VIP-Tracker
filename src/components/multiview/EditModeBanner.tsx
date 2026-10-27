@@ -11,6 +11,8 @@ export const EditModeBanner: React.FC = () => {
     saveDraftChanges,
     isSaving,
     isConflict,
+    saveError,
+    clearSaveError,
     isNewerSharedDataAvailable,
     reloadLatestSharedData,
   } = useTrackerSnapshot();
@@ -198,6 +200,71 @@ export const EditModeBanner: React.FC = () => {
           >
             Reload Latest Shared Data
           </button>
+        </div>
+      )}
+      {!isConflict && saveError && (
+        <div
+          className="ev-save-error-banner"
+          data-testid="edit-mode-save-error-banner"
+          role="alert"
+          style={{
+            position: 'sticky',
+            top: '41px',
+            zIndex: 99,
+            backgroundColor: '#7f1d1d',
+            borderBottom: '1px solid #ef4444',
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: '#fecaca',
+            fontFamily: 'var(--ev-font)',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span aria-hidden="true" style={{ fontSize: '14px' }}>
+              ⚠️
+            </span>
+            <span>{saveError}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setIsReviewOpen(true)}
+              data-testid="banner-retry-save-btn"
+              style={{
+                padding: '4px 12px',
+                fontSize: '11px',
+                fontWeight: 700,
+                backgroundColor: '#2864a3',
+                color: '#ffffff',
+                border: '1px solid #38bdf8',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              Review & Retry
+            </button>
+            <button
+              type="button"
+              onClick={clearSaveError}
+              data-testid="banner-dismiss-error-btn"
+              aria-label="Dismiss error"
+              style={{
+                padding: '4px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                backgroundColor: 'transparent',
+                color: '#fca5a5',
+                border: '1px solid #f87171',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
       {!isConflict && isNewerSharedDataAvailable && (

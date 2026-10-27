@@ -10,7 +10,8 @@ import { useTrackerSnapshot } from '../../hooks/useTracker';
 export const AppShell: React.FC = () => {
   const {
     isLoading,
-    error,
+    loadError,
+    snapshot,
     refresh,
     currentOperator,
     recentOperators,
@@ -21,6 +22,8 @@ export const AppShell: React.FC = () => {
   } = useTrackerSnapshot();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const showFatalLoadError = Boolean(loadError && !snapshot);
 
   return (
     <div className="ev-shell">
@@ -37,7 +40,7 @@ export const AppShell: React.FC = () => {
               Loading VIP Tracker operational baseline...
             </div>
           )}
-          {error && (
+          {showFatalLoadError && (
             <div
               className="finding-item finding-error"
               role="alert"
@@ -52,7 +55,7 @@ export const AppShell: React.FC = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="status-badge badge-conflict">Error</span>
-                <span style={{ fontWeight: 600 }}>{error}</span>
+                <span style={{ fontWeight: 600 }}>{loadError}</span>
               </div>
               <button
                 type="button"
@@ -65,7 +68,7 @@ export const AppShell: React.FC = () => {
               </button>
             </div>
           )}
-          {!isLoading && !error && <Outlet />}
+          {!isLoading && !showFatalLoadError && <Outlet />}
         </main>
       </div>
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

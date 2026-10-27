@@ -19,7 +19,14 @@ export interface TrackerRepositoryContextValue {
   stagedChanges: FieldChange[];
   isLoading: boolean;
   isSaving: boolean;
+  /** General composite error (saveError ?? loadError) for backward compatibility */
   error: string | null;
+  /** Fatal repository load error blocking initial application load */
+  loadError: string | null;
+  /** Recoverable save/mutation error during active operator editing */
+  saveError: string | null;
+  /** Dismiss/clear active save error banner */
+  clearSaveError: () => void;
   /** Whether the underlying repository is read-only */
   isReadOnly: boolean;
   /** Whether a revision conflict occurred on save */
