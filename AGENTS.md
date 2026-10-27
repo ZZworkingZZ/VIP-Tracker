@@ -117,6 +117,7 @@ Use only the verified commands defined in `package.json`:
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
 - Final report: max 10 lines — files changed, validate result, commit hash.
+- Execution time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
 
 ---
 
