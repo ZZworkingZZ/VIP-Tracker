@@ -745,7 +745,7 @@ describe('Phase 4A — Automatic Shared-State Synchronization', () => {
     vi.useRealTimers();
   });
 
-  it('Phase 4B: fetchFileContents specifies cache: no-store and Cache-Control: no-cache to prevent browser/CDN staleness', async () => {
+  it('Phase 4B: fetchFileContents specifies cache: no-store without manual Cache-Control/Pragma headers to prevent CORS preflight rejection', async () => {
     let capturedInit: RequestInit | undefined;
     const mockFetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
       capturedInit = init;
@@ -771,7 +771,9 @@ describe('Phase 4A — Automatic Shared-State Synchronization', () => {
     expect(capturedInit).toBeDefined();
     expect(capturedInit?.cache).toBe('no-store');
     const headers = capturedInit?.headers as Record<string, string>;
-    expect(headers['Cache-Control']).toBe('no-cache');
-    expect(headers['Pragma']).toBe('no-cache');
+    expect(headers['Authorization']).toBe('Bearer synthetic-offline-token');
+    expect(headers['Accept']).toBe('application/vnd.github.v3+json');
+    expect(headers['Cache-Control']).toBeUndefined();
+    expect(headers['Pragma']).toBeUndefined();
   });
 });

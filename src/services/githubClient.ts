@@ -183,8 +183,6 @@ export class GitHubClient {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'VIP-Tracker',
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
     };
 
     if (token) {
