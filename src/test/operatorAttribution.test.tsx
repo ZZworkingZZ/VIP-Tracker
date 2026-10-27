@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
 import { createOperator, isValidOperator } from '../domain/operator';
 import {
   OPERATOR_ROSTER,
@@ -10,14 +10,13 @@ import { selectOutputLastChanged, formatLastChanged } from '../domain/attributio
 import { MemoryOperatorStorage } from '../services/operatorStorage';
 import { MemoryTrackerStorage } from '../services/storage';
 import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
-import { TrackerRepositoryProvider } from '../app/TrackerRepositoryContext';
 import { useTrackerSnapshot } from '../hooks/useTracker';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { AppHeader } from '../components/layout/AppHeader';
 import { OperatorModal } from '../components/layout/OperatorModal';
 import { ReviewChangesModal } from '../components/multiview/ReviewChangesModal';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithProviders } from './helpers/renderWithProviders';
 
 describe('Trust-based Operator Identity & Change Attribution', () => {
   let memoryStorage: MemoryTrackerStorage;
@@ -404,13 +403,11 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       };
 
       await act(async () => {
-        render(
-          <BrowserRouter>
-            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-              <TestComponent />
-            </TrackerRepositoryProvider>
-          </BrowserRouter>
-        );
+        renderWithProviders(<TestComponent />, {
+          repository,
+          operatorStorage,
+          operator: null,
+        });
       });
 
       expect(screen.getByTestId('debug-operator').textContent).toBe('NONE');
@@ -444,13 +441,11 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       };
 
       await act(async () => {
-        render(
-          <BrowserRouter>
-            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-              <TestApp />
-            </TrackerRepositoryProvider>
-          </BrowserRouter>
-        );
+        renderWithProviders(<TestApp />, {
+          repository,
+          operatorStorage,
+          operator: null,
+        });
       });
 
       // Initially no operator selected
@@ -544,13 +539,11 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       };
 
       await act(async () => {
-        render(
-          <BrowserRouter>
-            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-              <TestApp />
-            </TrackerRepositoryProvider>
-          </BrowserRouter>
-        );
+        renderWithProviders(<TestApp />, {
+          repository,
+          operatorStorage,
+          operator: undefined,
+        });
       });
 
       // Non-roster operator was cleared
@@ -588,12 +581,13 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       const savedSnapshot = await repository.saveSnapshot(draft, changeSet, zach);
 
       await act(async () => {
-        render(
-          <BrowserRouter>
-            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-              <OutputDetailModal output={savedSnapshot.outputs[0]} onClose={() => {}} />
-            </TrackerRepositoryProvider>
-          </BrowserRouter>
+        renderWithProviders(
+          <OutputDetailModal output={savedSnapshot.outputs[0]} onClose={() => {}} />,
+          {
+            repository,
+            operatorStorage,
+            operator: undefined,
+          }
         );
       });
 
@@ -606,27 +600,28 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       operatorStorage.saveOperator(zach);
 
       await act(async () => {
-        render(
-          <BrowserRouter>
-            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-              <ReviewChangesModal
-                isOpen={true}
-                changes={[
-                  {
-                    entityType: 'output',
-                    entityId: 'OUT:MV-01-01',
-                    entityLabel: 'MV-01-01 Output',
-                    field: 'layoutName',
-                    previousValue: '4 BOX',
-                    newValue: '12 BOX',
-                    description: 'Layout: 4 BOX -> 12 BOX',
-                  },
-                ]}
-                onClose={() => {}}
-                onSave={() => {}}
-              />
-            </TrackerRepositoryProvider>
-          </BrowserRouter>
+        renderWithProviders(
+          <ReviewChangesModal
+            isOpen={true}
+            changes={[
+              {
+                entityType: 'output',
+                entityId: 'OUT:MV-01-01',
+                entityLabel: 'MV-01-01 Output',
+                field: 'layoutName',
+                previousValue: '4 BOX',
+                newValue: '12 BOX',
+                description: 'Layout: 4 BOX -> 12 BOX',
+              },
+            ]}
+            onClose={() => {}}
+            onSave={() => {}}
+          />,
+          {
+            repository,
+            operatorStorage,
+            operator: undefined,
+          }
         );
       });
 

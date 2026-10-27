@@ -99,7 +99,7 @@ Use only the verified commands defined in `package.json`:
 - State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
 - UI: src/components/layout/ (AppShell, AppHeader, OperatorModal), src/components/multiview/ (OutputDetailModal, OutputDisplayCard, ReviewChangesModal, EditModeBanner)
 - Styles: src/styles/components.css
-- Tests: src/test/
+- Tests: src/test/ (UI tests: use src/test/helpers/renderWithProviders.tsx; do not hand-build providers.)
 
 ## Efficiency rules
 

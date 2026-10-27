@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
 import {
   FEEDBACK_FORM_BASE,
   FEEDBACK_FORM_ID,
@@ -9,11 +8,7 @@ import {
   buildFeedbackUrl,
 } from '../domain/feedback';
 import { AppHeader } from '../components/layout/AppHeader';
-import { TrackerRepositoryProvider } from '../app/TrackerRepositoryContext';
-import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
-import { MemoryOperatorStorage } from '../services/operatorStorage';
-import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
-import { createOperator } from '../domain/operator';
+import { renderWithProviders, createOpenSpy } from './helpers/renderWithProviders';
 
 describe('Feedback domain logic', () => {
   it('builds URL with the correct base, form id, and both param keys', () => {
@@ -50,18 +45,12 @@ describe('Feedback domain logic', () => {
 
 describe('Feedback UI integration', () => {
   it('renders Feedback button in header and calls window.open with the built URL, "_blank", "noopener"', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-    const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT);
-    const opStorage = new MemoryOperatorStorage();
-    opStorage.saveOperator(createOperator('Alex S'));
+    const openSpy = createOpenSpy();
 
-    render(
-      <TrackerRepositoryProvider repository={repo} operatorStorage={opStorage}>
-        <MemoryRouter initialEntries={['/layouts']}>
-          <AppHeader />
-        </MemoryRouter>
-      </TrackerRepositoryProvider>
-    );
+    renderWithProviders(<AppHeader />, {
+      route: '/layouts',
+      operator: 'op_alex_s',
+    });
 
     const feedbackBtn = screen.getByTestId('feedback-btn');
     expect(feedbackBtn).toBeInTheDocument();
@@ -76,17 +65,12 @@ describe('Feedback UI integration', () => {
   });
 
   it('handles null operator gracefully on click in header', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-    const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT);
-    const opStorage = new MemoryOperatorStorage();
+    const openSpy = createOpenSpy();
 
-    render(
-      <TrackerRepositoryProvider repository={repo} operatorStorage={opStorage}>
-        <MemoryRouter initialEntries={['/']}>
-          <AppHeader />
-        </MemoryRouter>
-      </TrackerRepositoryProvider>
-    );
+    renderWithProviders(<AppHeader />, {
+      route: '/',
+      operator: null,
+    });
 
     const feedbackBtn = screen.getByTestId('feedback-btn');
     fireEvent.click(feedbackBtn);
