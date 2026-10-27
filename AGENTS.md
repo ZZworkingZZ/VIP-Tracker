@@ -94,7 +94,7 @@ Use only the verified commands defined in `package.json`:
 
 ## Architecture map (read only what the task touches)
 
-- Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, attribution.ts
+- Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, operatorRoster.ts, attribution.ts
 - Persistence: src/services/ — TrackerRepository.ts, LocalTrackerRepository.ts, storage.ts, operatorStorage.ts
 - State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
 - UI: src/components/layout/ (AppShell, AppHeader, OperatorModal), src/components/multiview/ (OutputDetailModal, OutputDisplayCard, ReviewChangesModal, EditModeBanner)

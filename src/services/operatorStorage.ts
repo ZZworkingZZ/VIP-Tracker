@@ -1,4 +1,5 @@
 import { Operator, isValidOperator } from '../domain/operator';
+import { isRosterOperatorId } from '../domain/operatorRoster';
 
 export const CURRENT_OPERATOR_STORAGE_KEY = 'vip_tracker_operator_v1';
 export const RECENT_OPERATORS_STORAGE_KEY = 'vip_tracker_recent_operators_v1';
@@ -24,7 +25,12 @@ export class BrowserOperatorStorage implements OperatorStorage {
       const raw = window.localStorage.getItem(this.currentKey);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      return isValidOperator(parsed) ? parsed : null;
+      if (!isValidOperator(parsed)) return null;
+      if (!isRosterOperatorId(parsed.id)) {
+        this.clearOperator();
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -56,7 +62,7 @@ export class BrowserOperatorStorage implements OperatorStorage {
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isValidOperator);
+      return parsed.filter(isValidOperator).filter((op) => isRosterOperatorId(op.id));
     } catch {
       return [];
     }
@@ -83,7 +89,12 @@ export class MemoryOperatorStorage implements OperatorStorage {
   private recents: Operator[] = [];
 
   loadOperator(): Operator | null {
-    return this.current ? { ...this.current } : null;
+    if (!this.current) return null;
+    if (!isRosterOperatorId(this.current.id)) {
+      this.clearOperator();
+      return null;
+    }
+    return { ...this.current };
   }
 
   saveOperator(operator: Operator): void {
@@ -96,7 +107,7 @@ export class MemoryOperatorStorage implements OperatorStorage {
   }
 
   loadRecentOperators(): Operator[] {
-    return [...this.recents];
+    return this.recents.filter((op) => isRosterOperatorId(op.id));
   }
 
   saveRecentOperator(operator: Operator): void {

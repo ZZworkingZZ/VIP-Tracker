@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Operator } from '../../domain/operator';
+import {
+  OPERATOR_ROSTER,
+  isRosterOperatorId,
+  findRosterOperatorById,
+} from '../../domain/operatorRoster';
 
 export interface OperatorModalProps {
   readonly isOpen: boolean;
@@ -18,21 +23,20 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
   onSwitchToOperator,
   onClose,
 }) => {
-  const [name, setName] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedId, setSelectedId] = useState('');
+  const selectRef = useRef<HTMLSelectElement>(null);
 
-  const isSwitching = Boolean(currentOperator);
+  const isSwitching = Boolean(currentOperator && isRosterOperatorId(currentOperator.id));
 
   useEffect(() => {
     if (isOpen) {
-      setName(currentOperator ? currentOperator.displayName : '');
+      setSelectedId('');
       // Focus after mount
       setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
+        selectRef.current?.focus();
       }, 50);
     }
-  }, [isOpen, currentOperator]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -51,18 +55,26 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSelectOperator(trimmed);
+    if (!selectedId) return;
+    const rosterOp = findRosterOperatorById(selectedId);
+    if (!rosterOp) return;
+    if (onSwitchToOperator) {
+      onSwitchToOperator(rosterOp);
+    } else {
+      onSelectOperator(rosterOp.displayName);
+    }
   };
 
   const handleRecentClick = (op: Operator) => {
+    const rosterOp = findRosterOperatorById(op.id) ?? op;
     if (onSwitchToOperator) {
-      onSwitchToOperator(op);
+      onSwitchToOperator(rosterOp);
     } else {
-      onSelectOperator(op.displayName);
+      onSelectOperator(rosterOp.displayName);
     }
   };
+
+  const validRecentOperators = recentOperators.filter((op) => isRosterOperatorId(op.id));
 
   return (
     <div
@@ -178,7 +190,7 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
           </p>
 
           <label
-            htmlFor="operator-name-input"
+            htmlFor="operator-select"
             style={{
               display: 'block',
               fontSize: '11px',
@@ -191,32 +203,44 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
             Operator Name
           </label>
 
-          <input
-            id="operator-name-input"
-            ref={inputRef}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Zach"
-            data-testid="operator-name-input"
-            autoComplete="name"
+          <select
+            id="operator-select"
+            ref={selectRef}
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            data-testid="operator-select"
+            aria-label="Operator Name"
             style={{
               width: '100%',
               padding: '8px 12px',
               fontSize: '14px',
               fontWeight: 600,
               backgroundColor: '#121212',
-              color: '#ffffff',
+              color: selectedId ? '#ffffff' : '#94a3b8',
               border: '1px solid #38bdf8',
               borderRadius: '2px',
               outline: 'none',
               boxSizing: 'border-box',
               marginBottom: '16px',
+              cursor: 'pointer',
             }}
-          />
+          >
+            <option value="" disabled style={{ color: '#64748b', backgroundColor: '#1c1c1c' }}>
+              Select your name…
+            </option>
+            {OPERATOR_ROSTER.map((op) => (
+              <option
+                key={op.id}
+                value={op.id}
+                style={{ color: '#ffffff', backgroundColor: '#1c1c1c' }}
+              >
+                {op.displayName}
+              </option>
+            ))}
+          </select>
 
           {/* Recent Operators Quick-Select */}
-          {recentOperators.length > 0 && (
+          {validRecentOperators.length > 0 && (
             <div style={{ marginBottom: '16px' }}>
               <span
                 style={{
@@ -231,7 +255,7 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
                 Recent Operators
               </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {recentOperators.map((op) => (
+                {validRecentOperators.map((op) => (
                   <button
                     key={op.id}
                     type="button"
@@ -288,17 +312,17 @@ export const OperatorModal: React.FC<OperatorModalProps> = ({
 
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!selectedId}
               data-testid="operator-submit-btn"
               style={{
                 padding: '7px 20px',
                 fontSize: '12px',
                 fontWeight: 700,
-                backgroundColor: name.trim() ? '#2864a3' : '#1e3a5a',
-                color: name.trim() ? '#ffffff' : '#64748b',
-                border: `1px solid ${name.trim() ? '#38bdf8' : '#2864a3'}`,
+                backgroundColor: selectedId ? '#2864a3' : '#1e3a5a',
+                color: selectedId ? '#ffffff' : '#64748b',
+                border: `1px solid ${selectedId ? '#38bdf8' : '#2864a3'}`,
                 borderRadius: '2px',
-                cursor: name.trim() ? 'pointer' : 'not-allowed',
+                cursor: selectedId ? 'pointer' : 'not-allowed',
               }}
             >
               Continue

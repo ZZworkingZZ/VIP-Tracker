@@ -4,6 +4,8 @@
  * Free of authentication-provider dependencies, roles, passwords, or tokens.
  */
 
+import { findRosterOperatorByName } from './operatorRoster';
+
 export type OperatorId = string;
 
 export interface Operator {
@@ -13,7 +15,8 @@ export interface Operator {
 
 /**
  * Creates a clean, typed Operator with a lightweight stable ID.
- * Generates an ID derived from a slugified name plus an alphanumeric suffix,
+ * Returns the deterministic roster operator if the name matches the roster,
+ * generates an ID derived from a slugified name plus an alphanumeric suffix,
  * or accepts an explicitly provided stable ID.
  */
 export function createOperator(displayName: string, explicitId?: string): Operator {
@@ -23,6 +26,11 @@ export function createOperator(displayName: string, explicitId?: string): Operat
       id: explicitId.trim(),
       displayName: trimmed,
     };
+  }
+
+  const rosterOp = findRosterOperatorByName(trimmed);
+  if (rosterOp) {
+    return rosterOp;
   }
 
   const slug =

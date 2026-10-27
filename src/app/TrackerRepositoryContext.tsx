@@ -16,6 +16,7 @@ import { validateSnapshot } from '../domain/validation';
 import { assignPipInput, movePipInput } from '../domain/pipRouting';
 import { getLayoutDefinition } from '../domain/layoutDefinitions';
 import { Operator, createOperator } from '../domain/operator';
+import { isRosterOperatorId } from '../domain/operatorRoster';
 import { OperatorStorage, defaultOperatorStorage } from '../services/operatorStorage';
 
 export interface TrackerRepositoryProviderProps {
@@ -76,8 +77,8 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   }, []);
 
   const closeOperatorModal = useCallback(() => {
-    // Only allow closing if an operator has been chosen
-    if (currentOperator) {
+    // Only allow closing if a valid roster operator has been chosen
+    if (currentOperator && isRosterOperatorId(currentOperator.id)) {
       setIsOperatorModalOpen(false);
     }
   }, [currentOperator]);

@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { createOperator, isValidOperator } from '../domain/operator';
+import {
+  OPERATOR_ROSTER,
+  createRosterOperatorId,
+  isRosterOperatorId,
+} from '../domain/operatorRoster';
 import { selectOutputLastChanged, formatLastChanged } from '../domain/attribution';
 import { MemoryOperatorStorage } from '../services/operatorStorage';
 import { MemoryTrackerStorage } from '../services/storage';
@@ -26,31 +31,85 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
   });
 
   describe('1. Operator Domain Model & Storage', () => {
-    it('Requirement 1 & 2: An operator can be created with a stable ID and persists locally', () => {
-      const op = createOperator('Zach');
-      expect(op.displayName).toBe('Zach');
-      expect(op.id).toMatch(/^op_zach_[a-z0-9]+$/);
-      expect(isValidOperator(op)).toBe(true);
+    it('Requirement 1 & 2: OPERATOR_ROSTER contains all 25 names in exact order with deterministic stable IDs', () => {
+      expect(OPERATOR_ROSTER.length).toBe(25);
 
-      operatorStorage.saveOperator(op);
+      const expectedNames = [
+        'Alex S',
+        'Barry A',
+        'Bob S',
+        'Chris P',
+        'Faith L',
+        'Greg P',
+        'J J',
+        'James A',
+        'John V',
+        'Julia B',
+        'Khirlu B',
+        'Maddie P',
+        'Marcus L',
+        'Mark S',
+        'Mark V',
+        'Matt O',
+        'Mike D',
+        'Nathan C',
+        'Prab G',
+        'Rob G',
+        'Robin O',
+        'Ryan H',
+        'Sarah R',
+        'Ty Y',
+        'Zach Z',
+      ];
+
+      expect(OPERATOR_ROSTER.map((o) => o.displayName)).toEqual(expectedNames);
+
+      // Verify deterministic stable IDs
+      expect(createRosterOperatorId('Zach Z')).toBe('op_zach_z');
+      expect(createRosterOperatorId('J J')).toBe('op_j_j');
+      expect(createRosterOperatorId('Alex S')).toBe('op_alex_s');
+
+      for (const op of OPERATOR_ROSTER) {
+        expect(op.id).toBe(createRosterOperatorId(op.displayName));
+        expect(op.id).not.toMatch(/[A-Z\s]/);
+        expect(isRosterOperatorId(op.id)).toBe(true);
+        expect(isValidOperator(op)).toBe(true);
+      }
+
+      // Check createOperator returns deterministic roster ID for roster member
+      const zach = createOperator('Zach Z');
+      expect(zach.id).toBe('op_zach_z');
+      expect(zach.displayName).toBe('Zach Z');
+
+      operatorStorage.saveOperator(zach);
       const loaded = operatorStorage.loadOperator();
-      expect(loaded).toEqual(op);
+      expect(loaded).toEqual(zach);
     });
 
-    it('Requirement 3: Operator can be switched and tracks recent operators', () => {
-      const op1 = createOperator('Zach', 'op_zach_fixed');
-      const op2 = createOperator('Alex', 'op_alex_fixed');
+    it('Requirement 3: Operator can be switched and recent list filters to roster', () => {
+      const op1 = OPERATOR_ROSTER.find((o) => o.displayName === 'Zach Z')!;
+      const op2 = OPERATOR_ROSTER.find((o) => o.displayName === 'Alex S')!;
 
       operatorStorage.saveOperator(op1);
-      expect(operatorStorage.loadOperator()?.displayName).toBe('Zach');
+      expect(operatorStorage.loadOperator()?.displayName).toBe('Zach Z');
 
       operatorStorage.saveOperator(op2);
-      expect(operatorStorage.loadOperator()?.displayName).toBe('Alex');
+      expect(operatorStorage.loadOperator()?.displayName).toBe('Alex S');
+
+      // Inject a non-roster operator in recents to test filtering
+      operatorStorage.saveRecentOperator({ id: 'legacy_custom_id', displayName: 'Custom Person' });
 
       const recents = operatorStorage.loadRecentOperators();
       expect(recents.length).toBe(2);
-      expect(recents[0].displayName).toBe('Alex');
-      expect(recents[1].displayName).toBe('Zach');
+      expect(recents[0].displayName).toBe('Alex S');
+      expect(recents[1].displayName).toBe('Zach Z');
+      expect(recents.some((r) => r.displayName === 'Custom Person')).toBe(false);
+    });
+
+    it('Non-roster saved operator is cleared from storage on load', () => {
+      operatorStorage.saveOperator({ id: 'legacy_unknown_id', displayName: 'Unknown Legacy' });
+      const loaded = operatorStorage.loadOperator();
+      expect(loaded).toBeNull();
     });
   });
 
@@ -359,7 +418,7 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       expect(screen.getByTestId('current-operator-name').textContent).toBe('TECH OPS');
     });
 
-    it('interactive operator modal: entering a name sets operator, persists to storage, and updates header', async () => {
+    it('interactive operator modal: roster dropdown lists all 25 names in order, Continue is disabled until selection, and sets deterministic ID', async () => {
       const TestApp = () => {
         const {
           currentOperator,
@@ -394,25 +453,52 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
         );
       });
 
-      // Initially no operator
+      // Initially no operator selected
       expect(screen.getByTestId('current-operator-name').textContent).toBe('TECH OPS');
       expect(screen.getByTestId('operator-modal')).toBeDefined();
 
-      // Enter "Zach" and submit
-      const input = screen.getByTestId('operator-name-input');
+      const select = screen.getByTestId('operator-select') as HTMLSelectElement;
+      expect(select).toBeDefined();
+
+      // Check dropdown options: 1 placeholder + 25 roster names = 26 options
+      const options = Array.from(select.options);
+      expect(options.length).toBe(26);
+
+      // Placeholder option
+      expect(options[0].textContent).toBe('Select your name…');
+      expect(options[0].value).toBe('');
+      expect(options[0].disabled).toBe(true);
+
+      // All 25 names in exact roster order
+      for (let i = 0; i < OPERATOR_ROSTER.length; i++) {
+        expect(options[i + 1].textContent).toBe(OPERATOR_ROSTER[i].displayName);
+        expect(options[i + 1].value).toBe(OPERATOR_ROSTER[i].id);
+      }
+
+      // Continue button must be disabled initially
+      const submitBtn = screen.getByTestId('operator-submit-btn');
+      expect(submitBtn).toBeDisabled();
+
+      // Select "Zach Z" (op_zach_z)
       act(() => {
-        fireEvent.change(input, { target: { value: 'Zach' } });
+        fireEvent.change(select, { target: { value: 'op_zach_z' } });
       });
 
+      // Continue button is now enabled
+      expect(submitBtn).not.toBeDisabled();
+
+      // Click Continue
       act(() => {
-        fireEvent.click(screen.getByTestId('operator-submit-btn'));
+        fireEvent.click(submitBtn);
       });
 
-      // Header now displays Zach
-      expect(screen.getByTestId('current-operator-name').textContent).toBe('Zach');
+      // Header now displays "Zach Z"
+      expect(screen.getByTestId('current-operator-name').textContent).toBe('Zach Z');
 
-      // Operator persisted in storage
-      expect(operatorStorage.loadOperator()?.displayName).toBe('Zach');
+      // Operator persisted in storage with deterministic ID
+      const savedOp = operatorStorage.loadOperator();
+      expect(savedOp?.displayName).toBe('Zach Z');
+      expect(savedOp?.id).toBe('op_zach_z');
 
       // Open Switch User modal
       act(() => {
@@ -421,18 +507,58 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
 
       expect(screen.getByTestId('operator-modal')).toBeDefined();
 
-      // Enter "Alex" and submit
-      const switchInput = screen.getByTestId('operator-name-input');
+      const switchSelect = screen.getByTestId('operator-select') as HTMLSelectElement;
+      const switchSubmitBtn = screen.getByTestId('operator-submit-btn');
+
+      // When switching opens, Continue is disabled until a name is selected
+      expect(switchSubmitBtn).toBeDisabled();
+
+      // Select "Alex S" (op_alex_s) and submit
       act(() => {
-        fireEvent.change(switchInput, { target: { value: 'Alex' } });
+        fireEvent.change(switchSelect, { target: { value: 'op_alex_s' } });
       });
+      expect(switchSubmitBtn).not.toBeDisabled();
 
       act(() => {
-        fireEvent.click(screen.getByTestId('operator-submit-btn'));
+        fireEvent.click(switchSubmitBtn);
       });
 
-      expect(screen.getByTestId('current-operator-name').textContent).toBe('Alex');
-      expect(operatorStorage.loadOperator()?.displayName).toBe('Alex');
+      expect(screen.getByTestId('current-operator-name').textContent).toBe('Alex S');
+      expect(operatorStorage.loadOperator()?.displayName).toBe('Alex S');
+      expect(operatorStorage.loadOperator()?.id).toBe('op_alex_s');
+    });
+
+    it('non-roster saved operator is cleared on load and prompts modal (first-use behavior)', async () => {
+      // Simulate existing localStorage state with legacy / non-roster operator
+      operatorStorage.saveOperator({ id: 'legacy_old_id', displayName: 'Legacy Operator' });
+
+      const TestApp = () => {
+        const { currentOperator, isOperatorModalOpen } = useTrackerSnapshot();
+        return (
+          <div>
+            <AppHeader />
+            <div data-testid="debug-operator">{currentOperator?.displayName || 'NONE'}</div>
+            <div data-testid="debug-modal-open">{isOperatorModalOpen ? 'OPEN' : 'CLOSED'}</div>
+          </div>
+        );
+      };
+
+      await act(async () => {
+        render(
+          <BrowserRouter>
+            <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
+              <TestApp />
+            </TrackerRepositoryProvider>
+          </BrowserRouter>
+        );
+      });
+
+      // Non-roster operator was cleared
+      expect(operatorStorage.loadOperator()).toBeNull();
+      expect(screen.getByTestId('debug-operator').textContent).toBe('NONE');
+      // Modal opened on first-use
+      expect(screen.getByTestId('debug-modal-open').textContent).toBe('OPEN');
+      expect(screen.getByTestId('current-operator-name').textContent).toBe('TECH OPS');
     });
 
     it('displays Last Changed attribution in OutputDetailModal', async () => {
@@ -476,7 +602,7 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
     });
 
     it('displays operator in ReviewChangesModal footer before saving', async () => {
-      const zach = createOperator('Zach', 'op_zach');
+      const zach = createOperator('Zach Z');
       operatorStorage.saveOperator(zach);
 
       await act(async () => {
@@ -505,7 +631,7 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       });
 
       const indicator = screen.getByTestId('review-attribution-indicator');
-      expect(indicator.textContent).toContain('Zach');
+      expect(indicator.textContent).toContain('Zach Z');
     });
   });
 });
