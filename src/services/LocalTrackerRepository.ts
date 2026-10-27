@@ -79,6 +79,7 @@ export class LocalTrackerRepository implements TrackerRepository {
       );
 
       this.snapshot = {
+        ...(this.initialSnapshot.metadata ? { metadata: this.initialSnapshot.metadata } : {}),
         multiviews: JSON.parse(JSON.stringify(this.initialSnapshot.multiviews)),
         outputs: normalizedOutputs,
         destinations: storedData.destinations,

@@ -47,6 +47,7 @@ export interface MultiviewOutput {
   layoutName: string | null;
   destinationStart: number | null;
   destinationEnd: number | null;
+  rawDestinationRange?: string | null;
   assignmentName: string | null;
   notes: string | null;
   status: OutputStatus;
@@ -62,6 +63,7 @@ export interface Destination {
   multiviewId: MultiviewId;
   destinationNumber: number;
   assignedSourceId: SourceId | null;
+  lawoSourceName?: string | null;
   assignmentName: string | null;
   locked: boolean;
   updatedAt: string | null;
@@ -129,7 +131,16 @@ export interface ValidationFinding {
   relatedEntityIds: string[];
 }
 
+export interface TrackerSnapshotMetadata {
+  schemaVersion: number;
+  sourceWorkbook: string;
+  sourceWorkbookHash: string;
+  generatorVersion: string;
+  deterministicGeneration?: boolean;
+}
+
 export interface TrackerSnapshot {
+  metadata?: TrackerSnapshotMetadata;
   multiviews: Multiview[];
   outputs: MultiviewOutput[];
   destinations: Destination[];
