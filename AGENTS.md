@@ -109,6 +109,7 @@ Use only the verified commands defined in `package.json`:
 - Before commit: applies to ALL changes including docs: always run `npx prettier --write <changed files>`, then `npm run validate` ONCE before committing. Do not run lint/typecheck/test/format separately.
 - Run `npm run validate` in the foreground and wait for it to finish. Do not background it or poll task status.
 - Shell is Windows PowerShell: do not use `&&`. Run git add, commit, and push as separate commands and stop if any one fails.
+- Stage files explicitly by path (`git add <file> ...`). Never use `git add .` or `git add -A`.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
 - Final report: max 10 lines — files changed, validate result, commit hash.
