@@ -11,7 +11,7 @@
  */
 
 import { MultiviewOutput, Destination, Source } from './models';
-import { PipId, DestinationId, createPipId, createDestinationId } from './identifiers';
+import { PipId, DestinationId, createDestinationId } from './identifiers';
 import { LayoutDefinition, getLayoutPips } from './layoutDefinitions';
 
 export interface PipDisplayData {
@@ -27,10 +27,7 @@ export interface PipDisplayData {
  * Safely resolves the assigned MV Input ID for a given PIP on an output.
  * Returns null if the PIP is unassigned. Never fabricates a placeholder.
  */
-export function getPipAssignment(
-  output: MultiviewOutput,
-  pipId: PipId
-): DestinationId | null {
+export function getPipAssignment(output: MultiviewOutput, pipId: PipId): DestinationId | null {
   if (!output.pipAssignments) {
     return null;
   }
@@ -248,7 +245,7 @@ export function getPipDisplayData(
 
   const destination = destinations.find((d) => d.id === assignedDestinationId) ?? null;
   const routedSource = destination?.assignedSourceId
-    ? sources.find((s) => s.id === destination.assignedSourceId) ?? null
+    ? (sources.find((s) => s.id === destination.assignedSourceId) ?? null)
     : null;
 
   return {

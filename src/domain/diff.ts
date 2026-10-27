@@ -1,5 +1,10 @@
 import { TrackerSnapshot, FieldChange, ChangeSet, ChangeRecord } from './models';
-import { formatOutputDisplay, formatDestinationDisplay, formatInputDisplay, PipId } from './identifiers';
+import {
+  formatOutputDisplay,
+  formatDestinationDisplay,
+  formatInputDisplay,
+  PipId,
+} from './identifiers';
 
 /**
  * Compares a baseline snapshot with a draft snapshot and produces structured field differences.

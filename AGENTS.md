@@ -26,14 +26,14 @@ Routed Source
 
 The tracked installation consists of 5 physical multiview frames with fixed capacities:
 
-| Multiview ID | Display Name | Inputs / Router Destinations | Physical Outputs |
-| :--- | :--- | :---: | :---: |
-| **MV-01** | Multiview 01 | 36 | 4 |
-| **MV-02** | Multiview 02 | 36 | 4 |
-| **MV-03** | Multiview 03 | 64 | 8 |
-| **MV-04** | Multiview 04 | 64 | 8 |
-| **MV-05** | Multiview 05 | 64 | 8 |
-| **TOTALS** | **5 Multiview Frames** | **264 Destinations** | **32 Outputs** |
+| Multiview ID | Display Name           | Inputs / Router Destinations | Physical Outputs |
+| :----------- | :--------------------- | :--------------------------: | :--------------: |
+| **MV-01**    | Multiview 01           |              36              |        4         |
+| **MV-02**    | Multiview 02           |              36              |        4         |
+| **MV-03**    | Multiview 03           |              64              |        8         |
+| **MV-04**    | Multiview 04           |              64              |        8         |
+| **MV-05**    | Multiview 05           |              64              |        8         |
+| **TOTALS**   | **5 Multiview Frames** |     **264 Destinations**     |  **32 Outputs**  |
 
 ---
 
@@ -69,18 +69,18 @@ The tracked installation consists of 5 physical multiview frames with fixed capa
 
 Use only the verified commands defined in `package.json`:
 
-| Purpose | Command | Notes |
-| :--- | :--- | :--- |
-| **Development** | `npm run dev` | Starts Vite dev server |
-| **Type Check** | `npm run typecheck` | Runs `tsc --noEmit` (fastest TypeScript check) |
-| **Lint** | `npm run lint` | Runs `eslint .` |
-| **Lint Auto-Fix** | `npm run lint:fix` | Runs `eslint . --fix` |
-| **Format Check** | `npm run format:check` | Runs `prettier --check .` |
-| **Format Fix** | `npm run format` | Runs `prettier --write .` (do not run repo-wide on small edits) |
-| **Unit/Component Test** | `npm run test` | Runs `vitest run` once |
-| **Targeted Test** | `npm run test -- <path>` | e.g. `npm run test -- src/domain/selectors.test.ts` |
-| **Production Build** | `npm run build` | Runs `tsc -b && vite build` |
-| **Full Validation** | `npm run validate` | Runs format check, lint, typecheck, tests, and build |
+| Purpose                 | Command                  | Notes                                                           |
+| :---------------------- | :----------------------- | :-------------------------------------------------------------- |
+| **Development**         | `npm run dev`            | Starts Vite dev server                                          |
+| **Type Check**          | `npm run typecheck`      | Runs `tsc --noEmit` (fastest TypeScript check)                  |
+| **Lint**                | `npm run lint`           | Runs `eslint .`                                                 |
+| **Lint Auto-Fix**       | `npm run lint:fix`       | Runs `eslint . --fix`                                           |
+| **Format Check**        | `npm run format:check`   | Runs `prettier --check .`                                       |
+| **Format Fix**          | `npm run format`         | Runs `prettier --write .` (do not run repo-wide on small edits) |
+| **Unit/Component Test** | `npm run test`           | Runs `vitest run` once                                          |
+| **Targeted Test**       | `npm run test -- <path>` | e.g. `npm run test -- src/domain/selectors.test.ts`             |
+| **Production Build**    | `npm run build`          | Runs `tsc -b && vite build`                                     |
+| **Full Validation**     | `npm run validate`       | Runs format check, lint, typecheck, tests, and build            |
 
 > [!WARNING]
 > Never run `npm run test:watch` or interactive `vitest` in automated workflows; it will hang indefinitely waiting for input.
@@ -113,6 +113,7 @@ Match validation strictly to the scope and risk of the change.
 ## 5. Domain Invariants Checklist
 
 Before completing any task:
+
 - [ ] Explicit distinction preserved between Outputs (`OUT:MV-XX-YY`), MV Inputs / Router Destinations (`DEST:MV-XX-YY`), and PIPs (`PIP-##`).
 - [ ] Multiview baseline preserved: 5 frames, 32 outputs, 264 destinations.
 - [ ] Unassigned sources remain `null` (zero fabrication).

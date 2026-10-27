@@ -19,7 +19,11 @@ import {
   TRACKER_SCHEMA_VERSION,
   CURRENT_SOURCE_SEED_VERSION,
 } from './storage';
-import { LayoutDefinition, setCustomLayoutRegistry, getLayoutDefinition } from '../domain/layoutDefinitions';
+import {
+  LayoutDefinition,
+  setCustomLayoutRegistry,
+  getLayoutDefinition,
+} from '../domain/layoutDefinitions';
 import { normalizeOutputPipAssignments } from '../domain/pipRouting';
 
 /**

@@ -1,19 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  MultiviewOutput,
-  TrackerSnapshot,
-  Destination,
-  Source,
-} from '../domain/models';
+import { describe, it, expect } from 'vitest';
+import { MultiviewOutput, TrackerSnapshot, Destination, Source } from '../domain/models';
 import {
   createOutputId,
   createDestinationId,
   createPipId,
-  parsePipNumber,
   formatInputDisplay,
   formatOutputLabel,
   formatPipDisplay,
-  PipId,
 } from '../domain/identifiers';
 import {
   LAYOUT_36_BOX,
@@ -33,8 +26,7 @@ import {
   getPipDisplayData,
 } from '../domain/pipRouting';
 import { diffSnapshots } from '../domain/diff';
-import { validateSnapshot } from '../domain/validation';
-import { MemoryTrackerStorage, TRACKER_SCHEMA_VERSION, CURRENT_SOURCE_SEED_VERSION } from '../services/storage';
+import { MemoryTrackerStorage } from '../services/storage';
 import { LocalTrackerRepository } from '../services/LocalTrackerRepository';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
 
@@ -181,12 +173,15 @@ describe('PIP Routing Domain Model & Lifecycle', () => {
 
   // Requirement 9: Unassigned PIPs remain null
   it('9. ensures unassigned PIPs remain explicitly null without synthetic placeholders', () => {
-    const normalized = normalizeOutputPipAssignments({
-      ...baseOutput,
-      pipAssignments: {
-        'PIP-01': 'DEST:MV-01-01',
+    const normalized = normalizeOutputPipAssignments(
+      {
+        ...baseOutput,
+        pipAssignments: {
+          'PIP-01': 'DEST:MV-01-01',
+        },
       },
-    }, LAYOUT_4_BOX);
+      LAYOUT_4_BOX
+    );
 
     expect(normalized['PIP-01']).toBe('DEST:MV-01-01');
     expect(normalized['PIP-02']).toBeNull();

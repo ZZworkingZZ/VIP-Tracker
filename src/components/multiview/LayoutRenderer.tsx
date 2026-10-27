@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { LayoutDefinition, LayoutWindowDefinition, getWindowPipId } from '../../domain/layoutDefinitions';
+import {
+  LayoutDefinition,
+  LayoutWindowDefinition,
+  getWindowPipId,
+} from '../../domain/layoutDefinitions';
 import { SourceCategory, getSourceCategoryColor } from '../../domain/sourceCategories';
 import { PipId, DestinationId } from '../../domain/identifiers';
 
@@ -74,7 +78,8 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
     >
       {layout.windows.map((win, idx) => {
         const pipId = getWindowPipId(win, idx);
-        const winData = dataByPipOrOffset.get(pipId) ?? dataByPipOrOffset.get(String(win.destinationOffset));
+        const winData =
+          dataByPipOrOffset.get(pipId) ?? dataByPipOrOffset.get(String(win.destinationOffset));
         const hasInput = Boolean(winData?.destinationId || winData?.destinationNumber);
         const hasSource = Boolean(winData?.sourceName);
         const categoryColor = winData?.sourceCategory
@@ -84,7 +89,9 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
         const isDragOver = dragOverPipId === pipId;
 
         // Display labels
-        const inputLabel = winData?.destinationLabel || (winData?.destinationId ? winData.destinationId.replace(/^DEST:/, '') + ' Input' : null);
+        const inputLabel =
+          winData?.destinationLabel ||
+          (winData?.destinationId ? winData.destinationId.replace(/^DEST:/, '') + ' Input' : null);
 
         return (
           <div
@@ -143,15 +150,15 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               border: isDragOver
                 ? '2px solid #38bdf8'
                 : isHighlighted
-                ? '2px solid #f59e0b'
-                : '1px solid #363636',
+                  ? '2px solid #f59e0b'
+                  : '1px solid #363636',
               backgroundColor: isDragOver
                 ? 'rgba(56, 189, 248, 0.15)'
                 : hasSource
-                ? '#131313'
-                : hasInput
-                ? '#0d0d0d'
-                : '#060606',
+                  ? '#131313'
+                  : hasInput
+                    ? '#0d0d0d'
+                    : '#060606',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -345,7 +352,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                         textOverflow: 'ellipsis',
                       }}
                     >
-                      {hasInput ? (inputLabel || 'MV Input') : 'No MV Input assigned'}
+                      {hasInput ? inputLabel || 'MV Input' : 'No MV Input assigned'}
                     </span>
                   </div>
 

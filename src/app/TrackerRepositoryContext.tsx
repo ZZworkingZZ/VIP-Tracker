@@ -2,11 +2,18 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
 import { defaultRepository } from '../services/LocalTrackerRepository';
 import { TrackerSnapshot, MultiviewOutput, Source } from '../domain/models';
-import { MultiviewId, SourceId, OutputId, DestinationId, PipId, createAssignmentId } from '../domain/identifiers';
+import {
+  MultiviewId,
+  SourceId,
+  OutputId,
+  DestinationId,
+  PipId,
+  createAssignmentId,
+} from '../domain/identifiers';
 import { TrackerRepositoryContext } from './context';
 import { diffSnapshots, createChangeSet } from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
-import { assignPipInput, clearPipInput, movePipInput } from '../domain/pipRouting';
+import { assignPipInput, movePipInput } from '../domain/pipRouting';
 import { getLayoutDefinition } from '../domain/layoutDefinitions';
 
 export interface TrackerRepositoryProviderProps {

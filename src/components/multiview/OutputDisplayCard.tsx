@@ -1,7 +1,7 @@
 import React from 'react';
 import { MultiviewOutput, Destination, Source } from '../../domain/models';
 import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
-import { LayoutRenderer, LayoutWindowData } from './LayoutRenderer';
+import { LayoutRenderer } from './LayoutRenderer';
 import { formatOutputDisplay, formatInputDisplay } from '../../domain/identifiers';
 import { normalizeOutputPipAssignments } from '../../domain/pipRouting';
 

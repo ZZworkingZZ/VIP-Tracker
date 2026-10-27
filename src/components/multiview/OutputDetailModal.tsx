@@ -4,7 +4,6 @@ import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitio
 import { LayoutRenderer, LayoutWindowData } from './LayoutRenderer';
 import {
   formatOutputDisplay,
-  formatDestinationDisplay,
   formatInputDisplay,
   formatOutputLabel,
   PipId,
@@ -43,13 +42,16 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     clearDraftPipInput,
     moveDraftPipInput,
     updateDraftDestination,
+    updateDraftDestinationsBatch,
     addDraftSource,
     customLayouts,
   } = useTrackerSnapshot();
 
   const [isLayoutSelectorOpen, setIsLayoutSelectorOpen] = useState(false);
   const [selectedPipId, setSelectedPipId] = useState<PipId | null>(null);
-  const [inputPaletteFilter, setInputPaletteFilter] = useState<'ALL' | 'AVAILABLE' | 'ASSIGNED'>('ALL');
+  const [inputPaletteFilter, setInputPaletteFilter] = useState<'ALL' | 'AVAILABLE' | 'ASSIGNED'>(
+    'ALL'
+  );
   const [inputSearchQuery, setInputSearchQuery] = useState<string>('');
 
   const [routingWindow, setRoutingWindow] = useState<{
@@ -70,24 +72,34 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, isLayoutSelectorOpen, routingWindow]);
 
-  if (!initialOutput) {
-    return null;
-  }
+  const output = useMemo(() => {
+    if (!initialOutput) return null;
+    return activeSnapshot?.outputs.find((o) => o.id === initialOutput.id) ?? initialOutput;
+  }, [activeSnapshot?.outputs, initialOutput]);
 
-  // Use live activeSnapshot version of this output if in edit mode
-  const output = activeSnapshot?.outputs.find((o) => o.id === initialOutput.id) ?? initialOutput;
-  const destinations = activeSnapshot?.destinations ?? propDestinations ?? [];
-  const sources = activeSnapshot?.sources ?? propSources ?? [];
-  const allOutputs = activeSnapshot?.outputs ?? propAllOutputs ?? [];
+  const destinations = useMemo(
+    () => activeSnapshot?.destinations ?? propDestinations ?? [],
+    [activeSnapshot?.destinations, propDestinations]
+  );
+  const sources = useMemo(
+    () => activeSnapshot?.sources ?? propSources ?? [],
+    [activeSnapshot?.sources, propSources]
+  );
+  const allOutputs = useMemo(
+    () => activeSnapshot?.outputs ?? propAllOutputs ?? [],
+    [activeSnapshot?.outputs, propAllOutputs]
+  );
 
-  const layout = getLayoutDefinition(output.layoutName, customLayouts);
-  const isAvailable = output.status === 'Available' || !output.layoutName;
-  const outputLabel = formatOutputDisplay(output.id);
-  const operatorOutputTitle = formatOutputLabel(output.id);
+  const layout = useMemo(
+    () => (output ? getLayoutDefinition(output.layoutName, customLayouts) : null),
+    [output, customLayouts]
+  );
+  const isAvailable = !output || output.status === 'Available' || !output.layoutName;
+  const operatorOutputTitle = output ? formatOutputLabel(output.id) : '';
 
   const pips = useMemo(() => (layout ? getLayoutPips(layout) : []), [layout]);
   const pipAssignments = useMemo(
-    () => output.pipAssignments || normalizeOutputPipAssignments(output, layout),
+    () => (output ? output.pipAssignments || normalizeOutputPipAssignments(output, layout) : {}),
     [output, layout]
   );
 
@@ -118,10 +130,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   // Available frame inputs for this multiview
   const frameInputs = useMemo(() => {
+    if (!output) return [];
     return destinations
       .filter((d) => d.multiviewId === output.multiviewId)
       .sort((a, b) => a.destinationNumber - b.destinationNumber);
-  }, [destinations, output.multiviewId]);
+  }, [destinations, output]);
 
   // Map each destinationId to the PIP on this output it is assigned to, if any
   const destToPipMap = useMemo(() => {
@@ -157,9 +170,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       if (query) {
         const destLabel = formatInputDisplay(dest.id).toLowerCase();
         const sourceName = dest.assignedSourceId
-          ? sourceMap.get(dest.assignedSourceId)?.name.toLowerCase() ?? ''
+          ? (sourceMap.get(dest.assignedSourceId)?.name.toLowerCase() ?? '')
           : '';
-        if (!destLabel.includes(query) && !sourceName.includes(query) && !String(dest.destinationNumber).includes(query)) {
+        if (
+          !destLabel.includes(query) &&
+          !sourceName.includes(query) &&
+          !String(dest.destinationNumber).includes(query)
+        ) {
           return false;
         }
       }
@@ -167,6 +184,10 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       return true;
     });
   }, [frameInputs, destToPipMap, inputPaletteFilter, inputSearchQuery, sourceMap]);
+
+  if (!output || !initialOutput) {
+    return null;
+  }
 
   // Find previous/next outputs within same multiview
   const siblingOutputs = allOutputs.filter((o) => o.multiviewId === output.multiviewId);
@@ -190,7 +211,9 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     if (!newDef) return;
 
     if (newDef.windowCount > inputCapacity) {
-      alert(`Selected layout (${newDef.windowCount} windows) exceeds frame capacity of ${inputCapacity} inputs.`);
+      alert(
+        `Selected layout (${newDef.windowCount} windows) exceeds frame capacity of ${inputCapacity} inputs.`
+      );
       return;
     }
 
@@ -203,10 +226,41 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   // Handle Releasing Output to AVAILABLE
   const handleReleaseToAvailable = () => {
-    const confirmRelease = window.confirm(
-      `Release output ${operatorOutputTitle} to AVAILABLE?\nThis will clear the assigned layout and PIP mappings on this output.`
-    );
-    if (!confirmRelease) return;
+    const routedWindows = windowsData.filter((w) => w.sourceName !== null);
+
+    if (routedWindows.length > 0) {
+      const confirmRelease = window.confirm(
+        `Release output ${operatorOutputTitle} to AVAILABLE?\n\nNotice: This output currently covers ${routedWindows.length} routed destination feed${
+          routedWindows.length === 1 ? '' : 's'
+        }. Destination routes will be preserved unless explicitly cleared.`
+      );
+      if (!confirmRelease) return;
+
+      const clearRoutes = window.confirm(
+        `Do you also want to clear (unroute) the ${routedWindows.length} destination source assignment${
+          routedWindows.length === 1 ? '' : 's'
+        }?\n\n• Click OK to unroute all sources.\n• Click Cancel to PRESERVE source routing on these destinations.`
+      );
+
+      if (clearRoutes) {
+        const batchUpdates = routedWindows
+          .filter(
+            (w): w is typeof w & { destinationNumber: number } =>
+              typeof w.destinationNumber === 'number'
+          )
+          .map((w) => ({
+            multiviewId: output.multiviewId,
+            destinationNumber: w.destinationNumber,
+            sourceId: null,
+          }));
+        updateDraftDestinationsBatch(batchUpdates);
+      }
+    } else {
+      const confirmRelease = window.confirm(
+        `Release output ${operatorOutputTitle} to AVAILABLE?\nThis will clear the assigned layout and PIP mappings on this output.`
+      );
+      if (!confirmRelease) return;
+    }
 
     updateDraftOutput({
       ...output,
@@ -300,7 +354,9 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     borderRadius: '2px',
                     fontSize: '10px',
                     fontWeight: 700,
-                    backgroundColor: hasUnsavedChanges ? 'rgba(245, 158, 11, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                    backgroundColor: hasUnsavedChanges
+                      ? 'rgba(245, 158, 11, 0.2)'
+                      : 'rgba(56, 189, 248, 0.2)',
                     color: hasUnsavedChanges ? '#f59e0b' : '#38bdf8',
                     border: hasUnsavedChanges ? '1px solid #f59e0b' : '1px solid #38bdf8',
                   }}
@@ -438,7 +494,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  MV Output Identifier
+                  Output Identity (Hardware)
                 </div>
                 <div
                   style={{
@@ -465,7 +521,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Selected Layout & PIPs
+                  Layout Assignment
                 </div>
                 <div
                   style={{
@@ -549,7 +605,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  Production / Show
+                  Production Assignment
                 </div>
                 {isEditMode ? (
                   <div style={{ marginTop: '2px' }}>
@@ -702,7 +758,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: layout ? (isEditMode ? 'minmax(0, 1.8fr) minmax(300px, 1.2fr)' : '1fr') : '1fr',
+                gridTemplateColumns: layout
+                  ? isEditMode
+                    ? 'minmax(0, 1.8fr) minmax(300px, 1.2fr)'
+                    : '1fr'
+                  : '1fr',
                 gap: '16px',
                 marginBottom: '18px',
               }}
@@ -718,10 +778,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   }}
                 >
                   <h3 style={{ fontSize: '12px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-                    Visual Multiview Output Display ({operatorOutputTitle})
+                    Visual Multiview Output Display
                   </h3>
                   <span style={{ fontSize: '11px', color: '#858585' }}>
-                    {isEditMode ? 'Drag MV Input to PIP, drag PIP to PIP to move' : 'Aspect Ratio 16:9 Broadcast Monitor'}
+                    {operatorOutputTitle} •{' '}
+                    {isEditMode
+                      ? 'Drag MV Input to PIP, drag PIP to PIP to move'
+                      : 'Aspect Ratio 16:9 Broadcast Monitor'}
                   </span>
                 </div>
 
@@ -815,7 +878,14 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   }}
                   data-testid="mv-inputs-palette"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px',
+                    }}
+                  >
                     <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#f8fafc' }}>
                       Available MV Inputs ({output.multiviewId})
                     </h4>
@@ -868,15 +938,32 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   </div>
 
                   {/* Input items list */}
-                  <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div
+                    style={{
+                      overflowY: 'auto',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    }}
+                  >
                     {filteredPaletteInputs.length === 0 ? (
-                      <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '11px' }}>
+                      <div
+                        style={{
+                          padding: '16px',
+                          textAlign: 'center',
+                          color: '#64748b',
+                          fontSize: '11px',
+                        }}
+                      >
                         No MV Inputs match filter
                       </div>
                     ) : (
                       filteredPaletteInputs.map((dest) => {
                         const assignedPip = destToPipMap.get(dest.id);
-                        const source = dest.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+                        const source = dest.assignedSourceId
+                          ? sourceMap.get(dest.assignedSourceId)
+                          : null;
                         const isSelectedForTarget = selectedPipId !== null;
 
                         return (
@@ -899,9 +986,18 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                               cursor: 'grab',
                             }}
                           >
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                minWidth: 0,
+                                flex: 1,
+                              }}
+                            >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}>
+                                <span
+                                  style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}
+                                >
                                   {formatInputDisplay(dest.id)}
                                 </span>
                                 {assignedPip ? (
@@ -973,7 +1069,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                   value=""
                                   onChange={(e) => {
                                     if (e.target.value) {
-                                      assignDraftPipInput(output.id, e.target.value as PipId, dest.id);
+                                      assignDraftPipInput(
+                                        output.id,
+                                        e.target.value as PipId,
+                                        dest.id
+                                      );
                                     }
                                   }}
                                   style={{
@@ -1022,7 +1122,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                       margin: 0,
                     }}
                   >
-                    Layout PIPs & Assigned MV Inputs ({windowsData.length})
+                    Covered Destinations & Routed Sources ({windowsData.length})
                   </h3>
                   {isEditMode && (
                     <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 600 }}>
@@ -1044,20 +1144,56 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   >
                     <thead>
                       <tr style={{ backgroundColor: '#242424', borderBottom: '1px solid #383838' }}>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                        <th
+                          style={{
+                            padding: '6px 10px',
+                            textAlign: 'left',
+                            color: '#b8b8b8',
+                            fontWeight: 700,
+                          }}
+                        >
                           PIP ID
                         </th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                        <th
+                          style={{
+                            padding: '6px 10px',
+                            textAlign: 'left',
+                            color: '#b8b8b8',
+                            fontWeight: 700,
+                          }}
+                        >
                           Assigned MV Input
                         </th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                        <th
+                          style={{
+                            padding: '6px 10px',
+                            textAlign: 'left',
+                            color: '#b8b8b8',
+                            fontWeight: 700,
+                          }}
+                        >
                           Routed Source
                         </th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', color: '#b8b8b8', fontWeight: 700 }}>
+                        <th
+                          style={{
+                            padding: '6px 10px',
+                            textAlign: 'left',
+                            color: '#b8b8b8',
+                            fontWeight: 700,
+                          }}
+                        >
                           Category
                         </th>
                         {isEditMode && (
-                          <th style={{ padding: '6px 10px', textAlign: 'center', color: '#b8b8b8', fontWeight: 700, width: '220px' }}>
+                          <th
+                            style={{
+                              padding: '6px 10px',
+                              textAlign: 'center',
+                              color: '#b8b8b8',
+                              fontWeight: 700,
+                              width: '220px',
+                            }}
+                          >
                             Assignment & Routing Actions
                           </th>
                         )}
@@ -1065,7 +1201,8 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     </thead>
                     <tbody>
                       {windowsData.map((win, idx) => {
-                        const pipId = (win.pipId ?? `PIP-${String(idx + 1).padStart(2, '0')}`) as PipId;
+                        const pipId = (win.pipId ??
+                          `PIP-${String(idx + 1).padStart(2, '0')}`) as PipId;
                         const hasInput = Boolean(win.destinationId);
 
                         return (
@@ -1090,7 +1227,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                 {pipId}
                               </span>
                             </td>
-                            <td style={{ padding: '6px 10px', fontWeight: 700, color: hasInput ? '#60a5fa' : '#64748b' }}>
+                            <td
+                              style={{
+                                padding: '6px 10px',
+                                fontWeight: 700,
+                                color: hasInput ? '#60a5fa' : '#64748b',
+                              }}
+                            >
                               {win.destinationLabel || 'No MV Input assigned'}
                             </td>
                             <td
@@ -1136,7 +1279,9 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                   <select
                                     value={win.destinationId || ''}
                                     onChange={(e) => {
-                                      const nextDestId = e.target.value ? (e.target.value as DestinationId) : null;
+                                      const nextDestId = e.target.value
+                                        ? (e.target.value as DestinationId)
+                                        : null;
                                       assignDraftPipInput(output.id, pipId, nextDestId);
                                     }}
                                     style={{
@@ -1189,7 +1334,8 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                           destinationNumber: win.destinationNumber!,
                                           destinationId: win.destinationId ?? undefined,
                                           currentSourceId:
-                                            destinations.find((d) => d.id === win.destinationId)?.assignedSourceId ?? null,
+                                            destinations.find((d) => d.id === win.destinationId)
+                                              ?.assignedSourceId ?? null,
                                         });
                                       }}
                                       data-testid={`route-btn-${win.destinationOffset}`}
