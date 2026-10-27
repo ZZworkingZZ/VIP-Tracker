@@ -877,4 +877,113 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(screen.getByTestId('source-option-SRC:VTIE-101')).toBeInTheDocument();
     });
   });
+
+  describe('Production Assignment Input Natural Space Typing UX', () => {
+    it('allows typing "BR BIG BOARD" character-by-character preserving spaces during typing', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
+
+      // Open OUT:MV-02-01 detail modal
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
+      const prodInput = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+
+      // Simulate sequential character-by-character typing:
+      // "B", "BR", "BR ", "BR B", "BR BI", "BR BIG", "BR BIG ", "BR BIG B", ... "BR BIG BOARD"
+      const keystrokes = [
+        'B',
+        'BR',
+        'BR ',
+        'BR B',
+        'BR BI',
+        'BR BIG',
+        'BR BIG ',
+        'BR BIG B',
+        'BR BIG BO',
+        'BR BIG BOA',
+        'BR BIG BOAR',
+        'BR BIG BOARD',
+      ];
+
+      for (const stroke of keystrokes) {
+        fireEvent.change(prodInput, { target: { value: stroke } });
+        expect(prodInput.value).toBe(stroke);
+      }
+
+      // Spaces remain visible while typing
+      expect(prodInput.value).toBe('BR BIG BOARD');
+
+      // On blur, value is preserved with trimmed leading/trailing spaces
+      fireEvent.blur(prodInput);
+      expect(prodInput.value).toBe('BR BIG BOARD');
+    });
+
+    it('trims leading/trailing whitespace on commit (onBlur) while preserving internal spaces', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
+
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
+      const prodInput = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+
+      // Type with leading and trailing spaces
+      fireEvent.change(prodInput, { target: { value: '  TEST PRODUCTION A  ' } });
+      // While typing (before blur), input preserves literal characters
+      expect(prodInput.value).toBe('  TEST PRODUCTION A  ');
+
+      // Blur commits the trimmed value
+      fireEvent.blur(prodInput);
+      expect(prodInput.value).toBe('TEST PRODUCTION A');
+
+      // Close modal and reopen to verify draft was updated
+      fireEvent.click(screen.getByLabelText('Close detail modal'));
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
+
+      const reopenedInput = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+      expect(reopenedInput.value).toBe('TEST PRODUCTION A');
+    });
+
+    it('allows multiple outputs to share the same committed multi-word assignment', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
+
+      // Output 1 -> 'BR BIG BOARD'
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
+      const prodInput1 = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+      fireEvent.change(prodInput1, { target: { value: 'BR BIG BOARD' } });
+      fireEvent.blur(prodInput1);
+      fireEvent.click(screen.getByLabelText('Close detail modal'));
+
+      // Output 2 -> 'BR BIG BOARD'
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-02'));
+      const prodInput2 = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+      fireEvent.change(prodInput2, { target: { value: 'BR BIG BOARD' } });
+      fireEvent.blur(prodInput2);
+      fireEvent.click(screen.getByLabelText('Close detail modal'));
+
+      // Review changes modal verifies both outputs share 'BR BIG BOARD'
+      fireEvent.click(screen.getByTestId('review-save-btn'));
+      expect(await screen.findByTestId('review-changes-modal')).toBeInTheDocument();
+      // Both modified outputs have 'BR BIG BOARD' in review modal
+      const matches = screen.getAllByText('BR BIG BOARD');
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+  });
 });

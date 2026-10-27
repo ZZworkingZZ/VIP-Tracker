@@ -57,6 +57,8 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   );
   const [inputSearchQuery, setInputSearchQuery] = useState<string>('');
 
+  const [assignmentInputText, setAssignmentInputText] = useState<string>('');
+
   const [routingWindow, setRoutingWindow] = useState<{
     windowIndex: number;
     destinationNumber: number;
@@ -79,6 +81,11 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     if (!initialOutput) return null;
     return activeSnapshot?.outputs.find((o) => o.id === initialOutput.id) ?? initialOutput;
   }, [activeSnapshot?.outputs, initialOutput]);
+
+  // Synchronize local input text whenever the viewed output changes
+  useEffect(() => {
+    setAssignmentInputText(output?.assignmentName ?? '');
+  }, [output?.id, output?.assignmentName]);
 
   // Persisted canonical output (guarantees Last Changed reflects saved state, not draft)
   const canonicalOutput = useMemo(() => {
@@ -631,14 +638,25 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     <input
                       type="text"
                       list="production-options"
-                      value={output.assignmentName ?? ''}
+                      value={assignmentInputText}
                       placeholder="e.g. CHOPPED, BR ALERT 1"
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAssignmentInputText(val);
+                        // Update draft without stripping trailing or internal spaces during typing
                         updateDraftOutput({
                           ...output,
-                          assignmentName: e.target.value.trim() || null,
-                        })
-                      }
+                          assignmentName: val.length > 0 ? val : null,
+                        });
+                      }}
+                      onBlur={() => {
+                        const trimmed = assignmentInputText.trim();
+                        setAssignmentInputText(trimmed);
+                        updateDraftOutput({
+                          ...output,
+                          assignmentName: trimmed.length > 0 ? trimmed : null,
+                        });
+                      }}
                       data-testid="production-assignment-input"
                       style={{
                         width: '100%',
