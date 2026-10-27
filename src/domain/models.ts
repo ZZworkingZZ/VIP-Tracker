@@ -53,6 +53,7 @@ export interface MultiviewOutput {
   locked: boolean;
   updatedAt: string | null;
   updatedBy: string | null;
+  operatorId?: string | null;
   pipAssignments?: Record<PipId, DestinationId | null>;
 }
 
@@ -65,6 +66,7 @@ export interface Destination {
   locked: boolean;
   updatedAt: string | null;
   updatedBy: string | null;
+  operatorId?: string | null;
 }
 
 export type SourceType = 'originating' | 'processing' | 'virtual';
@@ -96,6 +98,8 @@ export interface ChangeRecord {
   reason: string | null;
   changedBy: string | null;
   changedAt: string | null;
+  operatorId?: string | null;
+  operatorName?: string | null;
 }
 
 export interface FieldChange {

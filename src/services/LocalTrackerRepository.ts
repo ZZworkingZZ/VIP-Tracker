@@ -10,6 +10,7 @@ import {
   TrackerSnapshot,
   ChangeSet,
 } from '../domain/models';
+import { Operator } from '../domain/operator';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
 import { validateSnapshot } from '../domain/validation';
 import { changeSetToChangeRecords } from '../domain/diff';
@@ -152,13 +153,56 @@ export class LocalTrackerRepository implements TrackerRepository {
 
   async saveSnapshot(
     updatedSnapshot: TrackerSnapshot,
-    changeSet?: ChangeSet
+    changeSet?: ChangeSet,
+    operator?: Operator | null
   ): Promise<TrackerSnapshot> {
     const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(updatedSnapshot));
 
     if (changeSet && changeSet.changes.length > 0) {
-      const newRecords = changeSetToChangeRecords(changeSet);
+      const newRecords = changeSetToChangeRecords(changeSet, operator);
       cloned.changeRecords = [...(cloned.changeRecords ?? []), ...newRecords];
+
+      // Update attribution metadata for entities affected by this save
+      if (operator) {
+        const affectedOutputIds = new Set<string>();
+        const affectedDestinationIds = new Set<string>();
+
+        for (const change of changeSet.changes) {
+          if (change.entityType === 'output') {
+            affectedOutputIds.add(change.entityId);
+          } else if (change.entityType === 'destination') {
+            affectedDestinationIds.add(change.entityId);
+          }
+        }
+
+        if (affectedOutputIds.size > 0) {
+          cloned.outputs = cloned.outputs.map((out) => {
+            if (affectedOutputIds.has(out.id)) {
+              return {
+                ...out,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return out;
+          });
+        }
+
+        if (affectedDestinationIds.size > 0) {
+          cloned.destinations = cloned.destinations.map((dest) => {
+            if (affectedDestinationIds.has(dest.id)) {
+              return {
+                ...dest,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return dest;
+          });
+        }
+      }
     }
 
     // Re-run pure domain validation

@@ -14,6 +14,7 @@ import { LayoutSelectorModal } from './LayoutSelectorModal';
 import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
 import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
 import { normalizeOutputPipAssignments, handleOutputLayoutChange } from '../../domain/pipRouting';
+import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
@@ -33,6 +34,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   onSelectOutput,
 }) => {
   const {
+    snapshot,
     activeSnapshot,
     isEditMode,
     hasUnsavedChanges,
@@ -76,6 +78,17 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     if (!initialOutput) return null;
     return activeSnapshot?.outputs.find((o) => o.id === initialOutput.id) ?? initialOutput;
   }, [activeSnapshot?.outputs, initialOutput]);
+
+  // Persisted canonical output (guarantees Last Changed reflects saved state, not draft)
+  const canonicalOutput = useMemo(() => {
+    if (!initialOutput) return null;
+    return snapshot?.outputs.find((o) => o.id === initialOutput.id) ?? output;
+  }, [snapshot?.outputs, initialOutput, output]);
+
+  const lastChanged = useMemo(() => {
+    if (!canonicalOutput) return null;
+    return selectOutputLastChanged(canonicalOutput, snapshot?.changeRecords);
+  }, [canonicalOutput, snapshot?.changeRecords]);
 
   const destinations = useMemo(
     () => activeSnapshot?.destinations ?? propDestinations ?? [],
@@ -270,7 +283,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       destinationEnd: null,
       status: 'Available',
       assignmentName: null,
-      updatedAt: new Date().toISOString(),
     });
   };
 
@@ -650,6 +662,36 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     {output.assignmentName || 'None'}
                   </div>
                 )}
+              </div>
+
+              {/* Last Changed Attribution */}
+              <div data-testid="output-last-changed-section">
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#858585',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                  }}
+                >
+                  Last Changed
+                </div>
+                <div
+                  data-testid="output-last-changed"
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: lastChanged ? '#38bdf8' : '#858585',
+                    marginTop: '2px',
+                  }}
+                >
+                  {lastChanged ? formatLastChanged(lastChanged) : 'Not recorded'}
+                </div>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>
+                  {lastChanged?.operatorId
+                    ? `Operator ID: ${lastChanged.operatorId}`
+                    : 'Persisted change record'}
+                </span>
               </div>
             </div>
 

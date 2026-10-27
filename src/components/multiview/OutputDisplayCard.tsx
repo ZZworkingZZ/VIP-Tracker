@@ -4,6 +4,7 @@ import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitio
 import { LayoutRenderer } from './LayoutRenderer';
 import { formatOutputDisplay, formatInputDisplay } from '../../domain/identifiers';
 import { normalizeOutputPipAssignments } from '../../domain/pipRouting';
+import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
 
 export interface OutputDisplayCardProps {
   readonly output: MultiviewOutput;
@@ -22,6 +23,11 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
 }) => {
   const isAvailable = output.status === 'Available' || !output.layoutName;
   const layout = React.useMemo(() => getLayoutDefinition(output.layoutName), [output.layoutName]);
+
+  const lastChangedText = React.useMemo(() => {
+    const attr = selectOutputLastChanged(output);
+    return attr ? formatLastChanged(attr) : null;
+  }, [output]);
 
   // Compute window data from output.pipAssignments (falling back to legacy destination range if unpopulated)
   const windowsData = React.useMemo(() => {
@@ -110,7 +116,17 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
 
         <div className="ev-card-footer">
           <span className="ev-card-assignment unassigned">Available</span>
-          <span className="ev-card-output-num">Out {output.outputNumber}</span>
+          {lastChangedText ? (
+            <span
+              className="ev-card-last-changed"
+              data-testid={`output-card-last-changed-${output.id}`}
+              title={`Last Changed: ${lastChangedText}`}
+            >
+              {lastChangedText}
+            </span>
+          ) : (
+            <span className="ev-card-output-num">Out {output.outputNumber}</span>
+          )}
         </div>
       </article>
     );
@@ -168,11 +184,20 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
         )}
       </div>
 
-      {/* Bottom Footer: Assignment Name */}
+      {/* Bottom Footer: Assignment Name & Last Changed */}
       <div className="ev-card-footer">
         <span className="ev-card-assignment" title={output.assignmentName || 'Unassigned'}>
           {output.assignmentName || 'Unassigned'}
         </span>
+        {lastChangedText && (
+          <span
+            className="ev-card-last-changed"
+            data-testid={`output-card-last-changed-${output.id}`}
+            title={`Last Changed: ${lastChangedText}`}
+          >
+            {lastChangedText}
+          </span>
+        )}
       </div>
     </article>
   );

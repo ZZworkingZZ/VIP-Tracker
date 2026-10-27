@@ -17,3 +17,27 @@ export function useTrackerSnapshot(): TrackerRepositoryContextValue {
   }
   return context;
 }
+
+export function useOperator() {
+  const {
+    currentOperator,
+    recentOperators,
+    setOperator,
+    setOperatorByName,
+    clearOperator,
+    isOperatorModalOpen,
+    openOperatorModal,
+    closeOperatorModal,
+  } = useTrackerSnapshot();
+
+  return {
+    currentOperator,
+    recentOperators,
+    setOperator,
+    setOperatorByName,
+    clearOperator,
+    isOperatorModalOpen,
+    openOperatorModal,
+    closeOperatorModal,
+  };
+}

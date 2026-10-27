@@ -8,7 +8,8 @@ export interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOpen = true }) => {
-  const { isEditMode, hasUnsavedChanges } = useTrackerSnapshot();
+  const { isEditMode, hasUnsavedChanges, currentOperator, openOperatorModal } =
+    useTrackerSnapshot();
 
   let modeText = 'ACTIVE';
   let modeClass = 'ev-status-pill ev-pill-mode active-mode';
@@ -66,11 +67,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
           <span className="pill-text">{modeText}</span>
         </span>
 
-        <div className="ev-user-badge" title="Role: Technical Operations / Broadcast Engineering">
+        <div
+          className="ev-user-badge ev-operator-badge"
+          data-testid="current-operator-badge"
+          title={
+            currentOperator
+              ? `Current Operator: ${currentOperator.displayName} (${currentOperator.id})`
+              : 'Trust-based Operator Identity'
+          }
+        >
           <span className="user-icon" aria-hidden="true">
             👤
           </span>
-          <span className="user-name">TECH OPS</span>
+          <span className="user-name" data-testid="current-operator-name">
+            {currentOperator ? currentOperator.displayName : 'TECH OPS'}
+          </span>
+          <button
+            type="button"
+            className="ev-switch-user-btn"
+            data-testid="switch-user-btn"
+            onClick={openOperatorModal}
+            title="Switch operator"
+          >
+            Switch User
+          </button>
         </div>
       </div>
     </header>

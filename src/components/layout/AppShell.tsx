@@ -3,11 +3,21 @@ import { Outlet } from 'react-router-dom';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
 import { SettingsModal } from './SettingsModal';
+import { OperatorModal } from './OperatorModal';
 import { EditModeBanner } from '../multiview/EditModeBanner';
 import { useTrackerSnapshot } from '../../hooks/useTracker';
 
 export const AppShell: React.FC = () => {
-  const { isLoading, error } = useTrackerSnapshot();
+  const {
+    isLoading,
+    error,
+    currentOperator,
+    recentOperators,
+    setOperator,
+    setOperatorByName,
+    isOperatorModalOpen,
+    closeOperatorModal,
+  } = useTrackerSnapshot();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -36,6 +46,14 @@ export const AppShell: React.FC = () => {
         </main>
       </div>
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <OperatorModal
+        isOpen={isOperatorModalOpen}
+        currentOperator={currentOperator}
+        recentOperators={recentOperators}
+        onSelectOperator={setOperatorByName}
+        onSwitchToOperator={setOperator}
+        onClose={closeOperatorModal}
+      />
     </div>
   );
 };

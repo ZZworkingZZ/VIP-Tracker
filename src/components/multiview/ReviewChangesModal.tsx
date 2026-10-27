@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { FieldChange } from '../../domain/models';
+import { useTrackerSnapshot } from '../../hooks/useTracker';
 
 export interface ReviewChangesModalProps {
   readonly isOpen: boolean;
@@ -16,6 +17,8 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
   onSave,
   isSaving = false,
 }) => {
+  const { currentOperator } = useTrackerSnapshot();
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -231,50 +234,71 @@ export const ReviewChangesModal: React.FC<ReviewChangesModalProps> = ({
         <div
           style={{
             display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '10px',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             padding: '12px 16px',
             backgroundColor: '#202020',
             borderTop: '1px solid #333333',
           }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
+          <div
+            data-testid="review-attribution-indicator"
             style={{
-              padding: '6px 14px',
-              fontSize: '12px',
-              fontWeight: 600,
-              backgroundColor: '#303030',
-              color: '#cccccc',
-              border: '1px solid #484848',
-              borderRadius: '2px',
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: '#94a3b8',
             }}
           >
-            Cancel
-          </button>
+            <span aria-hidden="true">👤</span>
+            <span>
+              Attributed to:{' '}
+              <strong style={{ color: '#38bdf8' }}>
+                {currentOperator?.displayName || 'TECH OPS'}
+              </strong>
+            </span>
+          </div>
 
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving || changes.length === 0}
-            data-testid="confirm-save-btn"
-            style={{
-              padding: '6px 16px',
-              fontSize: '12px',
-              fontWeight: 700,
-              backgroundColor: '#2864a3',
-              color: '#ffffff',
-              border: '1px solid #38bdf8',
-              borderRadius: '2px',
-              cursor: changes.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: changes.length === 0 ? 0.6 : 1,
-            }}
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              style={{
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: '#303030',
+                color: '#cccccc',
+                border: '1px solid #484848',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isSaving || changes.length === 0}
+              data-testid="confirm-save-btn"
+              style={{
+                padding: '6px 16px',
+                fontSize: '12px',
+                fontWeight: 700,
+                backgroundColor: '#2864a3',
+                color: '#ffffff',
+                border: '1px solid #38bdf8',
+                borderRadius: '2px',
+                cursor: changes.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: changes.length === 0 ? 0.6 : 1,
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

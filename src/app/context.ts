@@ -48,6 +48,20 @@ export interface TrackerRepositoryContextValue {
   ) => Promise<void>;
   deleteCustomLayout: (layoutId: string) => Promise<void>;
   customLayouts: import('../domain/layoutDefinitions').LayoutDefinition[];
+  /** Current active operator for trust-based change attribution */
+  currentOperator: import('../domain/operator').Operator | null;
+  /** List of recent operators on this machine for fast switching */
+  recentOperators: import('../domain/operator').Operator[];
+  /** Explicitly set or switch the active operator */
+  setOperator: (operator: import('../domain/operator').Operator) => void;
+  /** Set or switch operator by display name (generates stable ID and persists) */
+  setOperatorByName: (displayName: string) => import('../domain/operator').Operator;
+  /** Clear active operator */
+  clearOperator: () => void;
+  /** Whether the operator selection modal is currently open */
+  isOperatorModalOpen: boolean;
+  openOperatorModal: () => void;
+  closeOperatorModal: () => void;
 }
 
 export const TrackerRepositoryContext = createContext<TrackerRepositoryContextValue | undefined>(

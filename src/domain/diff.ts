@@ -217,9 +217,13 @@ export function createChangeSet(baseline: TrackerSnapshot, draft: TrackerSnapsho
 
 /**
  * Transforms a ChangeSet into standard ChangeRecord instances for historical audit logging.
- * Maintains zero identity fabrication (changedBy is null).
+ * When an active operator is provided, records structured operator ID and display name.
+ * Maintains zero identity fabrication (null when no operator is provided).
  */
-export function changeSetToChangeRecords(changeSet: ChangeSet): ChangeRecord[] {
+export function changeSetToChangeRecords(
+  changeSet: ChangeSet,
+  operator?: { id: string; displayName: string } | null
+): ChangeRecord[] {
   return changeSet.changes.map((c, index) => ({
     id: `rec_${changeSet.id}_${index + 1}`,
     entityType: c.entityType,
@@ -228,7 +232,9 @@ export function changeSetToChangeRecords(changeSet: ChangeSet): ChangeRecord[] {
     previousValue: c.previousValue,
     newValue: c.newValue,
     reason: changeSet.summary,
-    changedBy: null,
+    changedBy: operator ? operator.displayName : null,
     changedAt: changeSet.timestamp,
+    operatorId: operator ? operator.id : null,
+    operatorName: operator ? operator.displayName : null,
   }));
 }

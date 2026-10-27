@@ -15,14 +15,18 @@ import { diffSnapshots, createChangeSet } from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
 import { assignPipInput, movePipInput } from '../domain/pipRouting';
 import { getLayoutDefinition } from '../domain/layoutDefinitions';
+import { Operator, createOperator } from '../domain/operator';
+import { OperatorStorage, defaultOperatorStorage } from '../services/operatorStorage';
 
 export interface TrackerRepositoryProviderProps {
   repository?: TrackerRepository;
+  operatorStorage?: OperatorStorage;
   children: React.ReactNode;
 }
 
 export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps> = ({
   repository = defaultRepository,
+  operatorStorage = defaultOperatorStorage,
   children,
 }) => {
   const [snapshot, setSnapshot] = useState<TrackerSnapshot | null>(null);
@@ -30,6 +34,53 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Trust-based Operator Identity State
+  const [currentOperator, setCurrentOperator] = useState<Operator | null>(() =>
+    operatorStorage.loadOperator()
+  );
+  const [recentOperators, setRecentOperators] = useState<Operator[]>(() =>
+    operatorStorage.loadRecentOperators()
+  );
+  const [isOperatorModalOpen, setIsOperatorModalOpen] = useState<boolean>(
+    () => !operatorStorage.loadOperator()
+  );
+
+  const setOperator = useCallback(
+    (op: Operator) => {
+      operatorStorage.saveOperator(op);
+      setCurrentOperator(op);
+      setRecentOperators(operatorStorage.loadRecentOperators());
+      setIsOperatorModalOpen(false);
+    },
+    [operatorStorage]
+  );
+
+  const setOperatorByName = useCallback(
+    (name: string) => {
+      const op = createOperator(name);
+      setOperator(op);
+      return op;
+    },
+    [setOperator]
+  );
+
+  const clearOperator = useCallback(() => {
+    operatorStorage.clearOperator();
+    setCurrentOperator(null);
+    setRecentOperators(operatorStorage.loadRecentOperators());
+  }, [operatorStorage]);
+
+  const openOperatorModal = useCallback(() => {
+    setIsOperatorModalOpen(true);
+  }, []);
+
+  const closeOperatorModal = useCallback(() => {
+    // Only allow closing if an operator has been chosen
+    if (currentOperator) {
+      setIsOperatorModalOpen(false);
+    }
+  }, [currentOperator]);
 
   const fetchSnapshot = useCallback(async () => {
     try {
@@ -348,7 +399,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     [snapshot]
   );
 
-  // Save all staged changes to repository
+  // Save all staged changes to repository with active operator attribution
   const saveDraftChanges = useCallback(async () => {
     if (!snapshot || !draftSnapshot) return;
 
@@ -357,7 +408,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setError(null);
 
       const changeSet = createChangeSet(snapshot, draftSnapshot);
-      const updated = await repository.saveSnapshot(draftSnapshot, changeSet);
+      const updated = await repository.saveSnapshot(draftSnapshot, changeSet, currentOperator);
 
       setSnapshot(updated);
       setDraftSnapshot(null);
@@ -367,7 +418,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     } finally {
       setIsLoading(false);
     }
-  }, [repository, snapshot, draftSnapshot]);
+  }, [repository, snapshot, draftSnapshot, currentOperator]);
 
   // Reset local data back to baseline repository seed
   const resetToBaseline = useCallback(async () => {
@@ -490,6 +541,14 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       saveCustomLayout,
       deleteCustomLayout,
       customLayouts,
+      currentOperator,
+      recentOperators,
+      setOperator,
+      setOperatorByName,
+      clearOperator,
+      isOperatorModalOpen,
+      openOperatorModal,
+      closeOperatorModal,
     }),
     [
       repository,
@@ -518,6 +577,14 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       saveCustomLayout,
       deleteCustomLayout,
       customLayouts,
+      currentOperator,
+      recentOperators,
+      setOperator,
+      setOperatorByName,
+      clearOperator,
+      isOperatorModalOpen,
+      openOperatorModal,
+      closeOperatorModal,
     ]
   );
 

@@ -221,3 +221,6 @@ export function selectFilteredSources(
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export { selectOutputLastChanged, formatLastChanged } from './attribution';
+export type { ChangeAttribution } from './attribution';

@@ -24,7 +24,8 @@ export interface TrackerRepository {
   getValidationFindings(): Promise<ValidationFinding[]>;
   saveSnapshot(
     snapshot: TrackerSnapshot,
-    changeSet?: import('../domain/models').ChangeSet
+    changeSet?: import('../domain/models').ChangeSet,
+    operator?: import('../domain/operator').Operator | null
   ): Promise<TrackerSnapshot>;
   resetToBaseline(): Promise<TrackerSnapshot>;
   saveCustomLayout?(
