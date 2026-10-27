@@ -621,12 +621,155 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 53.8, width: 31.2, height: 31.2 });
   });
 
-  it('correctly models 7 BOX as hero split with 6 auxiliary windows', () => {
-    expect(LAYOUT_7_BOX.category).toBe('Hero Split');
-    const hero = LAYOUT_7_BOX.windows[0];
-    expect(hero.width).toBeCloseTo(66.666, 1);
-    expect(hero.height).toBeCloseTo(66.666, 1);
-    expect(LAYOUT_7_BOX.windows.map((w) => w.destinationOffset)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  it('correctly models Basic 7 BOX as symmetric 4-over-3 grid of equal 16:9 windows', () => {
+    // 1. Basic 7 Box contains exactly 7 PIPs
+    expect(LAYOUT_7_BOX.windowCount).toBe(7);
+    expect(LAYOUT_7_BOX.windows).toHaveLength(7);
+
+    const [pip1, pip2, pip3, pip4, pip5, pip6, pip7] = LAYOUT_7_BOX.windows;
+
+    // 2. All 7 PIPs have identical width
+    expect(pip1.width).toBe(pip2.width);
+    expect(pip2.width).toBe(pip3.width);
+    expect(pip3.width).toBe(pip4.width);
+    expect(pip4.width).toBe(pip5.width);
+    expect(pip5.width).toBe(pip6.width);
+    expect(pip6.width).toBe(pip7.width);
+
+    // 3. All 7 PIPs have identical height
+    expect(pip1.height).toBe(pip2.height);
+    expect(pip2.height).toBe(pip3.height);
+    expect(pip3.height).toBe(pip4.height);
+    expect(pip4.height).toBe(pip5.height);
+    expect(pip5.height).toBe(pip6.height);
+    expect(pip6.height).toBe(pip7.height);
+
+    // 4. Physical 16:9 aspect ratio (width === height in 16:9 canvas)
+    for (const pip of [pip1, pip2, pip3, pip4, pip5, pip6, pip7]) {
+      expect(pip.width).toBe(pip.height);
+    }
+
+    // 5. PIPs 1–4 share the same Y position
+    expect(pip1.y).toBe(pip2.y);
+    expect(pip2.y).toBe(pip3.y);
+    expect(pip3.y).toBe(pip4.y);
+
+    // 6. PIPs 5–7 share the same Y position
+    expect(pip5.y).toBe(pip6.y);
+    expect(pip6.y).toBe(pip7.y);
+
+    // 7. Bottom row is below top row
+    expect(pip5.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+
+    // 8. Top row horizontal gaps are equal
+    const topGap1 = Number((pip2.x - (pip1.x + pip1.width)).toFixed(4));
+    const topGap2 = Number((pip3.x - (pip2.x + pip2.width)).toFixed(4));
+    const topGap3 = Number((pip4.x - (pip3.x + pip3.width)).toFixed(4));
+    expect(topGap1).toBe(topGap2);
+    expect(topGap2).toBe(topGap3);
+
+    // 9. Bottom row horizontal gaps are equal
+    const bottomGap1 = Number((pip6.x - (pip5.x + pip5.width)).toFixed(4));
+    const bottomGap2 = Number((pip7.x - (pip6.x + pip6.width)).toFixed(4));
+    expect(bottomGap1).toBe(bottomGap2);
+
+    // 10. Bottom row gap matches top row gap
+    expect(bottomGap1).toBe(topGap1);
+
+    // 11. Top row has balanced left/right exterior margins
+    const topRowLeftMargin = pip1.x;
+    const topRowRightMargin = Number((100 - (pip4.x + pip4.width)).toFixed(4));
+    expect(topRowLeftMargin).toBe(topRowRightMargin);
+
+    // 12. Bottom row has balanced left/right exterior margins
+    const bottomRowLeftMargin = pip5.x;
+    const bottomRowRightMargin = Number((100 - (pip7.x + pip7.width)).toFixed(4));
+    expect(bottomRowLeftMargin).toBe(bottomRowRightMargin);
+
+    // 13. Bottom row group is mathematically centered
+    const bottomGroupWidth = Number((pip7.x + pip7.width - pip5.x).toFixed(4));
+    const expectedBottomGroupX = Number(((100 - bottomGroupWidth) / 2).toFixed(4));
+    expect(pip5.x).toBe(expectedBottomGroupX);
+
+    // 14. No PIPs overlap
+    expect(pip1.x + pip1.width).toBeLessThanOrEqual(pip2.x);
+    expect(pip2.x + pip2.width).toBeLessThanOrEqual(pip3.x);
+    expect(pip3.x + pip3.width).toBeLessThanOrEqual(pip4.x);
+    expect(pip5.x + pip5.width).toBeLessThanOrEqual(pip6.x);
+    expect(pip6.x + pip6.width).toBeLessThanOrEqual(pip7.x);
+    expect(pip5.y).toBeGreaterThanOrEqual(pip1.y + pip1.height);
+    expect(pip6.y).toBeGreaterThanOrEqual(pip2.y + pip2.height);
+    expect(pip7.y).toBeGreaterThanOrEqual(pip3.y + pip3.height);
+
+    // 15. Every PIP remains inside canvas boundaries
+    for (const pip of [pip1, pip2, pip3, pip4, pip5, pip6, pip7]) {
+      expect(pip.x).toBeGreaterThanOrEqual(0);
+      expect(pip.y).toBeGreaterThanOrEqual(0);
+      expect(pip.x + pip.width).toBeLessThanOrEqual(100);
+      expect(pip.y + pip.height).toBeLessThanOrEqual(100);
+    }
+
+    // 16. Canonical layout lookup resolves correctly
+    const resolved = getLayoutDefinition('7 BOX');
+    expect(resolved).toBeDefined();
+    expect(resolved?.id).toBe('7-BOX');
+    expect(resolved?.category).toBe('Standard Grid');
+    expect(resolved?.windows[0]).toMatchObject(LAYOUT_7_BOX.windows[0]);
+    expect(resolved?.windows[1]).toMatchObject(LAYOUT_7_BOX.windows[1]);
+    expect(resolved?.windows[2]).toMatchObject(LAYOUT_7_BOX.windows[2]);
+    expect(resolved?.windows[3]).toMatchObject(LAYOUT_7_BOX.windows[3]);
+    expect(resolved?.windows[4]).toMatchObject(LAYOUT_7_BOX.windows[4]);
+    expect(resolved?.windows[5]).toMatchObject(LAYOUT_7_BOX.windows[5]);
+    expect(resolved?.windows[6]).toMatchObject(LAYOUT_7_BOX.windows[6]);
+
+    // 17. Stable PIP IDs remain PIP-01 through PIP-07
+    expect(resolved?.windows[0].pipId).toBe('PIP-01');
+    expect(resolved?.windows[1].pipId).toBe('PIP-02');
+    expect(resolved?.windows[2].pipId).toBe('PIP-03');
+    expect(resolved?.windows[3].pipId).toBe('PIP-04');
+    expect(resolved?.windows[4].pipId).toBe('PIP-05');
+    expect(resolved?.windows[5].pipId).toBe('PIP-06');
+    expect(resolved?.windows[6].pipId).toBe('PIP-07');
+
+    // 18. Basic 2 remains unchanged
+    expect(LAYOUT_2_BOX.windows[0]).toMatchObject({ x: 0.2, y: 25.5, width: 49.6, height: 49.6 });
+    expect(LAYOUT_2_BOX.windows[1]).toMatchObject({ x: 50.2, y: 25.5, width: 49.6, height: 49.6 });
+
+    // 19. Basic 3 remains unchanged
+    expect(LAYOUT_3_BOX.windows[0]).toMatchObject({ x: 2.0, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[1]).toMatchObject({ x: 50.4, y: 2.0, width: 47.6, height: 47.6 });
+    expect(LAYOUT_3_BOX.windows[2]).toMatchObject({ x: 26.2, y: 51.0, width: 47.6, height: 47.6 });
+
+    // 20. Basic 4 remains unchanged
+    expect(LAYOUT_4_BOX.windows[0]).toMatchObject({ x: 0, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[1]).toMatchObject({ x: 50, y: 0, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[2]).toMatchObject({ x: 0, y: 50, width: 50, height: 50 });
+    expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
+
+    // 21. Basic 5 remains unchanged
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+
+    // 22. Basic 6 remains unchanged
+    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 53.8, width: 31.2, height: 31.2 });
+
+    // 23. Basic 8 remains unchanged
+    expect(LAYOUT_8_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[1]).toMatchObject({ x: 26.3, y: 15.0, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[2]).toMatchObject({ x: 50.6, y: 15.0, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[3]).toMatchObject({ x: 74.9, y: 15.0, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[4]).toMatchObject({ x: 2.0, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[5]).toMatchObject({ x: 26.3, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[6]).toMatchObject({ x: 50.6, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[7]).toMatchObject({ x: 74.9, y: 53.8, width: 23.1, height: 23.1 });
   });
 
   it('correctly models 9 BOX as 3x3 uniform grid', () => {

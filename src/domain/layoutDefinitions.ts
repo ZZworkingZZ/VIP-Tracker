@@ -147,23 +147,23 @@ export const LAYOUT_6_BOX: LayoutDefinition = {
 };
 
 /**
- * 7 BOX (1 Hero Window Top-Left, 6 Auxiliary Production Windows)
+ * 7 BOX (4-over-3 layout: 4 equal upper windows, 3 centered lower windows)
  */
 export const LAYOUT_7_BOX: LayoutDefinition = {
   id: '7-BOX',
   name: '7 BOX',
   windowCount: 7,
   aspectRatio: '16:9',
-  category: 'Hero Split',
-  description: '1 large hero window top-left with 6 auxiliary production windows',
+  category: 'Standard Grid',
+  description: '4-over-3 layout with four equal upper windows and three centered lower windows',
   windows: [
-    { id: 'w-1', x: 0, y: 0, width: 66.666, height: 66.666, destinationOffset: 0 },
-    { id: 'w-2', x: 66.666, y: 0, width: 33.334, height: 33.333, destinationOffset: 1 },
-    { id: 'w-3', x: 66.666, y: 33.333, width: 33.334, height: 33.333, destinationOffset: 2 },
-    { id: 'w-4', x: 0, y: 66.666, width: 25, height: 33.334, destinationOffset: 3 },
-    { id: 'w-5', x: 25, y: 66.666, width: 25, height: 33.334, destinationOffset: 4 },
-    { id: 'w-6', x: 50, y: 66.666, width: 25, height: 33.334, destinationOffset: 5 },
-    { id: 'w-7', x: 75, y: 66.666, width: 25, height: 33.334, destinationOffset: 6 },
+    { id: 'w-1', x: 2.0, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 0 },
+    { id: 'w-2', x: 26.3, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 1 },
+    { id: 'w-3', x: 50.6, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 2 },
+    { id: 'w-4', x: 74.9, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 3 },
+    { id: 'w-5', x: 14.15, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 4 },
+    { id: 'w-6', x: 38.45, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 5 },
+    { id: 'w-7', x: 62.75, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 6 },
   ],
 };
 
