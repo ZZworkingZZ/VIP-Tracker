@@ -19,7 +19,8 @@ import {
   TRACKER_SCHEMA_VERSION,
   CURRENT_SOURCE_SEED_VERSION,
 } from './storage';
-import { LayoutDefinition, setCustomLayoutRegistry } from '../domain/layoutDefinitions';
+import { LayoutDefinition, setCustomLayoutRegistry, getLayoutDefinition } from '../domain/layoutDefinitions';
+import { normalizeOutputPipAssignments } from '../domain/pipRouting';
 
 /**
  * Local repository serving the typed baseline seed snapshot with browser persistence support.
@@ -52,19 +53,29 @@ export class LocalTrackerRepository implements TrackerRepository {
         shouldPersistBootstrap = true;
       }
 
+      const customLayouts = storedData.customLayouts ?? [];
+      setCustomLayoutRegistry(customLayouts);
+
+      // Normalize output PIP assignments safely without data fabrication
+      const normalizedOutputs = storedData.outputs.map((out) => {
+        if (out.pipAssignments) return out;
+        const layout = getLayoutDefinition(out.layoutName, customLayouts);
+        return {
+          ...out,
+          pipAssignments: normalizeOutputPipAssignments(out, layout),
+        };
+      });
+
       const findings = validateSnapshot(
         this.initialSnapshot.multiviews,
-        storedData.outputs,
+        normalizedOutputs,
         storedData.destinations,
         sources
       );
 
-      const customLayouts = storedData.customLayouts ?? [];
-      setCustomLayoutRegistry(customLayouts);
-
       this.snapshot = {
         multiviews: JSON.parse(JSON.stringify(this.initialSnapshot.multiviews)),
-        outputs: storedData.outputs,
+        outputs: normalizedOutputs,
         destinations: storedData.destinations,
         sources,
         operationalAssignments: storedData.operationalAssignments,
@@ -78,7 +89,7 @@ export class LocalTrackerRepository implements TrackerRepository {
         this.storage.save({
           schemaVersion: storedData.schemaVersion ?? TRACKER_SCHEMA_VERSION,
           sourceSeedVersion: CURRENT_SOURCE_SEED_VERSION,
-          outputs: storedData.outputs,
+          outputs: this.snapshot.outputs,
           destinations: storedData.destinations,
           sources: storedData.sources,
           operationalAssignments: storedData.operationalAssignments,
@@ -91,6 +102,15 @@ export class LocalTrackerRepository implements TrackerRepository {
       this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
       const customLayouts = this.snapshot.customLayouts ?? [];
       setCustomLayoutRegistry(customLayouts);
+
+      this.snapshot.outputs = this.snapshot.outputs.map((out) => {
+        if (out.pipAssignments) return out;
+        const layout = getLayoutDefinition(out.layoutName, customLayouts);
+        return {
+          ...out,
+          pipAssignments: normalizeOutputPipAssignments(out, layout),
+        };
+      });
     }
   }
 
@@ -197,6 +217,13 @@ export class LocalTrackerRepository implements TrackerRepository {
     this.storage.clear();
     this.snapshot = JSON.parse(JSON.stringify(this.initialSnapshot));
     setCustomLayoutRegistry([]);
+    this.snapshot.outputs = this.snapshot.outputs.map((out) => {
+      const layout = getLayoutDefinition(out.layoutName);
+      return {
+        ...out,
+        pipAssignments: normalizeOutputPipAssignments(out, layout),
+      };
+    });
     this.snapshot.validationFindings = validateSnapshot(
       this.snapshot.multiviews,
       this.snapshot.outputs,

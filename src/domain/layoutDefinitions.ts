@@ -5,8 +5,11 @@
  * for standard broadcast multiviewer layouts.
  */
 
+import { PipId, createPipId } from './identifiers';
+
 export interface LayoutWindowDefinition {
   readonly id: string;
+  readonly pipId?: PipId;
   readonly x: number; // percentage (0 - 100)
   readonly y: number; // percentage (0 - 100)
   readonly width: number; // percentage (0 - 100)
@@ -595,6 +598,49 @@ export function clearCustomLayoutRegistry(): void {
 }
 
 /**
+ * Gets or computes the PIP ID for a given window and position.
+ */
+export function getWindowPipId(window: LayoutWindowDefinition, index: number): PipId {
+  if (window.pipId) {
+    return window.pipId;
+  }
+  if (window.id.startsWith('PIP-')) {
+    return window.id as PipId;
+  }
+  return createPipId(index + 1);
+}
+
+/**
+ * Ensures all windows in a layout definition have deterministic pipId values.
+ */
+export function ensureLayoutPipIds(layout: LayoutDefinition): LayoutDefinition {
+  const needsPipIds = layout.windows.some((w) => !w.pipId);
+  if (!needsPipIds) return layout;
+  return {
+    ...layout,
+    windows: layout.windows.map((w, idx) => ({
+      ...w,
+      pipId: getWindowPipId(w, idx),
+    })),
+  };
+}
+
+/**
+ * Returns structured PIP information for each window in a layout.
+ */
+export function getLayoutPips(layout: LayoutDefinition): Array<{
+  pipId: PipId;
+  window: LayoutWindowDefinition;
+  index: number;
+}> {
+  return layout.windows.map((w, idx) => ({
+    pipId: getWindowPipId(w, idx),
+    window: w,
+    index: idx,
+  }));
+}
+
+/**
  * Resolve a layout name (e.g. '4 BOX', '5 BOX', 'CONTROL-ROOM', '99 BOX') to its geometric definition.
  * Resolution hierarchy:
  * 1. Explicit built-in definition from STANDARD_LAYOUTS
@@ -615,7 +661,7 @@ export function getLayoutDefinition(
   // 1. Exact match in STANDARD_LAYOUTS by name or id
   for (const layout of STANDARD_LAYOUTS) {
     if (layout.name.toUpperCase() === normalized || layout.id.toUpperCase() === normalized) {
-      return layout;
+      return ensureLayoutPipIds(layout);
     }
   }
 
@@ -623,13 +669,13 @@ export function getLayoutDefinition(
   const activeCustoms = customLayouts ?? customLayoutRegistry;
   for (const layout of activeCustoms) {
     if (layout.name.toUpperCase() === normalized || layout.id.toUpperCase() === normalized) {
-      return layout;
+      return ensureLayoutPipIds(layout);
     }
   }
 
   // 3. Check aliases like '20 BOX', '20-BOX', '20 BOX AUDIO'
   if (normalized.includes('20') && normalized.includes('BOX')) {
-    return LAYOUT_20_BOX_AUDIO;
+    return ensureLayoutPipIds(LAYOUT_20_BOX_AUDIO);
   }
 
   // 4. Parse numeric box count e.g. "4 BOX", "8BOX", "12 BOX"
@@ -639,13 +685,13 @@ export function getLayoutDefinition(
     // Check if one of standard layouts has this count
     const standard = STANDARD_LAYOUTS.find((l) => l.windowCount === count);
     if (standard) {
-      return standard;
+      return ensureLayoutPipIds(standard);
     }
     const custom = activeCustoms.find((l) => l.windowCount === count);
     if (custom) {
-      return custom;
+      return ensureLayoutPipIds(custom);
     }
-    return createFallbackGrid(count, trimmed);
+    return ensureLayoutPipIds(createFallbackGrid(count, trimmed));
   }
 
   return null;

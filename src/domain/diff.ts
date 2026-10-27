@@ -1,5 +1,5 @@
 import { TrackerSnapshot, FieldChange, ChangeSet, ChangeRecord } from './models';
-import { formatOutputDisplay, formatDestinationDisplay } from './identifiers';
+import { formatOutputDisplay, formatDestinationDisplay, formatInputDisplay, PipId } from './identifiers';
 
 /**
  * Compares a baseline snapshot with a draft snapshot and produces structured field differences.
@@ -87,6 +87,33 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
           draftOut.locked ? 'Locked' : 'Unlocked'
         }`,
       });
+    }
+
+    // PIP Assignments
+    const basePips = baseOut.pipAssignments ?? {};
+    const draftPips = draftOut.pipAssignments ?? {};
+    const allPipIds = Array.from(
+      new Set([...Object.keys(basePips), ...Object.keys(draftPips)])
+    ).sort() as PipId[];
+
+    for (const pipId of allPipIds) {
+      const prevDest = basePips[pipId] ?? null;
+      const newDest = draftPips[pipId] ?? null;
+
+      if (prevDest !== newDest) {
+        const prevLabel = prevDest ? formatInputDisplay(prevDest) : 'Unassigned';
+        const newLabel = newDest ? formatInputDisplay(newDest) : 'Unassigned';
+
+        changes.push({
+          entityType: 'output',
+          entityId: draftOut.id,
+          entityLabel: outputLabel,
+          field: `pipAssignment:${pipId}`,
+          previousValue: prevLabel,
+          newValue: newLabel,
+          description: `${outputLabel} ${pipId}: ${prevLabel} → ${newLabel}`,
+        });
+      }
     }
   }
 

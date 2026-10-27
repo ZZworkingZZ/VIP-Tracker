@@ -4,6 +4,7 @@ import {
   DestinationId,
   SourceId,
   AssignmentId,
+  PipId,
   EntityType,
 } from './identifiers';
 import { SourceCategory } from './sourceCategories';
@@ -28,7 +29,9 @@ export type ValidationCode =
   | 'NAMING_INCONSISTENCY'
   | 'SOURCE_SELF_ROUTING'
   | 'SOURCE_UNKNOWN_UPSTREAM'
-  | 'SOURCE_CIRCULAR_ROUTING';
+  | 'SOURCE_CIRCULAR_ROUTING'
+  | 'PIP_UNKNOWN_DESTINATION'
+  | 'PIP_DUPLICATE_DESTINATION';
 
 export interface Multiview {
   id: MultiviewId;
@@ -50,6 +53,7 @@ export interface MultiviewOutput {
   locked: boolean;
   updatedAt: string | null;
   updatedBy: string | null;
+  pipAssignments?: Record<PipId, DestinationId | null>;
 }
 
 export interface Destination {

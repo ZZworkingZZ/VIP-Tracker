@@ -14,6 +14,7 @@ export function validateSnapshot(
   const findings: ValidationFinding[] = [];
   const mvMap = new Map<string, Multiview>(multiviews.map((mv) => [mv.id, mv]));
   const sourceIdSet = new Set<string>(sources.map((s) => s.id));
+  const destinationIdSet = new Set<string>(destinations.map((d) => d.id));
 
   // 1 & 2: Output validations
   for (const out of outputs) {
@@ -168,6 +169,47 @@ export function validateSnapshot(
           entityId: out.id,
           relatedEntityIds: [],
         });
+      }
+    }
+
+    // PIP assignment validations
+    if (out.pipAssignments) {
+      const assignedDests = new Map<string, string[]>();
+
+      for (const [pipId, destId] of Object.entries(out.pipAssignments)) {
+        if (!destId) continue;
+
+        // Check if destination exists
+        if (!destinationIdSet.has(destId)) {
+          findings.push({
+            id: `finding-${findings.length + 1}`,
+            severity: 'error',
+            code: 'PIP_UNKNOWN_DESTINATION',
+            message: `Output ${formatOutputDisplay(out.id)} PIP ${pipId} references unknown MV Input destination '${destId}'.`,
+            entityType: 'output',
+            entityId: out.id,
+            relatedEntityIds: [destId],
+          });
+        }
+
+        const list = assignedDests.get(destId) ?? [];
+        list.push(pipId);
+        assignedDests.set(destId, list);
+      }
+
+      // Check for duplicate assignments within same output
+      for (const [destId, pips] of assignedDests.entries()) {
+        if (pips.length > 1) {
+          findings.push({
+            id: `finding-${findings.length + 1}`,
+            severity: 'warning',
+            code: 'PIP_DUPLICATE_DESTINATION',
+            message: `Output ${formatOutputDisplay(out.id)} assigns MV Input '${formatDestinationDisplay(destId as import('./identifiers').DestinationId)}' to multiple PIPs (${pips.join(', ')}).`,
+            entityType: 'output',
+            entityId: out.id,
+            relatedEntityIds: [destId],
+          });
+        }
       }
     }
   }

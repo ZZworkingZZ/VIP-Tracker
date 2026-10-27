@@ -10,7 +10,9 @@ export type DestinationId = `DEST:${MultiviewId}-${string}`;
 export type SourceId = `SRC:${string}`;
 export type AssignmentId = `ASSIGN:${string}`;
 
-export type EntityType = 'multiview' | 'output' | 'destination' | 'source' | 'assignment';
+export type PipId = `PIP-${string}`;
+
+export type EntityType = 'multiview' | 'output' | 'destination' | 'source' | 'assignment' | 'pip';
 
 /**
  * Creates a deterministic, explicit Output ID.
@@ -31,6 +33,24 @@ export function createDestinationId(
 ): DestinationId {
   const padded = String(destinationNumber).padStart(2, '0');
   return `DEST:${multiviewId}-${padded}` as DestinationId;
+}
+
+/**
+ * Creates a deterministic, explicit PIP ID.
+ * Example: createPipId(1) -> 'PIP-01'
+ */
+export function createPipId(pipNumber: number): PipId {
+  const padded = String(pipNumber).padStart(2, '0');
+  return `PIP-${padded}` as PipId;
+}
+
+/**
+ * Parses numeric index from a PIP ID string.
+ * Example: parsePipNumber('PIP-01') -> 1
+ */
+export function parsePipNumber(pipId: PipId | string): number {
+  const match = pipId.match(/^PIP-(\d+)$/i);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
 /**
@@ -69,4 +89,28 @@ export function formatOutputDisplay(outputId: OutputId): string {
  */
 export function formatDestinationDisplay(destinationId: DestinationId): string {
   return destinationId.replace(/^DEST:/, '');
+}
+
+/**
+ * Formats a Destination ID as an operator-facing MV Input label.
+ * Example: 'DEST:MV-04-37' -> 'MV-04-37 Input'
+ */
+export function formatInputDisplay(destinationId: DestinationId): string {
+  return `${formatDestinationDisplay(destinationId)} Input`;
+}
+
+/**
+ * Formats an Output ID as an operator-facing MV Output label.
+ * Example: 'OUT:MV-01-01' -> 'MV-01-01 Output'
+ */
+export function formatOutputLabel(outputId: OutputId): string {
+  return `${formatOutputDisplay(outputId)} Output`;
+}
+
+/**
+ * Formats a PIP ID for human display.
+ * Example: 'PIP-01' -> 'PIP-01'
+ */
+export function formatPipDisplay(pipId: PipId): string {
+  return pipId;
 }

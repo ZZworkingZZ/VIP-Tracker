@@ -48,6 +48,17 @@ export function isValidPersistedTrackerData(data: unknown): data is PersistedTra
   if (!Array.isArray(d.outputs) || !Array.isArray(d.destinations) || !Array.isArray(d.sources)) {
     return false;
   }
+  for (const o of d.outputs) {
+    if (!o || typeof o !== 'object') return false;
+    const out = o as Record<string, unknown>;
+    if (typeof out.id !== 'string') return false;
+    if ('pipAssignments' in out && out.pipAssignments !== undefined) {
+      if (typeof out.pipAssignments !== 'object' || out.pipAssignments === null) return false;
+      for (const val of Object.values(out.pipAssignments as Record<string, unknown>)) {
+        if (val !== null && typeof val !== 'string') return false;
+      }
+    }
+  }
   for (const s of d.sources) {
     if (!s || typeof s !== 'object') return false;
     const src = s as Record<string, unknown>;
