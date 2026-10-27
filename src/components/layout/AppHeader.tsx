@@ -29,7 +29,7 @@ function getViewName(pathname: string): string {
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOpen = true }) => {
   const location = useLocation();
-  const { isEditMode, hasUnsavedChanges, currentOperator, openOperatorModal } =
+  const { isEditMode, hasUnsavedChanges, isReadOnly, currentOperator, openOperatorModal } =
     useTrackerSnapshot();
 
   const handleFeedbackClick = () => {
@@ -83,11 +83,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, sidebarOp
         {/* Operational Tracking Baseline Indicator */}
         <span
           className="ev-status-pill ev-pill-local"
-          title="Displaying tracked repository baseline data, not direct live hardware state"
+          title={
+            isReadOnly
+              ? 'Displaying authoritative shared GitHub tracker data (Read-Only mode)'
+              : 'Displaying tracked repository baseline data, not direct live hardware state'
+          }
           role="status"
+          data-testid="data-mode-badge"
         >
           <span className="ev-led-dot green" aria-hidden="true" />
-          <span className="pill-text">Local Data</span>
+          <span className="pill-text">{isReadOnly ? 'Shared Data (Read-Only)' : 'Local Data'}</span>
         </span>
 
         <span className={modeClass} title={modeTitle} data-testid="app-mode-pill">

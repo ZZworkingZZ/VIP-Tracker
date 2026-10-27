@@ -37,6 +37,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     snapshot,
     activeSnapshot,
     isEditMode,
+    isReadOnly,
     hasUnsavedChanges,
     enterEditMode,
     updateDraftOutput,
@@ -399,23 +400,29 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               {!isEditMode && (
                 <button
                   type="button"
-                  onClick={enterEditMode}
+                  onClick={isReadOnly ? undefined : enterEditMode}
+                  disabled={isReadOnly}
                   data-testid="enter-edit-mode-btn"
                   style={{
                     padding: '4px 10px',
                     fontSize: '11px',
                     fontWeight: 700,
-                    backgroundColor: '#2864a3',
-                    color: '#ffffff',
-                    border: '1px solid #38bdf8',
+                    backgroundColor: isReadOnly ? '#262626' : '#2864a3',
+                    color: isReadOnly ? '#64748b' : '#ffffff',
+                    border: `1px solid ${isReadOnly ? '#444444' : '#38bdf8'}`,
                     borderRadius: '2px',
-                    cursor: 'pointer',
+                    cursor: isReadOnly ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
                   }}
+                  title={
+                    isReadOnly
+                      ? 'Editing is disabled in shared read-only mode'
+                      : 'Enter edit mode to modify output layout and PIP routing'
+                  }
                 >
-                  ✎ Edit Output
+                  {isReadOnly ? '🔒 Read-Only' : '✎ Edit Output'}
                 </button>
               )}
 

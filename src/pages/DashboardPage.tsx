@@ -11,6 +11,7 @@ export const DashboardPage: React.FC = () => {
     activeSnapshot,
     isEditMode,
     hasUnsavedChanges,
+    isReadOnly,
     enterEditMode,
     exitEditMode,
     discardChanges,
@@ -55,6 +56,7 @@ export const DashboardPage: React.FC = () => {
   }
 
   const handleToggleEditMode = () => {
+    if (isReadOnly) return;
     if (!isEditMode) {
       enterEditMode();
     } else {
@@ -131,17 +133,23 @@ export const DashboardPage: React.FC = () => {
             type="button"
             className={`toggle-btn ${isEditMode ? 'active' : ''}`}
             onClick={handleToggleEditMode}
+            disabled={isReadOnly}
             data-testid="toggle-edit-mode-btn"
             style={{
               borderColor: isEditMode ? '#38bdf8' : undefined,
-              color: isEditMode ? '#38bdf8' : undefined,
+              color: isReadOnly ? '#64748b' : isEditMode ? '#38bdf8' : undefined,
               fontWeight: 700,
+              cursor: isReadOnly ? 'not-allowed' : 'pointer',
             }}
             title={
-              isEditMode ? 'Exit edit mode' : 'Enter edit mode to modify layouts and source routing'
+              isReadOnly
+                ? 'Editing is disabled in shared read-only mode'
+                : isEditMode
+                  ? 'Exit edit mode'
+                  : 'Enter edit mode to modify layouts and source routing'
             }
           >
-            {isEditMode ? '✓ Editing Mode' : '✎ Edit Displays'}
+            {isReadOnly ? '🔒 Read-Only' : isEditMode ? '✓ Editing Mode' : '✎ Edit Displays'}
           </button>
         </div>
       </section>

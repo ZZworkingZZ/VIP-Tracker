@@ -17,6 +17,7 @@ export const DestinationSourcesPage: React.FC = () => {
   const {
     activeSnapshot,
     isEditMode,
+    isReadOnly,
     enterEditMode,
     exitEditMode,
     discardChanges,
@@ -38,6 +39,7 @@ export const DestinationSourcesPage: React.FC = () => {
   }, [snapshot, routingDestId]);
 
   const handleToggleEditMode = () => {
+    if (isReadOnly) return;
     if (isEditMode) {
       if (hasUnsavedChanges) {
         const confirmDiscard = window.confirm(
@@ -135,17 +137,23 @@ export const DestinationSourcesPage: React.FC = () => {
               type="button"
               className={`toggle-btn ${isEditMode ? 'active' : ''}`}
               onClick={handleToggleEditMode}
+              disabled={isReadOnly}
               data-testid="toggle-edit-mode-btn"
               style={{
                 borderColor: isEditMode ? '#38bdf8' : undefined,
-                color: isEditMode ? '#38bdf8' : undefined,
+                color: isReadOnly ? '#64748b' : isEditMode ? '#38bdf8' : undefined,
                 fontWeight: 700,
+                cursor: isReadOnly ? 'not-allowed' : 'pointer',
               }}
               title={
-                isEditMode ? 'Exit edit mode' : 'Enter edit mode to modify destination routing'
+                isReadOnly
+                  ? 'Editing is disabled in shared read-only mode'
+                  : isEditMode
+                    ? 'Exit edit mode'
+                    : 'Enter edit mode to modify destination routing'
               }
             >
-              {isEditMode ? '✓ Editing Mode' : '✎ Edit Matrix'}
+              {isReadOnly ? '🔒 Read-Only' : isEditMode ? '✓ Editing Mode' : '✎ Edit Matrix'}
             </button>
           </div>
         </div>

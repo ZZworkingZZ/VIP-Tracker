@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { TrackerRepository } from '../services/TrackerRepository';
-import { defaultRepository } from '../services/LocalTrackerRepository';
+import { createDefaultTrackerRepository } from '../services/repositoryConfig';
 import { TrackerSnapshot, MultiviewOutput, Source } from '../domain/models';
 import {
   MultiviewId,
@@ -26,12 +26,18 @@ export interface TrackerRepositoryProviderProps {
 }
 
 export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps> = ({
-  repository = defaultRepository,
+  repository: explicitRepository,
   operatorStorage = defaultOperatorStorage,
   children,
 }) => {
+  const repository = useMemo(
+    () => explicitRepository ?? createDefaultTrackerRepository(),
+    [explicitRepository]
+  );
+  const isReadOnly = Boolean(repository.isReadOnly);
   const [snapshot, setSnapshot] = useState<TrackerSnapshot | null>(null);
   const [draftSnapshot, setDraftSnapshot] = useState<TrackerSnapshot | null>(null);
+  const [lastLoadedSha, setLastLoadedSha] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +95,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       setError(null);
       const data = await repository.getSnapshot();
       setSnapshot(data);
+      if (repository.getLastLoadedSha) {
+        setLastLoadedSha(repository.getLastLoadedSha());
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load VIP Tracker snapshot.');
     } finally {
@@ -123,14 +132,15 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Enter Edit Mode
+  // Enter Edit Mode (blocked if underlying repository is read-only)
   const enterEditMode = useCallback(() => {
+    if (isReadOnly) return;
     if (!snapshot) return;
     if (!draftSnapshot) {
       setDraftSnapshot(JSON.parse(JSON.stringify(snapshot)));
     }
     setIsEditMode(true);
-  }, [snapshot, draftSnapshot]);
+  }, [isReadOnly, snapshot, draftSnapshot]);
 
   // Exit Edit Mode without necessarily discarding draft
   const exitEditMode = useCallback(() => {
@@ -402,6 +412,10 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
 
   // Save all staged changes to repository with active operator attribution
   const saveDraftChanges = useCallback(async () => {
+    if (isReadOnly) {
+      setError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
+      return;
+    }
     if (!snapshot || !draftSnapshot) return;
 
     try {
@@ -419,10 +433,14 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     } finally {
       setIsLoading(false);
     }
-  }, [repository, snapshot, draftSnapshot, currentOperator]);
+  }, [isReadOnly, repository, snapshot, draftSnapshot, currentOperator]);
 
   // Reset local data back to baseline repository seed
   const resetToBaseline = useCallback(async () => {
+    if (isReadOnly) {
+      setError('VIP Tracker is in read-only shared mode. Resetting baseline is not supported.');
+      return;
+    }
     try {
       setIsLoading(true);
       setError(null);
@@ -435,11 +453,15 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     } finally {
       setIsLoading(false);
     }
-  }, [repository]);
+  }, [isReadOnly, repository]);
 
   // Save a custom layout definition
   const saveCustomLayout = useCallback(
     async (layout: import('../domain/layoutDefinitions').LayoutDefinition) => {
+      if (isReadOnly) {
+        setError('VIP Tracker is in read-only shared mode. Custom layouts cannot be saved.');
+        return;
+      }
       try {
         setIsLoading(true);
         setError(null);
@@ -471,12 +493,16 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         setIsLoading(false);
       }
     },
-    [repository, draftSnapshot]
+    [isReadOnly, repository, draftSnapshot]
   );
 
   // Delete a custom layout definition
   const deleteCustomLayout = useCallback(
     async (layoutId: string) => {
+      if (isReadOnly) {
+        setError('VIP Tracker is in read-only shared mode. Custom layouts cannot be deleted.');
+        return;
+      }
       try {
         setIsLoading(true);
         setError(null);
@@ -499,7 +525,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         setIsLoading(false);
       }
     },
-    [repository, draftSnapshot]
+    [isReadOnly, repository, draftSnapshot]
   );
 
   // The active snapshot being displayed: draftSnapshot if in edit mode, else canonical snapshot
@@ -525,6 +551,8 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       stagedChanges,
       isLoading,
       error,
+      isReadOnly,
+      lastLoadedSha,
       refresh: fetchSnapshot,
       enterEditMode,
       exitEditMode,
@@ -561,6 +589,8 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       stagedChanges,
       isLoading,
       error,
+      isReadOnly,
+      lastLoadedSha,
       fetchSnapshot,
       enterEditMode,
       exitEditMode,

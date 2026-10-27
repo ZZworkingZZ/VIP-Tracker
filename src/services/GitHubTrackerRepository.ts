@@ -39,6 +39,7 @@ export interface GitHubSnapshotLoadResult {
  * from private GitHub repositories via injected authenticated requests.
  */
 export class GitHubTrackerRepository implements TrackerRepository {
+  readonly isReadOnly = true;
   private client: GitHubClient;
   private cachedSnapshot: TrackerSnapshot | null = null;
   private lastLoadedSha: string | null = null;

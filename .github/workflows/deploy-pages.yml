@@ -39,6 +39,7 @@ jobs:
       - name: Build for GitHub Pages
         env:
           GITHUB_ACTIONS: 'true'
+          VITE_VIP_TRACKER_DATA_TOKEN: ${{ secrets.VIP_TRACKER_DATA_TOKEN }}
         run: |
           npm run build
           cp dist/index.html dist/404.html

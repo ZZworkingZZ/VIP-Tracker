@@ -11,6 +11,7 @@ export const AppShell: React.FC = () => {
   const {
     isLoading,
     error,
+    refresh,
     currentOperator,
     recentOperators,
     setOperator,
@@ -37,9 +38,31 @@ export const AppShell: React.FC = () => {
             </div>
           )}
           {error && (
-            <div className="finding-item finding-error" role="alert">
-              <span className="status-badge badge-conflict">Error</span>
-              <span>{error}</span>
+            <div
+              className="finding-item finding-error"
+              role="alert"
+              style={{
+                margin: '24px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                alignItems: 'flex-start',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="status-badge badge-conflict">Error</span>
+                <span style={{ fontWeight: 600 }}>{error}</span>
+              </div>
+              <button
+                type="button"
+                className="ev-button"
+                onClick={() => refresh()}
+                data-testid="retry-load-btn"
+                style={{ fontSize: '12px', padding: '6px 14px' }}
+              >
+                Retry
+              </button>
             </div>
           )}
           {!isLoading && !error && <Outlet />}

@@ -19,6 +19,10 @@ export interface TrackerRepositoryContextValue {
   stagedChanges: FieldChange[];
   isLoading: boolean;
   error: string | null;
+  /** Whether the underlying repository is read-only (e.g. Phase 3A shared GitHub repository) */
+  isReadOnly: boolean;
+  /** GitHub blob SHA of the current tracker file when loaded from remote */
+  lastLoadedSha: string | null;
   refresh: () => Promise<void>;
   enterEditMode: () => void;
   exitEditMode: () => void;

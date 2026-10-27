@@ -8,7 +8,7 @@ export interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { snapshot, resetToBaseline, isLoading } = useTrackerSnapshot();
+  const { snapshot, resetToBaseline, isReadOnly, isLoading } = useTrackerSnapshot();
   const [showConfirm, setShowConfirm] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
@@ -33,6 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const handleReset = async () => {
+    if (isReadOnly) return;
     await resetToBaseline();
     setShowConfirm(false);
     setResetSuccess(true);
@@ -239,6 +240,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 data-testid="reset-success-message"
               >
                 ✓ Local data has been successfully reset to repository baseline.
+              </div>
+            ) : isReadOnly ? (
+              <div
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '2px',
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                }}
+                data-testid="shared-read-only-msg"
+              >
+                🔒 Shared GitHub Repository is active in Read-Only mode. Baseline reset is disabled.
               </div>
             ) : !showConfirm ? (
               <button
