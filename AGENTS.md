@@ -85,11 +85,30 @@ Use only the verified commands defined in `package.json`:
 > [!WARNING]
 > Never run `npm run test:watch` or interactive `vitest` in automated workflows; it will hang indefinitely waiting for input.
 
+### Validation Environment
+
+- `Z:\ZZ\VIP Tracker` is the authoritative working repository, but it resides on an SMB-backed network share.
+- Node-based tooling can experience severe filesystem and worker-startup delays when executed from the network workspace, particularly Vitest, TypeScript, ESLint, Prettier, and Vite builds.
+- Source editing and Git operations may occur in the authoritative `Z:` workspace.
+- Automated validation should run from a current local-disk clone or disposable local validation worktree, such as `C:\temp\vip-tracker-validate` (or another local path).
+- The local validation copy must match the exact commit and intended working changes being validated.
+- Never interpret stalled validation on `Z:` as evidence that code is correct or incorrect.
+- Never claim validation passed unless the command completed with exit code `0`.
+- After validating locally, transfer only intentional corrections back to the authoritative repository and review the resulting diff before committing.
+- Never use `git reset --hard`, broad cleanup, or destructive synchronization in the authoritative workspace.
+- Destructive reset operations are permitted only in a disposable local validation copy after confirming the path and repository context.
+
 ---
 
 ## 4. Risk-Based Validation Matrix
 
 **Evidence-Driven Validation:** Validation is evidence-driven, not checklist-driven. Run a command only when its result provides useful evidence for the change being made. Documentation-only changes and trivial static-content changes do not require application tests, typechecking, linting, builds, or full validation.
+
+- Every reported validation result must include the command and pass/fail status (exit code `0` is required to claim an automated check passed).
+- Terminated, timed-out, stalled, or incomplete commands are recorded as NOT VALIDATED, not passed.
+- Static code review does not replace required automated validation for Level 3 changes.
+- Browser smoke testing does not replace typecheck, tests, lint, or build.
+- Automated testing does not replace browser validation for interaction behavior that tests do not exercise.
 
 Match validation strictly to the scope and risk of the change.
 
