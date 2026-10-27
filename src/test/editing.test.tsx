@@ -986,4 +986,141 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(matches.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe('Production Assignment Display Independence from Layout Assignment', () => {
+    it('displays production assignment on MV output card with active layout', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      // OUT:MV-02-01 in seed has layout '6 BOX' and assignment 'BR ALERT 1'
+      const card = await screen.findByTestId('output-card-OUT:MV-02-01');
+      expect(within(card).getByText('BR ALERT 1')).toBeInTheDocument();
+      expect(within(card).getByText('6 BOX')).toBeInTheDocument();
+    });
+
+    it('displays production assignment on MV output card with NO layout (Available / unassigned layout)', async () => {
+      // Create seed snapshot where an output has assignmentName but no layoutName (status Available)
+      const customSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
+      const targetOut = customSnapshot.outputs.find(
+        (o: import('../domain/models').MultiviewOutput) => o.id === 'OUT:MV-01-04'
+      );
+      targetOut.assignmentName = 'TEST PRODUCTION';
+      targetOut.layoutName = null;
+      targetOut.status = 'Available';
+
+      const repo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(repo);
+
+      const card = await screen.findByTestId('output-card-OUT:MV-01-04');
+      // Must visibly display Production Assignment
+      expect(within(card).getByText('TEST PRODUCTION')).toBeInTheDocument();
+      // Must preserve existing available/no-layout presentation
+      expect(within(card).getByText('AVAILABLE')).toBeInTheDocument();
+      expect(within(card).getByText('No layout assigned')).toBeInTheDocument();
+      // Does not show "Available" as the assignment label because it has an assignment
+      expect(within(card).queryByText('Available', { selector: '.ev-card-assignment' })).toBeNull();
+    });
+
+    it('displays production assignment on MV output card with inactive / unassigned layout status', async () => {
+      const customSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
+      const targetOut = customSnapshot.outputs.find(
+        (o: import('../domain/models').MultiviewOutput) => o.id === 'OUT:MV-01-03'
+      );
+      targetOut.assignmentName = 'TEST PRODUCTION';
+      targetOut.status = 'Unassigned';
+      targetOut.layoutName = null;
+
+      const repo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(repo);
+
+      const card = await screen.findByTestId('output-card-OUT:MV-01-03');
+      expect(within(card).getByText('TEST PRODUCTION')).toBeInTheDocument();
+      expect(within(card).getByText('AVAILABLE')).toBeInTheDocument();
+    });
+
+    it('shows layout info normally and does not invent production assignment when output has layout but no assignment', async () => {
+      const customSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
+      const targetOut = customSnapshot.outputs.find(
+        (o: import('../domain/models').MultiviewOutput) => o.id === 'OUT:MV-02-01'
+      );
+      targetOut.assignmentName = null;
+      targetOut.layoutName = '4 BOX';
+
+      const repo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(repo);
+
+      const card = await screen.findByTestId('output-card-OUT:MV-02-01');
+      expect(within(card).getByText('4 BOX')).toBeInTheDocument();
+      expect(within(card).getByText('Unassigned')).toBeInTheDocument();
+    });
+
+    it('preserves existing available/unassigned presentation when output has no layout and no assignment', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      // OUT:MV-01-04 in seed has no layout and no assignment
+      const card = await screen.findByTestId('output-card-OUT:MV-01-04');
+      expect(within(card).getByText('AVAILABLE')).toBeInTheDocument();
+      expect(within(card).getByText('No layout assigned')).toBeInTheDocument();
+      expect(
+        within(card).getByText('Available', { selector: '.ev-card-assignment' })
+      ).toBeInTheDocument();
+    });
+
+    it('immediately displays production assignment in draft UI when assigned in Edit Mode without a layout', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo);
+
+      // OUT:MV-01-04 is available with no layout
+      const cardBefore = await screen.findByTestId('output-card-OUT:MV-01-04');
+      expect(
+        within(cardBefore).getByText('Available', { selector: '.ev-card-assignment' })
+      ).toBeInTheDocument();
+
+      // Enter edit mode
+      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
+
+      // Click card to open modal
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-01-04'));
+
+      // Type production assignment without selecting a layout
+      const prodInput = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLInputElement;
+      fireEvent.change(prodInput, { target: { value: 'TEST PRODUCTION' } });
+      fireEvent.blur(prodInput);
+
+      // Close modal
+      fireEvent.click(screen.getByLabelText('Close detail modal'));
+
+      // Card immediately displays 'TEST PRODUCTION' while remaining in available placeholder
+      const cardAfter = screen.getByTestId('output-card-OUT:MV-01-04');
+      expect(within(cardAfter).getByText('TEST PRODUCTION')).toBeInTheDocument();
+      expect(within(cardAfter).getByText('AVAILABLE')).toBeInTheDocument();
+      expect(within(cardAfter).getByText('No layout assigned')).toBeInTheDocument();
+    });
+
+    it('displays shared production name across multiple outputs with no layouts assigned', async () => {
+      const customSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
+      const out1 = customSnapshot.outputs.find(
+        (o: import('../domain/models').MultiviewOutput) => o.id === 'OUT:MV-01-03'
+      );
+      const out2 = customSnapshot.outputs.find(
+        (o: import('../domain/models').MultiviewOutput) => o.id === 'OUT:MV-01-04'
+      );
+      out1.assignmentName = 'TEST PRODUCTION';
+      out1.layoutName = null;
+      out2.assignmentName = 'TEST PRODUCTION';
+      out2.layoutName = null;
+
+      const repo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(repo);
+
+      const card1 = await screen.findByTestId('output-card-OUT:MV-01-03');
+      const card2 = await screen.findByTestId('output-card-OUT:MV-01-04');
+
+      expect(within(card1).getByText('TEST PRODUCTION')).toBeInTheDocument();
+      expect(within(card2).getByText('TEST PRODUCTION')).toBeInTheDocument();
+    });
+  });
 });

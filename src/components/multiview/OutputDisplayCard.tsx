@@ -91,7 +91,7 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
             onClick();
           }
         }}
-        aria-label={`${outputDisplayLabel} (Available)`}
+        aria-label={`${outputDisplayLabel} (${output.assignmentName ? `${output.assignmentName} - ` : ''}Available)`}
       >
         <div className="ev-card-header">
           <div className="ev-card-id-group">
@@ -115,7 +115,13 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
         </div>
 
         <div className="ev-card-footer">
-          <span className="ev-card-assignment unassigned">Available</span>
+          {output.assignmentName ? (
+            <span className="ev-card-assignment" title={output.assignmentName}>
+              {output.assignmentName}
+            </span>
+          ) : (
+            <span className="ev-card-assignment unassigned">Available</span>
+          )}
           {lastChangedText ? (
             <span
               className="ev-card-last-changed"
