@@ -26,8 +26,8 @@
                    ▼
        [ TrackerRepository (Interface) ]
                    │
-                   ├── LocalTrackerRepository (In-memory baseline)
-                   └── (Future: ApiTrackerRepository)
+                   ├── LocalTrackerRepository (Active runtime baseline & storage)
+                   └── GitHubTrackerRepository (Read-only remote foundation; inactive)
                    │
                    ▼
      [ TrackerRepositoryContext / Provider ]
@@ -50,8 +50,11 @@
 
 2. **Repository Abstraction:**
    - Data access is mediated through the asynchronous `TrackerRepository` interface (`src/services/TrackerRepository.ts`).
-   - The current implementation (`LocalTrackerRepository`) loads the bundled, immutable typed baseline snapshot.
-   - Future REST API backends or WebSocket streams can replace `LocalTrackerRepository` without rewriting any page components.
+   - The active runtime implementation (`LocalTrackerRepository`) loads the local baseline and persists edits in browser local storage.
+   - `GitHubTrackerRepository` (`src/services/GitHubTrackerRepository.ts`) provides a safe, read-only foundation capable of loading and validating authoritative tracker data from the private GitHub data repository. It is currently **inactive** in the running application (`LocalTrackerRepository` remains active).
+   - **Credential Security:** Credentials must be injected via a token provider abstraction and never bundled into client-side Vite builds or browser storage.
+   - **Revision Tracking:** `GitHubTrackerRepository` retains the GitHub blob SHA (`getLastLoadedSha()`) for future conflict-safe writes.
+   - **Authentication Delivery:** Production authentication delivery and two-browser synchronization remain intentionally deferred to later phases.
 
 3. **No Direct Component Seed Ingestion:**
    - React components never import raw CSV files or seed JSON directly. They consume data via `useTrackerSnapshot()` and pure selector functions.
