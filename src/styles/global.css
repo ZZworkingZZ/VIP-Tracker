@@ -74,6 +74,30 @@ select {
   color: inherit;
 }
 
+/* Accessible high-contrast styling for dropdown options and autocomplete suggestion lists */
+select option,
+select optgroup,
+datalist option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+select option:checked,
+select option:hover,
+select option:focus,
+datalist option:checked,
+datalist option:hover,
+datalist option:focus {
+  color: #000000 !important;
+  background-color: #cbd5e1 !important;
+}
+
+select option:disabled,
+datalist option:disabled {
+  color: #64748b !important;
+  background-color: #f1f5f9 !important;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
