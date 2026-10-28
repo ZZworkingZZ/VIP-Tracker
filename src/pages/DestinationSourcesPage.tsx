@@ -7,6 +7,12 @@ import {
   formatOutputDisplay,
 } from '../domain/identifiers';
 import { selectDestinationsForMultiview } from '../domain/selectors';
+
+export const STATE_LABELS = {
+  AVAILABLE: 'Available',
+  IN_USE: 'In Use',
+  CONFLICT: 'Conflict',
+} as const;
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { SourceRoutingSelectorModal } from '../components/multiview/SourceRoutingSelectorModal';
@@ -650,11 +656,30 @@ export const DestinationSourcesPage: React.FC = () => {
                         </td>
                         <td>
                           {row.hasConflict ? (
-                            <span className="status-badge badge-conflict">Conflict</span>
+                            <span className="status-badge badge-conflict">
+                              {STATE_LABELS.CONFLICT}
+                            </span>
+                          ) : (row.destination as unknown as { state?: string }).state ===
+                              'Available' ||
+                            (row.destination as unknown as { state?: string }).state === 'Open' ? (
+                            <span className="status-badge badge-available">
+                              {STATE_LABELS.AVAILABLE}
+                            </span>
+                          ) : (row.destination as unknown as { state?: string }).state ===
+                              'In Use' ||
+                            (row.destination as unknown as { state?: string }).state ===
+                              'Patched' ? (
+                            <span className="status-badge badge-assigned">
+                              {STATE_LABELS.IN_USE}
+                            </span>
                           ) : row.source ? (
-                            <span className="status-badge badge-assigned">Patched</span>
+                            <span className="status-badge badge-assigned">
+                              {STATE_LABELS.IN_USE}
+                            </span>
                           ) : (
-                            <span className="status-badge badge-available">Open</span>
+                            <span className="status-badge badge-available">
+                              {STATE_LABELS.AVAILABLE}
+                            </span>
                           )}
                         </td>
                         {isEditMode && (

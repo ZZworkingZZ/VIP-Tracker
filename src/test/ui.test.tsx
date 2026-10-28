@@ -116,6 +116,11 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     const tableBtn = screen.getByRole('button', { name: 'Table View' });
     fireEvent.click(tableBtn);
     expect(screen.getByLabelText('MV-04 Destinations Table')).toBeInTheDocument();
+
+    // Verify State column displays "Available" and neither "Patched" nor "Open"
+    expect(screen.getAllByText('Available').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Patched')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open')).not.toBeInTheDocument();
   });
 
   it('renders Assignments page with visual assignment packages, miniature feeds, and preserved groupings', async () => {

@@ -322,5 +322,41 @@ describe('Phase 1: Domain / Schema Compatibility', () => {
       const reloadedSnapshot = await reloadedRepo.getSnapshot();
       expect(reloadedSnapshot.metadata).toEqual(syntheticMetadata);
     });
+
+    it('normalizes legacy state values ("Open" -> "Available", "Patched" -> "In Use") on load', () => {
+      const rawJson = JSON.stringify({
+        schemaVersion: TRACKER_SCHEMA_VERSION,
+        sourceSeedVersion: CURRENT_SOURCE_SEED_VERSION,
+        outputs: [],
+        destinations: [
+          {
+            id: 'DEST:MV-01-01',
+            multiviewId: 'MV-01',
+            destinationNumber: 1,
+            assignedSourceId: null,
+            state: 'Open',
+          },
+          {
+            id: 'DEST:MV-01-02',
+            multiviewId: 'MV-01',
+            destinationNumber: 2,
+            assignedSourceId: 'SRC:CAM_1',
+            state: 'Patched',
+          },
+        ],
+        sources: [],
+      });
+
+      const deserialized = deserializeTrackerSnapshot(rawJson);
+      const d1 = deserialized.destinations.find(
+        (d) => d.id === 'DEST:MV-01-01'
+      ) as unknown as Record<string, unknown>;
+      const d2 = deserialized.destinations.find(
+        (d) => d.id === 'DEST:MV-01-02'
+      ) as unknown as Record<string, unknown>;
+
+      expect(d1.state).toBe('Available');
+      expect(d2.state).toBe('In Use');
+    });
   });
 });

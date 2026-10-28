@@ -1285,5 +1285,64 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       const modalPip5 = within(modal).getByTestId('layout-window-4');
       expect(within(modalPip5).getByText('FS 01')).toBeInTheDocument();
     });
+
+    it('displays State column as "In Use" (for routed) and "Available" (for unrouted) and updates across save', async () => {
+      const customSnapshot: TrackerSnapshot = JSON.parse(JSON.stringify(SNAPSHOT_WITH_SOURCES));
+      const dest1 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-01')!;
+      dest1.assignedSourceId = 'SRC:CAM_1' as SourceId;
+
+      const sharedStorage = new MemoryTrackerStorage();
+      const repoA = new LocalTrackerRepository(customSnapshot, sharedStorage);
+      const { unmount } = renderApp(repoA, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+
+      // Switch to Table View
+      fireEvent.click(screen.getByRole('button', { name: 'Table View' }));
+
+      // DEST:MV-02-01 has a source -> State: "In Use" with badge-assigned
+      const row1 = screen.getByTestId('dest-table-row-DEST:MV-02-01');
+      const badge1 = within(row1).getByText('In Use');
+      expect(badge1).toHaveClass('status-badge', 'badge-assigned');
+
+      // DEST:MV-02-02 has no source -> State: "Available" with badge-available
+      const row2 = screen.getByTestId('dest-table-row-DEST:MV-02-02');
+      const badge2 = within(row2).getByText('Available');
+      expect(badge2).toHaveClass('status-badge', 'badge-available');
+
+      // Verify no remaining "Open" or "Patched" state badges in the table
+      expect(within(row1).queryByText('Patched')).not.toBeInTheDocument();
+      expect(within(row2).queryByText('Open')).not.toBeInTheDocument();
+
+      // Enter edit mode and unroute DEST:MV-02-01 in Browser A
+      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
+      const clearBtn = within(row1).getByTestId('table-clear-dest-DEST:MV-02-01');
+      fireEvent.click(clearBtn);
+
+      // Now row1 becomes Available in draft
+      expect(within(row1).getByText('Available')).toHaveClass('status-badge', 'badge-available');
+
+      // Save changes
+      fireEvent.click(screen.getByTestId('review-save-btn'));
+      fireEvent.click(await screen.findByTestId('confirm-save-btn'));
+      await waitFor(() => {
+        expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
+      });
+
+      unmount();
+
+      // Browser B loads the saved state from shared storage
+      const repoB = new LocalTrackerRepository(customSnapshot, sharedStorage);
+      renderApp(repoB, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table View' }));
+
+      const reloadedRow1 = screen.getByTestId('dest-table-row-DEST:MV-02-01');
+      expect(within(reloadedRow1).getByText('Available')).toHaveClass(
+        'status-badge',
+        'badge-available'
+      );
+    });
   });
 });

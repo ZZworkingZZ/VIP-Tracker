@@ -146,5 +146,18 @@ export function deserializeTrackerSnapshot(json: string): TrackerSnapshot {
   if (!parsed || !Array.isArray(parsed.outputs) || !Array.isArray(parsed.destinations)) {
     throw new Error('Invalid VIP Tracker snapshot format.');
   }
+
+  // Normalize legacy destination state values if present
+  for (const dest of parsed.destinations) {
+    if (dest && typeof dest === 'object' && 'state' in dest) {
+      const record = dest as Record<string, unknown>;
+      if (record.state === 'Open') {
+        record.state = 'Available';
+      } else if (record.state === 'Patched') {
+        record.state = 'In Use';
+      }
+    }
+  }
+
   return parsed as TrackerSnapshot;
 }
