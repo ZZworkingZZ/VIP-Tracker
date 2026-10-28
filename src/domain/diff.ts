@@ -204,6 +204,66 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
     }
   }
 
+  // 4. Compare OperationalAssignments (detect added, renamed, or removed Production Assignments)
+  const baselineAssignments = (baseline.operationalAssignments ?? []).filter(
+    (a) => a && a.active !== false
+  );
+  const draftAssignments = (draft.operationalAssignments ?? []).filter(
+    (a) => a && a.active !== false
+  );
+  const baselineAssignMap = new Map(baselineAssignments.map((a) => [a.id, a]));
+  const draftAssignMap = new Map(draftAssignments.map((a) => [a.id, a]));
+
+  // Assignments that were implicitly created by setting output.assignmentName on an output
+  // already have an output assignmentName FieldChange, so only emit a separate assignmentCatalog
+  // diff when the assignment is not already accounted for by a changed output assignmentName.
+  const changedOutputAssignmentNames = new Set(
+    changes
+      .filter((c) => c.entityType === 'output' && c.field === 'assignmentName' && c.newValue)
+      .map((c) => c.newValue!.trim().toUpperCase())
+  );
+
+  for (const draftAssign of draftAssignments) {
+    const baseAssign = baselineAssignMap.get(draftAssign.id);
+    if (!baseAssign) {
+      if (!changedOutputAssignmentNames.has(draftAssign.rawName.trim().toUpperCase())) {
+        changes.push({
+          entityType: 'assignment',
+          entityId: draftAssign.id,
+          entityLabel: draftAssign.rawName,
+          field: 'assignmentCatalog',
+          previousValue: null,
+          newValue: draftAssign.rawName,
+          description: `Added Production Assignment: ${draftAssign.rawName}`,
+        });
+      }
+    } else if (baseAssign.rawName !== draftAssign.rawName) {
+      changes.push({
+        entityType: 'assignment',
+        entityId: draftAssign.id,
+        entityLabel: draftAssign.rawName,
+        field: 'assignmentCatalog',
+        previousValue: baseAssign.rawName,
+        newValue: draftAssign.rawName,
+        description: `Renamed Production Assignment: ${baseAssign.rawName} → ${draftAssign.rawName}`,
+      });
+    }
+  }
+
+  for (const baseAssign of baselineAssignments) {
+    if (!draftAssignMap.has(baseAssign.id)) {
+      changes.push({
+        entityType: 'assignment',
+        entityId: baseAssign.id,
+        entityLabel: baseAssign.rawName,
+        field: 'assignmentCatalog',
+        previousValue: baseAssign.rawName,
+        newValue: null,
+        description: `Removed Production Assignment: ${baseAssign.rawName}`,
+      });
+    }
+  }
+
   return changes;
 }
 
@@ -261,6 +321,9 @@ function classifyEntityHistoryType(changes: FieldChange[]): HistoryEntityType {
   const first = changes[0];
   if (first.entityType === 'destination' || first.entityType === 'source') {
     return 'Source/Destination State';
+  }
+  if (first.entityType === 'assignment') {
+    return 'Production Assignment';
   }
   const fields = new Set(changes.map((c) => c.field));
   if (fields.size === 1) {
@@ -323,6 +386,9 @@ function formatHistoryFieldChange(
     if (change.field === 'upstreamSourceId') {
       return `${change.entityLabel} Upstream: ${change.previousValue ?? 'Unassigned'} → ${change.newValue ?? 'Unassigned'}`;
     }
+  }
+  if (change.entityType === 'assignment') {
+    return change.description;
   }
   return `${change.entityLabel} ${change.description}`;
 }

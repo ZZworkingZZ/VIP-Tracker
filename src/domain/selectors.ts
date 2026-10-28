@@ -3,10 +3,11 @@ import {
   MultiviewOutput,
   Destination,
   Source,
+  OperationalAssignment,
   ValidationFinding,
   TrackerSnapshot,
 } from './models';
-import { MultiviewId, OutputId } from './identifiers';
+import { MultiviewId, OutputId, createAssignmentId } from './identifiers';
 import { SourceCategory } from './sourceCategories';
 
 export interface DashboardTotals {
@@ -148,11 +149,72 @@ export function selectDestinationsForMultiview(
 }
 
 /**
- * Selects grouped operational assignments derived strictly from verified output records.
- * Preserves raw names (including hyphens vs underscores).
+ * Checks whether a candidate production assignment name collides (case-insensitive, trimmed, or by canonical ID)
+ * with any existing operational assignment or output assignment name.
+ * Optionally ignores an existing assignment name (for inline renaming).
+ */
+export function isDuplicateProductionAssignmentName(
+  candidateName: string,
+  assignments: readonly OperationalAssignment[],
+  outputs: readonly MultiviewOutput[] = [],
+  ignoreName?: string | null
+): boolean {
+  const trimmed = candidateName.trim();
+  if (!trimmed) return false;
+  const normalized = trimmed.toUpperCase();
+  const targetId = createAssignmentId(trimmed);
+
+  const ignoredNormalized = ignoreName ? ignoreName.trim().toUpperCase() : null;
+  const ignoredId = ignoreName ? createAssignmentId(ignoreName.trim()) : null;
+
+  for (const a of assignments) {
+    if (!a || a.active === false) continue;
+    const aNorm = a.rawName.trim().toUpperCase();
+    if (ignoredNormalized && (aNorm === ignoredNormalized || a.id === ignoredId)) {
+      continue;
+    }
+    if (a.id === targetId || aNorm === normalized) {
+      return true;
+    }
+  }
+
+  for (const out of outputs) {
+    if (!out.assignmentName) continue;
+    const oNorm = out.assignmentName.trim().toUpperCase();
+    const oId = createAssignmentId(out.assignmentName.trim());
+    if (ignoredNormalized && (oNorm === ignoredNormalized || oId === ignoredId)) {
+      continue;
+    }
+    if (oId === targetId || oNorm === normalized) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Selects grouped operational assignments derived from the operationalAssignments catalog
+ * and verified output records. Preserves raw names (including hyphens vs underscores and spaces).
  */
 export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProductionAssignment[] {
   const groups = new Map<string, GroupedProductionAssignment>();
+
+  for (const assign of snapshot.operationalAssignments ?? []) {
+    if (!assign || assign.active === false) continue;
+    const name = assign.rawName;
+    if (!name) continue;
+    if (!groups.has(name)) {
+      groups.set(name, {
+        assignmentName: name,
+        multiviewsUsed: [],
+        outputsUsed: [],
+        layouts: [],
+        isLocked: false,
+        findings: [],
+      });
+    }
+  }
 
   for (const out of snapshot.outputs) {
     if (!out.assignmentName) continue;

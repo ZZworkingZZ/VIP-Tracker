@@ -473,6 +473,8 @@ function formatFieldLabel(field: string): string {
       return 'Lock State';
     case 'sourceCatalog':
       return 'Directory Catalog';
+    case 'assignmentCatalog':
+      return 'Production Assignment Catalog';
     case 'upstreamSourceId':
       return 'Upstream Source';
     default:

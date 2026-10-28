@@ -107,7 +107,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
 
     // Modify production assignment
     const prodInput = screen.getByTestId('production-assignment-input');
-    fireEvent.change(prodInput, { target: { value: 'CHOPPED SPECIAL' } });
+    fireEvent.change(prodInput, { target: { value: 'RANKINGS' } });
 
     // Mode pill should now reflect unsaved changes
     expect(modePill).toHaveTextContent('EDIT MODE • UNSAVED');
@@ -126,9 +126,9 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     const editBtn = await screen.findByTestId('enter-edit-mode-btn');
     fireEvent.click(editBtn);
 
-    // Change Production Assignment to CHOPPED
+    // Change Production Assignment to RANKINGS
     const prodInput = screen.getByTestId('production-assignment-input');
-    fireEvent.change(prodInput, { target: { value: 'CHOPPED' } });
+    fireEvent.change(prodInput, { target: { value: 'RANKINGS' } });
 
     // Click Route button on Window 1
     const routeBtn0 = screen.getByTestId('route-btn-0');
@@ -158,7 +158,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     // Review modal should be open and display actual generated differences
     const reviewModal = await screen.findByTestId('review-changes-modal');
     expect(within(reviewModal).getByText('Production Assignment')).toBeInTheDocument();
-    expect(within(reviewModal).getByText('CHOPPED')).toBeInTheDocument();
+    expect(within(reviewModal).getByText('RANKINGS')).toBeInTheDocument();
     expect(within(reviewModal).getAllByText('CNN-NYP-Feed-1').length).toBeGreaterThan(0);
 
     // Confirm save
@@ -170,9 +170,9 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
     });
 
-    // Output card now immediately renders CHOPPED
+    // Output card now immediately renders RANKINGS
     const updatedCard = screen.getByTestId('output-card-OUT:MV-02-01');
-    expect(within(updatedCard).getByText('CHOPPED')).toBeInTheDocument();
+    expect(within(updatedCard).getByText('RANKINGS')).toBeInTheDocument();
   });
 
   it('allows assigning an AVAILABLE output with a layout and windows', async () => {
@@ -196,7 +196,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
 
     // Production assignment is set
     const prodInput = screen.getByTestId('production-assignment-input');
-    fireEvent.change(prodInput, { target: { value: 'STUDIO 21 MONITOR' } });
+    fireEvent.change(prodInput, { target: { value: 'RANKINGS' } });
 
     // Close detail modal
     const closeBtn = screen.getByLabelText('Close detail modal');
@@ -213,10 +213,10 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
     });
 
-    // OUT:MV-01-01 is now assigned with 4 BOX and STUDIO 21 MONITOR
+    // OUT:MV-01-01 is now assigned with 4 BOX and RANKINGS
     const updatedCard = screen.getByTestId('output-card-OUT:MV-01-01');
     expect(updatedCard).toHaveTextContent('4 BOX');
-    expect(updatedCard).toHaveTextContent('STUDIO 21 MONITOR');
+    expect(updatedCard).toHaveTextContent('RANKINGS');
   });
 
   it('warns user before destructive layout reductions truncate populated sources', async () => {
@@ -270,7 +270,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     // Modify an output
     fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
     fireEvent.change(screen.getByTestId('production-assignment-input'), {
-      target: { value: 'UNSAVED DISCARD TEST' },
+      target: { value: 'RANKINGS' },
     });
     fireEvent.click(screen.getByLabelText('Close detail modal'));
 
@@ -285,9 +285,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
 
     // Mode returns to ACTIVE
     expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
-    expect(screen.getByTestId('output-card-OUT:MV-02-01')).not.toHaveTextContent(
-      'UNSAVED DISCARD TEST'
-    );
+    expect(screen.getByTestId('output-card-OUT:MV-02-01')).not.toHaveTextContent('RANKINGS');
 
     confirmSpy.mockRestore();
   });
@@ -338,7 +336,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
     fireEvent.click(editToggle);
     fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
     fireEvent.change(screen.getByTestId('production-assignment-input'), {
-      target: { value: 'PROTECTED CHANGE' },
+      target: { value: 'RANKINGS' },
     });
     fireEvent.click(screen.getByLabelText('Close detail modal'));
 
@@ -350,16 +348,14 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
 
     expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Discard all staged changes'));
     expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('EDIT MODE • UNSAVED');
-    expect(screen.getByTestId('output-card-OUT:MV-02-01')).toHaveTextContent('PROTECTED CHANGE');
+    expect(screen.getByTestId('output-card-OUT:MV-02-01')).toHaveTextContent('RANKINGS');
 
     // 4. User confirms discard -> changes are discarded
     confirmSpy.mockReturnValueOnce(true);
     fireEvent.click(editToggle);
 
     expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
-    expect(screen.getByTestId('output-card-OUT:MV-02-01')).not.toHaveTextContent(
-      'PROTECTED CHANGE'
-    );
+    expect(screen.getByTestId('output-card-OUT:MV-02-01')).not.toHaveTextContent('RANKINGS');
 
     confirmSpy.mockRestore();
   });
@@ -879,21 +875,14 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
   });
 
   describe('Production Assignment Input Natural Space Typing UX', () => {
-    it('allows typing "BR BIG BOARD" character-by-character preserving spaces during typing', async () => {
+    it('allows typing "BR BIG BOARD" character-by-character preserving spaces on the Assignments page and selecting it in OutputDetailModal', async () => {
       const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
-      renderApp(freshRepo);
+      renderApp(freshRepo, '/productions');
 
-      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
-
-      // Open OUT:MV-02-01 detail modal
-      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
-      const prodInput = (await screen.findByTestId(
-        'production-assignment-input'
+      const newAssignInput = (await screen.findByTestId(
+        'new-assignment-input'
       )) as HTMLInputElement;
 
-      // Simulate sequential character-by-character typing:
-      // "B", "BR", "BR ", "BR B", "BR BI", "BR BIG", "BR BIG ", "BR BIG B", ... "BR BIG BOARD"
       const keystrokes = [
         'B',
         'BR',
@@ -910,79 +899,67 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       ];
 
       for (const stroke of keystrokes) {
-        fireEvent.change(prodInput, { target: { value: stroke } });
-        expect(prodInput.value).toBe(stroke);
+        fireEvent.change(newAssignInput, { target: { value: stroke } });
+        expect(newAssignInput.value).toBe(stroke);
       }
 
-      // Spaces remain visible while typing
-      expect(prodInput.value).toBe('BR BIG BOARD');
+      fireEvent.click(screen.getByTestId('add-assignment-btn'));
+      expect(await screen.findByText('BR BIG BOARD')).toBeInTheDocument();
 
-      // On blur, value is preserved with trimmed leading/trailing spaces
-      fireEvent.blur(prodInput);
-      expect(prodInput.value).toBe('BR BIG BOARD');
+      // Navigate to Multiviewers and verify it appears in OutputDetailModal dropdown
+      fireEvent.click(screen.getByRole('link', { name: /Multiviewers/i }));
+      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
+
+      const prodSelect = (await screen.findByTestId(
+        'production-assignment-input'
+      )) as HTMLSelectElement;
+      fireEvent.change(prodSelect, { target: { value: 'BR BIG BOARD' } });
+      expect(prodSelect.value).toBe('BR BIG BOARD');
     });
 
-    it('trims leading/trailing whitespace on commit (onBlur) while preserving internal spaces', async () => {
+    it('trims leading/trailing whitespace when adding an assignment while preserving internal spaces', async () => {
+      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
+      renderApp(freshRepo, '/productions');
+
+      const newAssignInput = (await screen.findByTestId(
+        'new-assignment-input'
+      )) as HTMLInputElement;
+
+      fireEvent.change(newAssignInput, { target: { value: '  TEST PRODUCTION A  ' } });
+      expect(newAssignInput.value).toBe('  TEST PRODUCTION A  ');
+
+      fireEvent.click(screen.getByTestId('add-assignment-btn'));
+      expect(await screen.findByText('TEST PRODUCTION A')).toBeInTheDocument();
+    });
+
+    it('allows multiple outputs to share the same multi-word assignment from the dropdown', async () => {
       const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
       renderApp(freshRepo);
 
       expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
 
+      // Output 1 -> 'BR ALERT 2'
       fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
-      const prodInput = (await screen.findByTestId(
+      const prodSelect1 = (await screen.findByTestId(
         'production-assignment-input'
-      )) as HTMLInputElement;
-
-      // Type with leading and trailing spaces
-      fireEvent.change(prodInput, { target: { value: '  TEST PRODUCTION A  ' } });
-      // While typing (before blur), input preserves literal characters
-      expect(prodInput.value).toBe('  TEST PRODUCTION A  ');
-
-      // Blur commits the trimmed value
-      fireEvent.blur(prodInput);
-      expect(prodInput.value).toBe('TEST PRODUCTION A');
-
-      // Close modal and reopen to verify draft was updated
-      fireEvent.click(screen.getByLabelText('Close detail modal'));
-      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
-
-      const reopenedInput = (await screen.findByTestId(
-        'production-assignment-input'
-      )) as HTMLInputElement;
-      expect(reopenedInput.value).toBe('TEST PRODUCTION A');
-    });
-
-    it('allows multiple outputs to share the same committed multi-word assignment', async () => {
-      const freshRepo = new LocalTrackerRepository(INITIAL_SNAPSHOT, new MemoryTrackerStorage());
-      renderApp(freshRepo);
-
-      expect(await screen.findByTestId('output-card-OUT:MV-02-01')).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('toggle-edit-mode-btn'));
-
-      // Output 1 -> 'BR BIG BOARD'
-      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-01'));
-      const prodInput1 = (await screen.findByTestId(
-        'production-assignment-input'
-      )) as HTMLInputElement;
-      fireEvent.change(prodInput1, { target: { value: 'BR BIG BOARD' } });
-      fireEvent.blur(prodInput1);
+      )) as HTMLSelectElement;
+      fireEvent.change(prodSelect1, { target: { value: 'BR ALERT 2' } });
       fireEvent.click(screen.getByLabelText('Close detail modal'));
 
-      // Output 2 -> 'BR BIG BOARD'
-      fireEvent.click(screen.getByTestId('output-card-OUT:MV-02-02'));
-      const prodInput2 = (await screen.findByTestId(
+      // Output 2 -> 'BR ALERT 2'
+      fireEvent.click(screen.getByTestId('output-card-OUT:MV-01-01'));
+      const prodSelect2 = (await screen.findByTestId(
         'production-assignment-input'
-      )) as HTMLInputElement;
-      fireEvent.change(prodInput2, { target: { value: 'BR BIG BOARD' } });
-      fireEvent.blur(prodInput2);
+      )) as HTMLSelectElement;
+      fireEvent.change(prodSelect2, { target: { value: 'BR ALERT 2' } });
       fireEvent.click(screen.getByLabelText('Close detail modal'));
 
-      // Review changes modal verifies both outputs share 'BR BIG BOARD'
+      // Review changes modal verifies both outputs share 'BR ALERT 2'
       fireEvent.click(screen.getByTestId('review-save-btn'));
       expect(await screen.findByTestId('review-changes-modal')).toBeInTheDocument();
-      // Both modified outputs have 'BR BIG BOARD' in review modal
-      const matches = screen.getAllByText('BR BIG BOARD');
+      const matches = screen.getAllByText('BR ALERT 2');
       expect(matches.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -1083,19 +1060,18 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       // Click card to open modal
       fireEvent.click(screen.getByTestId('output-card-OUT:MV-01-04'));
 
-      // Type production assignment without selecting a layout
+      // Select production assignment without selecting a layout
       const prodInput = (await screen.findByTestId(
         'production-assignment-input'
-      )) as HTMLInputElement;
-      fireEvent.change(prodInput, { target: { value: 'TEST PRODUCTION' } });
-      fireEvent.blur(prodInput);
+      )) as HTMLSelectElement;
+      fireEvent.change(prodInput, { target: { value: 'RANKINGS' } });
 
       // Close modal
       fireEvent.click(screen.getByLabelText('Close detail modal'));
 
-      // Card immediately displays 'TEST PRODUCTION' while remaining in available placeholder
+      // Card immediately displays 'RANKINGS' while remaining in available placeholder
       const cardAfter = screen.getByTestId('output-card-OUT:MV-01-04');
-      expect(within(cardAfter).getByText('TEST PRODUCTION')).toBeInTheDocument();
+      expect(within(cardAfter).getByText('RANKINGS')).toBeInTheDocument();
       expect(within(cardAfter).getByText('AVAILABLE')).toBeInTheDocument();
       expect(within(cardAfter).getByText('No layout assigned')).toBeInTheDocument();
     });

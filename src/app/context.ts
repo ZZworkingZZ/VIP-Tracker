@@ -58,6 +58,9 @@ export interface TrackerRepositoryContextValue {
   ) => void;
   addDraftSource: (source: Source) => void;
   updateDraftSourceUpstream: (sourceId: SourceId, upstreamSourceId: SourceId | null) => void;
+  addDraftOperationalAssignment: (name: string) => void;
+  renameDraftOperationalAssignment: (oldName: string, newName: string) => void;
+  removeDraftOperationalAssignment: (name: string) => void;
   saveDraftChanges: () => Promise<void>;
   resetToBaseline: () => Promise<void>;
   saveCustomLayout: (

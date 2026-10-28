@@ -58,8 +58,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   );
   const [inputSearchQuery, setInputSearchQuery] = useState<string>('');
 
-  const [assignmentInputText, setAssignmentInputText] = useState<string>('');
-
   const [routingWindow, setRoutingWindow] = useState<{
     windowIndex: number;
     destinationNumber: number;
@@ -83,11 +81,6 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     return activeSnapshot?.outputs.find((o) => o.id === initialOutput.id) ?? initialOutput;
   }, [activeSnapshot?.outputs, initialOutput]);
 
-  // Synchronize local input text whenever the viewed output changes
-  useEffect(() => {
-    setAssignmentInputText(output?.assignmentName ?? '');
-  }, [output?.id, output?.assignmentName]);
-
   // Persisted canonical output (guarantees Last Changed reflects saved state, not draft)
   const canonicalOutput = useMemo(() => {
     if (!initialOutput) return null;
@@ -110,6 +103,20 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   const allOutputs = useMemo(
     () => activeSnapshot?.outputs ?? propAllOutputs ?? [],
     [activeSnapshot?.outputs, propAllOutputs]
+  );
+
+  // Sorted production assignments from the Assignments catalog
+  const sortedProductionNames = useMemo(() => {
+    const names = (activeSnapshot?.operationalAssignments ?? [])
+      .filter((a) => a && a.active !== false && a.rawName)
+      .map((a) => a.rawName);
+    const unique = Array.from(new Set(names));
+    return unique.sort((a, b) => a.localeCompare(b));
+  }, [activeSnapshot?.operationalAssignments]);
+
+  const currentAssignmentName = output?.assignmentName ?? '';
+  const isLegacyUnknownAssignment = Boolean(
+    currentAssignmentName && !sortedProductionNames.includes(currentAssignmentName)
   );
 
   const layout = useMemo(
@@ -636,29 +643,18 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 </div>
                 {isEditMode ? (
                   <div style={{ marginTop: '2px' }}>
-                    <input
-                      type="text"
-                      list="production-options"
-                      value={assignmentInputText}
-                      placeholder="e.g. CHOPPED, BR ALERT 1"
+                    <select
+                      className="filter-select"
+                      value={currentAssignmentName}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setAssignmentInputText(val);
-                        // Update draft without stripping trailing or internal spaces during typing
                         updateDraftOutput({
                           ...output,
                           assignmentName: val.length > 0 ? val : null,
                         });
                       }}
-                      onBlur={() => {
-                        const trimmed = assignmentInputText.trim();
-                        setAssignmentInputText(trimmed);
-                        updateDraftOutput({
-                          ...output,
-                          assignmentName: trimmed.length > 0 ? trimmed : null,
-                        });
-                      }}
                       data-testid="production-assignment-input"
+                      aria-label="Production Assignment"
                       style={{
                         width: '100%',
                         padding: '3px 6px',
@@ -669,12 +665,19 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                         color: '#f59e0b',
                         borderRadius: '2px',
                       }}
-                    />
-                    <datalist id="production-options">
-                      {activeSnapshot?.operationalAssignments.map((a) => (
-                        <option key={a.id} value={a.rawName} />
+                    >
+                      <option value="">— None —</option>
+                      {isLegacyUnknownAssignment && (
+                        <option value={currentAssignmentName}>
+                          {currentAssignmentName} (not in Assignments)
+                        </option>
+                      )}
+                      {sortedProductionNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
                       ))}
-                    </datalist>
+                    </select>
                   </div>
                 ) : (
                   <div

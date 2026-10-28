@@ -13,6 +13,7 @@ import {
 import { TrackerRepositoryContext } from './context';
 import { diffSnapshots, createChangeSet } from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
+import { isDuplicateProductionAssignmentName } from '../domain/selectors';
 import { assignPipInput, movePipInput } from '../domain/pipRouting';
 import { getLayoutDefinition } from '../domain/layoutDefinitions';
 import { Operator, createOperator } from '../domain/operator';
@@ -318,14 +319,10 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
         const nextAssignments = [...(current.operationalAssignments ?? [])];
         if (output.assignmentName && output.assignmentName.trim()) {
           const trimmed = output.assignmentName.trim();
-          const targetId = createAssignmentId(trimmed);
-          const normalized = trimmed.toUpperCase();
-          const alreadyExists = nextAssignments.some(
-            (a) => a.id === targetId || a.rawName.trim().toUpperCase() === normalized
-          );
+          const alreadyExists = isDuplicateProductionAssignmentName(trimmed, nextAssignments, []);
           if (!alreadyExists) {
             nextAssignments.push({
-              id: targetId,
+              id: createAssignmentId(trimmed),
               rawName: trimmed,
               displayName: trimmed,
               active: true,
@@ -570,6 +567,185 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     [snapshot]
   );
 
+  // Add a Production Assignment to the draft operationalAssignments catalog
+  const addDraftOperationalAssignment = useCallback(
+    (name: string) => {
+      if (isReadOnly) return;
+      const trimmed = name.trim();
+      if (!trimmed) return;
+
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const existingAssignments = current.operationalAssignments ?? [];
+        if (isDuplicateProductionAssignmentName(trimmed, existingAssignments, current.outputs)) {
+          return current;
+        }
+
+        const nextAssignments = [
+          ...existingAssignments,
+          {
+            id: createAssignmentId(trimmed),
+            rawName: trimmed,
+            displayName: trimmed,
+            active: true,
+          },
+        ];
+
+        return {
+          ...current,
+          operationalAssignments: nextAssignments,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [isReadOnly, snapshot]
+  );
+
+  // Rename a Production Assignment in the draft catalog and propagate to all outputs using it
+  const renameDraftOperationalAssignment = useCallback(
+    (oldName: string, newName: string) => {
+      if (isReadOnly) return;
+      const oldTrimmed = oldName.trim();
+      const newTrimmed = newName.trim();
+      if (!oldTrimmed || !newTrimmed) return;
+
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const existingAssignments: import('../domain/models').OperationalAssignment[] =
+          current.operationalAssignments ?? [];
+        if (
+          isDuplicateProductionAssignmentName(
+            newTrimmed,
+            existingAssignments,
+            current.outputs,
+            oldTrimmed
+          )
+        ) {
+          return current;
+        }
+
+        const oldNorm = oldTrimmed.toUpperCase();
+        const oldId = createAssignmentId(oldTrimmed);
+        const newId = createAssignmentId(newTrimmed);
+
+        let foundInCatalog = false;
+        const nextAssignments = existingAssignments.map(
+          (a: import('../domain/models').OperationalAssignment) => {
+            if (a.rawName.trim().toUpperCase() === oldNorm || a.id === oldId) {
+              foundInCatalog = true;
+              return {
+                ...a,
+                id: newId,
+                rawName: newTrimmed,
+                displayName: newTrimmed,
+                active: true,
+              };
+            }
+            return a;
+          }
+        );
+
+        if (!foundInCatalog) {
+          nextAssignments.push({
+            id: newId,
+            rawName: newTrimmed,
+            displayName: newTrimmed,
+            active: true,
+          });
+        }
+
+        // Deduplicate by ID
+        const seenIds = new Set<string>();
+        const deduplicatedAssignments: import('../domain/models').OperationalAssignment[] = [];
+        for (const a of nextAssignments) {
+          if (a && a.id && !seenIds.has(a.id)) {
+            seenIds.add(a.id);
+            deduplicatedAssignments.push(a);
+          }
+        }
+
+        // Propagate rename to all outputs referencing oldName
+        const nextOutputs = current.outputs.map((o: MultiviewOutput) => {
+          if (o.assignmentName && o.assignmentName.trim().toUpperCase() === oldNorm) {
+            return {
+              ...o,
+              assignmentName: newTrimmed,
+            };
+          }
+          return o;
+        });
+
+        const findings = validateSnapshot(
+          current.multiviews,
+          nextOutputs,
+          current.destinations,
+          current.sources
+        );
+
+        return {
+          ...current,
+          outputs: nextOutputs,
+          operationalAssignments: deduplicatedAssignments,
+          validationFindings: findings,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [isReadOnly, snapshot]
+  );
+
+  // Remove a Production Assignment from the draft catalog and clear it on any outputs using it
+  const removeDraftOperationalAssignment = useCallback(
+    (name: string) => {
+      if (isReadOnly) return;
+      const trimmed = name.trim();
+      if (!trimmed) return;
+
+      setDraftSnapshot((prev) => {
+        const current = prev ? prev : snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+        if (!current) return null;
+
+        const targetNorm = trimmed.toUpperCase();
+        const targetId = createAssignmentId(trimmed);
+
+        const nextAssignments = (current.operationalAssignments ?? []).filter(
+          (a: import('../domain/models').OperationalAssignment) =>
+            a.rawName.trim().toUpperCase() !== targetNorm && a.id !== targetId
+        );
+
+        const nextOutputs = current.outputs.map((o: MultiviewOutput) => {
+          if (o.assignmentName && o.assignmentName.trim().toUpperCase() === targetNorm) {
+            return {
+              ...o,
+              assignmentName: null,
+            };
+          }
+          return o;
+        });
+
+        const findings = validateSnapshot(
+          current.multiviews,
+          nextOutputs,
+          current.destinations,
+          current.sources
+        );
+
+        return {
+          ...current,
+          outputs: nextOutputs,
+          operationalAssignments: nextAssignments,
+          validationFindings: findings,
+        };
+      });
+      setIsEditMode(true);
+    },
+    [isReadOnly, snapshot]
+  );
+
   // Save all staged changes to repository with active operator attribution
   const saveDraftChanges = useCallback(async () => {
     if (isReadOnly) {
@@ -764,6 +940,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestinationsBatch,
       addDraftSource,
       updateDraftSourceUpstream,
+      addDraftOperationalAssignment,
+      renameDraftOperationalAssignment,
+      removeDraftOperationalAssignment,
       saveDraftChanges,
       resetToBaseline,
       saveCustomLayout,
@@ -809,6 +988,9 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestinationsBatch,
       addDraftSource,
       updateDraftSourceUpstream,
+      addDraftOperationalAssignment,
+      renameDraftOperationalAssignment,
+      removeDraftOperationalAssignment,
       saveDraftChanges,
       resetToBaseline,
       saveCustomLayout,
