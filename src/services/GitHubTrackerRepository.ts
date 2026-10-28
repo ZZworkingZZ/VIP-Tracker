@@ -12,7 +12,12 @@ import {
   ChangeSet,
 } from '../domain/models';
 import { Operator } from '../domain/operator';
-import { changeSetToChangeRecords } from '../domain/diff';
+import {
+  changeSetToChangeRecords,
+  appendHistoryEntries,
+  mergeHistoryEntries,
+  MAX_HISTORY_ENTRIES,
+} from '../domain/diff';
 import { validateSnapshot } from '../domain/validation';
 import {
   LayoutDefinition,
@@ -124,7 +129,10 @@ export class GitHubTrackerRepository implements TrackerRepository {
    */
   applyLoadedSnapshot(snapshot: TrackerSnapshot, sha: string): void {
     this.revisionGeneration++;
-    this.cachedSnapshot = snapshot;
+    this.cachedSnapshot = {
+      ...snapshot,
+      history: mergeHistoryEntries(this.cachedSnapshot?.history, snapshot.history),
+    };
     this.lastLoadedSha = sha;
     const customLayouts = snapshot.customLayouts ?? [];
     setCustomLayoutRegistry(customLayouts);
@@ -137,15 +145,20 @@ export class GitHubTrackerRepository implements TrackerRepository {
     const payload = await this.client.fetchFileContents();
     const snapshot = this.parseAndValidatePayload(payload);
 
+    const mergedSnapshot: TrackerSnapshot = {
+      ...snapshot,
+      history: mergeHistoryEntries(this.cachedSnapshot?.history, snapshot.history),
+    };
+
     this.revisionGeneration++;
-    this.cachedSnapshot = snapshot;
+    this.cachedSnapshot = mergedSnapshot;
     this.lastLoadedSha = payload.sha;
 
-    const customLayouts = snapshot.customLayouts ?? [];
+    const customLayouts = mergedSnapshot.customLayouts ?? [];
     setCustomLayoutRegistry(customLayouts);
 
     return {
-      snapshot: JSON.parse(JSON.stringify(snapshot)),
+      snapshot: JSON.parse(JSON.stringify(mergedSnapshot)),
       sha: payload.sha,
       branch: payload.branch,
       path: payload.path,
@@ -353,6 +366,9 @@ export class GitHubTrackerRepository implements TrackerRepository {
       generatedAt:
         typeof data.generatedAt === 'string' ? data.generatedAt : new Date().toISOString(),
       customLayouts,
+      history: Array.isArray(data.history)
+        ? mergeHistoryEntries(data.history as import('../domain/models').HistoryEntry[], [])
+        : [],
       ...(data.metadata ? { metadata: data.metadata as TrackerSnapshotMetadata } : {}),
     };
 
@@ -532,6 +548,14 @@ export class GitHubTrackerRepository implements TrackerRepository {
     if (changeSet && changeSet.changes.length > 0) {
       const newRecords = changeSetToChangeRecords(changeSet, operator);
       cloned.changeRecords = [...(cloned.changeRecords ?? []), ...newRecords];
+      cloned.history = appendHistoryEntries(
+        mergeHistoryEntries(this.cachedSnapshot?.history, cloned.history),
+        changeSet,
+        operator,
+        MAX_HISTORY_ENTRIES,
+        this.cachedSnapshot ?? undefined,
+        cloned
+      );
 
       if (operator) {
         const affectedOutputIds = new Set<string>();
@@ -573,6 +597,10 @@ export class GitHubTrackerRepository implements TrackerRepository {
           });
         }
       }
+    }
+
+    if (!changeSet || changeSet.changes.length === 0) {
+      cloned.history = mergeHistoryEntries(this.cachedSnapshot?.history, cloned.history);
     }
 
     cloned.validationFindings = validateSnapshot(

@@ -159,5 +159,9 @@ export function deserializeTrackerSnapshot(json: string): TrackerSnapshot {
     }
   }
 
+  if (!Array.isArray(parsed.history)) {
+    parsed.history = [];
+  }
+
   return parsed as TrackerSnapshot;
 }

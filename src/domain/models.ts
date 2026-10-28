@@ -104,6 +104,21 @@ export interface ChangeRecord {
   operatorName?: string | null;
 }
 
+export type HistoryEntityType =
+  'Output/MV' | 'Layout Assignment' | 'Production Assignment' | 'Source/Destination State';
+
+export type HistoryAction = 'created' | 'updated' | 'cleared';
+
+export interface HistoryEntry {
+  id: string;
+  timestamp: string;
+  operator: string;
+  entityType: HistoryEntityType;
+  entityId: string;
+  action: HistoryAction;
+  summary: string;
+}
+
 export interface FieldChange {
   entityType: EntityType;
   entityId: string;
@@ -150,4 +165,5 @@ export interface TrackerSnapshot {
   validationFindings: ValidationFinding[];
   generatedAt: string;
   customLayouts?: LayoutDefinition[];
+  history?: HistoryEntry[];
 }

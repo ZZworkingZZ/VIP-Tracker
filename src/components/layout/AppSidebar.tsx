@@ -78,17 +78,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true, onOpenSet
             <span className="ev-nav-label">Source Directory</span>
           </NavLink>
 
-          <div
-            className="ev-nav-item disabled"
-            title="Change History & Audit Log (Planned for V1.3)"
-            aria-disabled="true"
+          <NavLink
+            to="/history"
+            className={({ isActive }) => `ev-nav-item ${isActive ? 'active' : ''}`}
+            title="Change History & Audit Log"
           >
             <span className="ev-nav-icon" aria-hidden="true">
               🕒
             </span>
             <span className="ev-nav-label">History</span>
-            <span className="ev-nav-badge">V1.3</span>
-          </div>
+          </NavLink>
 
           <div
             className="ev-nav-item disabled"

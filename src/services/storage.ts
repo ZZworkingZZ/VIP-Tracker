@@ -4,6 +4,7 @@ import {
   Source,
   OperationalAssignment,
   ChangeRecord,
+  HistoryEntry,
 } from '../domain/models';
 import { SourceId, createSourceId } from '../domain/identifiers';
 import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
@@ -23,6 +24,7 @@ export interface PersistedTrackerData {
   changeRecords: ChangeRecord[];
   savedAt: string;
   customLayouts?: LayoutDefinition[];
+  history?: HistoryEntry[];
 }
 
 export interface TrackerStorage {

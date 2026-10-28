@@ -13,7 +13,12 @@ import {
 import { Operator } from '../domain/operator';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
 import { validateSnapshot } from '../domain/validation';
-import { changeSetToChangeRecords } from '../domain/diff';
+import {
+  changeSetToChangeRecords,
+  appendHistoryEntries,
+  mergeHistoryEntries,
+  MAX_HISTORY_ENTRIES,
+} from '../domain/diff';
 import {
   TrackerStorage,
   defaultStorage,
@@ -89,6 +94,7 @@ export class LocalTrackerRepository implements TrackerRepository {
         validationFindings: findings,
         generatedAt: storedData.savedAt,
         customLayouts,
+        history: mergeHistoryEntries(storedData.history ?? [], []),
       };
 
       if (shouldPersistBootstrap) {
@@ -102,11 +108,13 @@ export class LocalTrackerRepository implements TrackerRepository {
           changeRecords: storedData.changeRecords ?? [],
           savedAt: storedData.savedAt,
           customLayouts,
+          history: mergeHistoryEntries(storedData.history ?? [], []),
         });
       }
     } else {
       this.snapshot = JSON.parse(JSON.stringify(initialSnapshot));
       this.snapshot.operationalAssignments = this.snapshot.operationalAssignments ?? [];
+      this.snapshot.history = mergeHistoryEntries(this.snapshot.history ?? [], []);
       const customLayouts = this.snapshot.customLayouts ?? [];
       setCustomLayoutRegistry(customLayouts);
 
@@ -174,6 +182,14 @@ export class LocalTrackerRepository implements TrackerRepository {
     if (changeSet && changeSet.changes.length > 0) {
       const newRecords = changeSetToChangeRecords(changeSet, operator);
       cloned.changeRecords = [...(cloned.changeRecords ?? []), ...newRecords];
+      cloned.history = appendHistoryEntries(
+        mergeHistoryEntries(this.snapshot.history, cloned.history),
+        changeSet,
+        operator,
+        MAX_HISTORY_ENTRIES,
+        this.snapshot,
+        cloned
+      );
 
       // Update attribution metadata for entities affected by this save
       if (operator) {
@@ -218,6 +234,10 @@ export class LocalTrackerRepository implements TrackerRepository {
       }
     }
 
+    if (!changeSet || changeSet.changes.length === 0) {
+      cloned.history = mergeHistoryEntries(this.snapshot.history, cloned.history);
+    }
+
     // Re-run pure domain validation
     cloned.validationFindings = validateSnapshot(
       cloned.multiviews,
@@ -242,6 +262,7 @@ export class LocalTrackerRepository implements TrackerRepository {
       operationalAssignments: this.snapshot.operationalAssignments,
       changeRecords: this.snapshot.changeRecords,
       savedAt: this.snapshot.generatedAt,
+      history: this.snapshot.history,
       customLayouts,
     });
 

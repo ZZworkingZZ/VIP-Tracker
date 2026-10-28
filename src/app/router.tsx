@@ -5,6 +5,7 @@ import { LayoutAssignmentsPage } from '../pages/LayoutAssignmentsPage';
 import { DestinationSourcesPage } from '../pages/DestinationSourcesPage';
 import { ProductionsPage } from '../pages/ProductionsPage';
 import { SourceDirectoryPage } from '../pages/SourceDirectoryPage';
+import { HistoryPage } from '../pages/HistoryPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const router = createBrowserRouter(
@@ -32,6 +33,10 @@ export const router = createBrowserRouter(
         {
           path: 'directory',
           element: <SourceDirectoryPage />,
+        },
+        {
+          path: 'history',
+          element: <HistoryPage />,
         },
         {
           path: '*',
