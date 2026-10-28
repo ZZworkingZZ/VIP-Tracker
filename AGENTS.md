@@ -107,6 +107,41 @@ Use only the verified commands defined in `package.json`:
 
 ## Efficiency rules
 
+### Targeted discovery first
+
+- If the prompt names target files, start there. Don't search the whole repo unless those files point you elsewhere.
+- Cap exploration at about 15 searches or reads before the first edit. If you need more, say why in one line.
+- Read whole relevant sections once. Don't re-read the same file in small slices.
+- Skip components that are clearly unrelated to the task, like modals and pages that never reference the feature.
+
+### Editing
+
+- Edit files directly with the built-in edit tool.
+- Don't create helper or throwaway scripts (e.g. `update_files.js`, `fix_*.js`) to apply edits. If an edit fails because of whitespace or line endings, re-read the exact lines and retry the edit.
+- Line endings: let Prettier normalize them. Don't investigate CRLF manually.
+
+### Formatting
+
+- Run `npx.cmd prettier --write <touched files>` only on the files you changed, once, after you finish editing.
+- Don't run the repo-wide `format:check` as a debugging step.
+
+### Testing and validation
+
+- While iterating, run only the targeted test files related to the change (`npx.cmd vitest run <file>`).
+- Run `npm.cmd run typecheck` once before the full validation.
+- Run `npm.cmd run validate` once at the end. If it fails, fix the specific error and re-run only the failing step, then run validate one final time.
+
+### Scope discipline
+
+- Only touch files required by the task plus their directly related tests.
+- If you notice unintended diffs, revert them right away with `git checkout -- <file>`.
+- Never modify the private data repo unless explicitly told to.
+
+### Git hygiene
+
+- Before you commit, run `git status` and make sure there are no untracked temp files. Delete any you created.
+- Stage files explicitly by name. Never use `git add .`.
+
 - Do not re-read a file range already read this session.
 - No baseline test run before changes.
 - While iterating: run only the targeted test file.
