@@ -2,7 +2,12 @@ import React from 'react';
 import { MultiviewOutput, Destination, Source } from '../../domain/models';
 import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
 import { LayoutRenderer } from './LayoutRenderer';
-import { formatOutputDisplay, formatInputDisplay } from '../../domain/identifiers';
+import {
+  formatOutputDisplay,
+  formatInputDisplay,
+  PipId,
+  DestinationId,
+} from '../../domain/identifiers';
 import { normalizeOutputPipAssignments } from '../../domain/pipRouting';
 import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
 
@@ -12,6 +17,10 @@ export interface OutputDisplayCardProps {
   readonly sources?: readonly Source[];
   readonly onClick?: () => void;
   readonly isSelected?: boolean;
+  readonly isEditable?: boolean;
+  readonly isDraggingInput?: boolean;
+  readonly onDropDestinationOnPip?: (pipId: PipId, destinationId: DestinationId) => void;
+  readonly onMovePip?: (fromPipId: PipId, toPipId: PipId) => void;
 }
 
 export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
@@ -20,6 +29,10 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
   sources = [],
   onClick,
   isSelected = false,
+  isEditable = false,
+  isDraggingInput = false,
+  onDropDestinationOnPip,
+  onMovePip,
 }) => {
   const isAvailable = output.status === 'Available' || !output.layoutName;
   const layout = React.useMemo(() => getLayoutDefinition(output.layoutName), [output.layoutName]);
@@ -184,7 +197,15 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
       {/* Center Screen: Evertz Miniature Multiview Geometry & Routed Sources */}
       <div className="ev-card-screen-frame">
         {layout ? (
-          <LayoutRenderer layout={layout} windowsData={windowsData} mode="card" />
+          <LayoutRenderer
+            layout={layout}
+            windowsData={windowsData}
+            mode="card"
+            isEditable={isEditable}
+            isDraggingInput={isDraggingInput}
+            onDropDestinationOnPip={onDropDestinationOnPip}
+            onMovePip={onMovePip}
+          />
         ) : (
           <div className="ev-custom-layout-fallback">Custom layout</div>
         )}

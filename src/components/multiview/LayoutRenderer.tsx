@@ -29,6 +29,7 @@ export interface LayoutRendererProps {
   readonly onMovePip?: (fromPipId: PipId, toPipId: PipId) => void;
   readonly onClearPip?: (pipId: PipId) => void;
   readonly isEditable?: boolean;
+  readonly isDraggingInput?: boolean;
 }
 
 export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
@@ -42,8 +43,12 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
   onMovePip,
   onClearPip,
   isEditable = false,
+  isDraggingInput = false,
 }) => {
   const [dragOverPipId, setDragOverPipId] = useState<string | null>(null);
+  const [internalDraggingPipId, setInternalDraggingPipId] = useState<string | null>(null);
+  const canAcceptDrop = isEditable && Boolean(onDropDestinationOnPip || onMovePip);
+  const showDropTargets = canAcceptDrop && (isDraggingInput || Boolean(internalDraggingPipId));
 
   // Map window data by pipId (primary) and destinationOffset (fallback)
   const dataByPipOrOffset = React.useMemo(() => {
@@ -98,47 +103,80 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
             key={win.id || pipId}
             data-testid={`layout-window-${win.destinationOffset}`}
             data-pip-id={pipId}
+            data-drop-target={canAcceptDrop ? 'true' : undefined}
+            data-drag-over={isDragOver ? 'true' : undefined}
             onClick={() => onClickWindow && onClickWindow(win, winData)}
-            onDragOver={(e) => {
-              if (isEditable && (onDropDestinationOnPip || onMovePip)) {
+            onDragEnter={(e) => {
+              if (canAcceptDrop) {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
                 if (dragOverPipId !== pipId) {
                   setDragOverPipId(pipId);
                 }
               }
             }}
-            onDragLeave={() => {
+            onDragOver={(e) => {
+              if (canAcceptDrop) {
+                e.preventDefault();
+                if (e.dataTransfer) {
+                  const allowed = e.dataTransfer.effectAllowed;
+                  e.dataTransfer.dropEffect = allowed === 'copy' ? 'copy' : 'move';
+                }
+                if (dragOverPipId !== pipId) {
+                  setDragOverPipId(pipId);
+                }
+              }
+            }}
+            onDragLeave={(e) => {
+              const related = e.relatedTarget as Node | null;
+              if (related && e.currentTarget.contains(related)) {
+                return;
+              }
               if (dragOverPipId === pipId) {
                 setDragOverPipId(null);
               }
             }}
             onDrop={(e) => {
-              if (!isEditable) return;
+              if (!canAcceptDrop) return;
               e.preventDefault();
+              e.stopPropagation();
               setDragOverPipId(null);
+              setInternalDraggingPipId(null);
 
-              const moveFromPip = e.dataTransfer.getData('application/vip-pip-move');
+              const moveFromPip = e.dataTransfer?.getData('application/vip-pip-move');
               if (moveFromPip && onMovePip) {
-                onMovePip(moveFromPip as PipId, pipId);
+                if (moveFromPip !== pipId) {
+                  onMovePip(moveFromPip as PipId, pipId);
+                }
                 return;
               }
 
-              const droppedDest = e.dataTransfer.getData('application/vip-dest-id');
-              if (droppedDest && onDropDestinationOnPip) {
+              const droppedDest =
+                e.dataTransfer?.getData('application/vip-dest-id') ||
+                e.dataTransfer?.getData('text/plain');
+              if (
+                droppedDest &&
+                /^DEST:MV-\d{2}-\d{2}$/.test(droppedDest) &&
+                onDropDestinationOnPip
+              ) {
                 onDropDestinationOnPip(pipId, droppedDest as DestinationId);
               }
             }}
             draggable={isEditable && Boolean(winData?.destinationId) && Boolean(onMovePip)}
             onDragStart={(e) => {
               if (isEditable && winData?.destinationId) {
+                e.stopPropagation();
                 e.dataTransfer.setData('application/vip-pip-move', pipId);
                 e.dataTransfer.effectAllowed = 'move';
+                setInternalDraggingPipId(pipId);
               }
+            }}
+            onDragEnd={() => {
+              setInternalDraggingPipId(null);
+              setDragOverPipId(null);
             }}
             className={`layout-window ${onClickWindow ? 'interactive' : ''} ${
               isHighlighted ? 'highlighted' : ''
-            }`}
+            } ${showDropTargets ? 'drop-target-active' : ''} ${isDragOver ? 'drag-over' : ''}`.trim()}
             style={{
               position: 'absolute',
               left: `${win.x}%`,
@@ -151,14 +189,23 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                 ? '2px solid #38bdf8'
                 : isHighlighted
                   ? '2px solid #f59e0b'
-                  : '1px solid #363636',
+                  : showDropTargets
+                    ? '1px dashed #38bdf8'
+                    : '1px solid #363636',
               backgroundColor: isDragOver
-                ? 'rgba(56, 189, 248, 0.15)'
-                : hasSource
-                  ? '#131313'
-                  : hasInput
-                    ? '#0d0d0d'
-                    : '#060606',
+                ? 'rgba(56, 189, 248, 0.22)'
+                : showDropTargets
+                  ? 'rgba(56, 189, 248, 0.06)'
+                  : hasSource
+                    ? '#131313'
+                    : hasInput
+                      ? '#0d0d0d'
+                      : '#060606',
+              boxShadow: isDragOver
+                ? 'inset 0 0 10px rgba(56, 189, 248, 0.35)'
+                : showDropTargets
+                  ? 'inset 0 0 4px rgba(56, 189, 248, 0.15)'
+                  : undefined,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',

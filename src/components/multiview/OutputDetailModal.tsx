@@ -52,6 +52,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   const [isLayoutSelectorOpen, setIsLayoutSelectorOpen] = useState(false);
   const [selectedPipId, setSelectedPipId] = useState<PipId | null>(null);
+  const [draggingDestId, setDraggingDestId] = useState<DestinationId | null>(null);
   const [inputPaletteFilter, setInputPaletteFilter] = useState<'ALL' | 'AVAILABLE' | 'ASSIGNED'>(
     'ALL'
   );
@@ -826,7 +827,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
               style={{
                 display: 'grid',
                 gridTemplateColumns: layout
-                  ? isEditMode
+                  ? !isReadOnly
                     ? 'minmax(0, 1.8fr) minmax(300px, 1.2fr)'
                     : '1fr'
                   : '1fr',
@@ -849,7 +850,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                   </h3>
                   <span style={{ fontSize: '11px', color: '#858585' }}>
                     {operatorOutputTitle} •{' '}
-                    {isEditMode
+                    {!isReadOnly
                       ? 'Drag MV Input to PIP, drag PIP to PIP to move'
                       : 'Aspect Ratio 16:9 Broadcast Monitor'}
                   </span>
@@ -860,19 +861,24 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                     layout={layout}
                     windowsData={windowsData}
                     mode="detail"
-                    isEditable={isEditMode}
+                    isEditable={!isReadOnly}
+                    isDraggingInput={Boolean(draggingDestId)}
                     highlightWindowId={selectedPipId ?? undefined}
                     onClickWindow={(win) => {
                       const pipId = win.pipId as PipId;
                       setSelectedPipId(selectedPipId === pipId ? null : pipId);
                     }}
                     onDropDestinationOnPip={(pipId, destId) => {
+                      if (isReadOnly) return;
+                      if (!destId.startsWith(`DEST:${output.multiviewId}-`)) return;
                       assignDraftPipInput(output.id, pipId, destId);
                     }}
                     onMovePip={(fromPipId, toPipId) => {
+                      if (isReadOnly) return;
                       moveDraftPipInput(output.id, fromPipId, toPipId);
                     }}
                     onClearPip={(pipId) => {
+                      if (isReadOnly) return;
                       clearDraftPipInput(output.id, pipId);
                     }}
                   />
@@ -931,8 +937,8 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                 )}
               </div>
 
-              {/* Right Column: Phase 2B Available MV Inputs Palette (in Edit Mode) */}
-              {isEditMode && layout && (
+              {/* Right Column: Phase 2B Available MV Inputs Palette */}
+              {!isReadOnly && layout && (
                 <div
                   style={{
                     backgroundColor: '#141414',
@@ -1032,25 +1038,41 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                           ? sourceMap.get(dest.assignedSourceId)
                           : null;
                         const isSelectedForTarget = selectedPipId !== null;
+                        const isDraggingThis = draggingDestId === dest.id;
 
                         return (
                           <div
                             key={dest.id}
                             data-testid={`palette-input-${dest.id}`}
-                            draggable
+                            data-draggable={!isReadOnly ? 'true' : 'false'}
+                            draggable={!isReadOnly}
                             onDragStart={(e) => {
+                              if (isReadOnly) {
+                                e.preventDefault();
+                                return;
+                              }
                               e.dataTransfer.setData('application/vip-dest-id', dest.id);
-                              e.dataTransfer.effectAllowed = 'copy';
+                              e.dataTransfer.setData('text/plain', dest.id);
+                              e.dataTransfer.effectAllowed = 'copyMove';
+                              setDraggingDestId(dest.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingDestId(null);
                             }}
                             style={{
                               padding: '6px 8px',
                               backgroundColor: assignedPip ? '#181818' : '#1f1f1f',
-                              border: assignedPip ? '1px solid #333333' : '1px solid #3b82f6',
+                              border: isDraggingThis
+                                ? '1px solid #38bdf8'
+                                : assignedPip
+                                  ? '1px solid #333333'
+                                  : '1px solid #3b82f6',
                               borderRadius: '2px',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              cursor: 'grab',
+                              opacity: isDraggingThis ? 0.6 : 1,
+                              cursor: isDraggingThis ? 'grabbing' : 'grab',
                             }}
                           >
                             <div
@@ -1062,6 +1084,16 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span
+                                  aria-hidden="true"
+                                  style={{
+                                    color: '#64748b',
+                                    fontSize: '10px',
+                                    letterSpacing: '-1px',
+                                  }}
+                                >
+                                  ⋮⋮
+                                </span>
                                 <span
                                   style={{ fontSize: '11px', fontWeight: 700, color: '#f8fafc' }}
                                 >

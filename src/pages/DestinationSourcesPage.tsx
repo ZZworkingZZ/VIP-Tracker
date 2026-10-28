@@ -22,6 +22,8 @@ export const DestinationSourcesPage: React.FC = () => {
     exitEditMode,
     discardChanges,
     hasUnsavedChanges,
+    assignDraftPipInput,
+    moveDraftPipInput,
     updateDraftDestination,
     addDraftSource,
   } = useTrackerSnapshot();
@@ -32,6 +34,7 @@ export const DestinationSourcesPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'UNASSIGNED'>('ALL');
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
   const [routingDestId, setRoutingDestId] = useState<DestinationId | null>(null);
+  const [draggingDestId, setDraggingDestId] = useState<DestinationId | null>(null);
 
   const routingDestination = useMemo(() => {
     if (!routingDestId || !snapshot) return null;
@@ -233,6 +236,17 @@ export const DestinationSourcesPage: React.FC = () => {
                   sources={snapshot.sources}
                   onClick={() => setSelectedOutput(out)}
                   isSelected={selectedOutput?.id === out.id}
+                  isEditable={!isReadOnly}
+                  isDraggingInput={Boolean(draggingDestId)}
+                  onDropDestinationOnPip={(pipId, destId) => {
+                    if (isReadOnly) return;
+                    if (!destId.startsWith(`DEST:${out.multiviewId}-`)) return;
+                    assignDraftPipInput(out.id, pipId, destId);
+                  }}
+                  onMovePip={(fromPipId, toPipId) => {
+                    if (isReadOnly) return;
+                    moveDraftPipInput(out.id, fromPipId, toPipId);
+                  }}
                 />
               ))}
             </div>
@@ -254,8 +268,8 @@ export const DestinationSourcesPage: React.FC = () => {
               </h2>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
                 {isEditMode
-                  ? 'Click any destination tile or Route button to patch broadcast sources directly'
-                  : 'Click output feed above for high-res layout inspection'}
+                  ? 'Drag any destination tile onto an output layout box above, or click Route to patch broadcast sources directly'
+                  : 'Drag any destination tile onto an output layout box above, or click output feed for high-res layout inspection'}
               </span>
             </div>
 
@@ -270,6 +284,7 @@ export const DestinationSourcesPage: React.FC = () => {
                 const dest = row.destination;
                 const destDisplay = formatDestinationDisplay(dest.id);
                 const hasSource = Boolean(row.source);
+                const isDraggingThis = draggingDestId === dest.id;
                 const categoryColor = row.source?.category
                   ? getSourceCategoryColor(row.source.category)
                   : undefined;
@@ -278,6 +293,21 @@ export const DestinationSourcesPage: React.FC = () => {
                   <div
                     key={dest.id}
                     data-testid={`dest-card-${dest.id}`}
+                    data-draggable={!isReadOnly ? 'true' : 'false'}
+                    draggable={!isReadOnly}
+                    onDragStart={(e) => {
+                      if (isReadOnly) {
+                        e.preventDefault();
+                        return;
+                      }
+                      e.dataTransfer.setData('application/vip-dest-id', dest.id);
+                      e.dataTransfer.setData('text/plain', dest.id);
+                      e.dataTransfer.effectAllowed = 'copyMove';
+                      setDraggingDestId(dest.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingDestId(null);
+                    }}
                     onClick={() => {
                       if (isEditMode) {
                         setRoutingDestId(dest.id);
@@ -289,29 +319,45 @@ export const DestinationSourcesPage: React.FC = () => {
                       backgroundColor: hasSource ? '#191919' : '#0f0f0f',
                       border: row.hasConflict
                         ? '1px solid var(--ev-status-error)'
-                        : isEditMode
+                        : isDraggingThis
                           ? '1px solid #38bdf8'
-                          : hasSource
-                            ? '1px solid #363636'
-                            : '1px dashed #262626',
+                          : isEditMode
+                            ? '1px solid #38bdf8'
+                            : hasSource
+                              ? '1px solid #363636'
+                              : '1px dashed #262626',
                       borderRadius: '2px',
                       padding: '7px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       minHeight: '70px',
-                      cursor: isEditMode || row.coveringOutput ? 'pointer' : 'default',
-                      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                      opacity: isDraggingThis ? 0.6 : 1,
+                      cursor: !isReadOnly
+                        ? isDraggingThis
+                          ? 'grabbing'
+                          : 'grab'
+                        : row.coveringOutput
+                          ? 'pointer'
+                          : 'default',
+                      transition:
+                        'border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
                       boxShadow: isEditMode
                         ? '0 2px 6px rgba(56, 189, 248, 0.15)'
                         : '0 2px 4px rgba(0, 0, 0, 0.4)',
                     }}
                     title={
                       isEditMode
-                        ? `Click to route ${destDisplay} (Destination #${dest.destinationNumber})`
-                        : row.coveringOutput
-                          ? `Covered by ${formatOutputDisplay(row.coveringOutput.id)} (${row.coveringOutput.assignmentName || 'Assigned'})`
-                          : undefined
+                        ? `Drag onto a layout box above, or click to route ${destDisplay} (Destination #${dest.destinationNumber})`
+                        : !isReadOnly
+                          ? `Drag ${destDisplay} onto a layout box above${
+                              row.coveringOutput
+                                ? `, or click to inspect ${formatOutputDisplay(row.coveringOutput.id)}`
+                                : ''
+                            }`
+                          : row.coveringOutput
+                            ? `Covered by ${formatOutputDisplay(row.coveringOutput.id)} (${row.coveringOutput.assignmentName || 'Assigned'})`
+                            : undefined
                     }
                   >
                     <div
@@ -327,8 +373,19 @@ export const DestinationSourcesPage: React.FC = () => {
                           fontFamily: 'monospace',
                           fontWeight: 700,
                           color: isEditMode ? '#38bdf8' : '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
                         }}
                       >
+                        {!isReadOnly && (
+                          <span
+                            aria-hidden="true"
+                            style={{ color: '#475569', fontSize: '9px', letterSpacing: '-1px' }}
+                          >
+                            ⋮⋮
+                          </span>
+                        )}
                         {destDisplay}
                       </span>
                       {categoryColor && (
@@ -512,6 +569,21 @@ export const DestinationSourcesPage: React.FC = () => {
                       <tr
                         key={dest.id}
                         data-testid={`dest-table-row-${dest.id}`}
+                        data-draggable={!isReadOnly ? 'true' : 'false'}
+                        draggable={!isReadOnly}
+                        onDragStart={(e) => {
+                          if (isReadOnly) {
+                            e.preventDefault();
+                            return;
+                          }
+                          e.dataTransfer.setData('application/vip-dest-id', dest.id);
+                          e.dataTransfer.setData('text/plain', dest.id);
+                          e.dataTransfer.effectAllowed = 'copyMove';
+                          setDraggingDestId(dest.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingDestId(null);
+                        }}
                         style={
                           row.hasConflict
                             ? { backgroundColor: 'rgba(239, 68, 68, 0.08)' }

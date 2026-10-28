@@ -1123,4 +1123,167 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(within(card2).getByText('TEST PRODUCTION')).toBeInTheDocument();
     });
   });
+
+  describe('Drag and Drop MV Inputs into Multiview Layout (Operator Feedback #1)', () => {
+    function createMockDataTransfer() {
+      const store: Record<string, string> = {};
+      return {
+        effectAllowed: 'uninitialized',
+        dropEffect: 'none',
+        setData: (type: string, val: string) => {
+          store[type] = val;
+        },
+        getData: (type: string) => store[type] ?? '',
+      };
+    }
+
+    it('Test 1 & Test 5 & Test 6: drags an MV input/source from Sources onto an empty MV layout box, saves via Review & Save, and persists across reload', async () => {
+      const customSnapshot: TrackerSnapshot = JSON.parse(JSON.stringify(SNAPSHOT_WITH_SOURCES));
+      const dest5 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-05')!;
+      dest5.assignedSourceId = 'SRC:CAM_1' as SourceId;
+
+      const sharedStorage = new MemoryTrackerStorage();
+      const testRepo = new LocalTrackerRepository(customSnapshot, sharedStorage);
+      const { unmount } = renderApp(testRepo, '/sources');
+
+      const mv2Tab = await screen.findByRole('tab', { name: /MV-02/i });
+      fireEvent.click(mv2Tab);
+
+      const destCard = await screen.findByTestId('dest-card-DEST:MV-02-05');
+      expect(destCard).toHaveAttribute('draggable', 'true');
+      expect(within(destCard).getByText('CAM 1')).toBeInTheDocument();
+
+      const outputCard = screen.getByTestId('output-card-OUT:MV-02-01');
+      const emptyBox = within(outputCard).getByTestId('layout-window-3');
+      expect(emptyBox).toHaveAttribute('data-pip-id', 'PIP-04');
+      expect(emptyBox).toHaveAttribute('data-drop-target', 'true');
+      expect(within(emptyBox).queryByText('CAM 1')).not.toBeInTheDocument();
+
+      const dataTransfer = createMockDataTransfer();
+      fireEvent.dragStart(destCard, { dataTransfer });
+      expect(dataTransfer.getData('application/vip-dest-id')).toBe('DEST:MV-02-05');
+      expect(dataTransfer.effectAllowed).toBe('copyMove');
+
+      expect(emptyBox.className).toContain('drop-target-active');
+
+      fireEvent.dragOver(emptyBox, { dataTransfer });
+      expect(emptyBox).toHaveAttribute('data-drag-over', 'true');
+      expect(emptyBox.className).toContain('drag-over');
+
+      fireEvent.drop(emptyBox, { dataTransfer });
+      fireEvent.dragEnd(destCard, { dataTransfer });
+
+      expect(within(emptyBox).getByText('CAM 1')).toBeInTheDocument();
+      expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('EDIT MODE • UNSAVED');
+
+      fireEvent.click(screen.getByTestId('review-save-btn'));
+      const reviewModal = await screen.findByTestId('review-changes-modal');
+      expect(within(reviewModal).getByText(/MV-02-05 Input/i)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('confirm-save-btn'));
+      await waitFor(() => {
+        expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
+      });
+
+      unmount();
+      const reloadedRepo = new LocalTrackerRepository(customSnapshot, sharedStorage);
+      renderApp(reloadedRepo, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+      const reloadedOutputCard = await screen.findByTestId('output-card-OUT:MV-02-01');
+      const reloadedPip4 = within(reloadedOutputCard).getByTestId('layout-window-3');
+      expect(within(reloadedPip4).getByText('CAM 1')).toBeInTheDocument();
+    });
+
+    it('Test 2: dragging a different source onto an already-populated MV layout box replaces its assignment using existing reassignment rules', async () => {
+      const customSnapshot: TrackerSnapshot = JSON.parse(JSON.stringify(SNAPSHOT_WITH_SOURCES));
+      const dest1 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-01')!;
+      const dest6 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-06')!;
+      dest1.assignedSourceId = 'SRC:CAM_1' as SourceId;
+      dest6.assignedSourceId = 'SRC:FS_01' as SourceId;
+
+      const testRepo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(testRepo, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+
+      const outputCard = await screen.findByTestId('output-card-OUT:MV-02-01');
+      const pip1Box = within(outputCard).getByTestId('layout-window-0');
+      expect(within(pip1Box).getByText('CAM 1')).toBeInTheDocument();
+
+      const dest6Card = screen.getByTestId('dest-card-DEST:MV-02-06');
+      const dataTransfer = createMockDataTransfer();
+      fireEvent.dragStart(dest6Card, { dataTransfer });
+      fireEvent.dragOver(pip1Box, { dataTransfer });
+      fireEvent.drop(pip1Box, { dataTransfer });
+      fireEvent.dragEnd(dest6Card, { dataTransfer });
+
+      expect(within(pip1Box).getByText('FS 01')).toBeInTheDocument();
+      expect(within(pip1Box).queryByText('CAM 1')).not.toBeInTheDocument();
+    });
+
+    it('Test 3: releasing a dragged source outside a valid MV layout box makes no assignment and preserves existing state', async () => {
+      const customSnapshot: TrackerSnapshot = JSON.parse(JSON.stringify(SNAPSHOT_WITH_SOURCES));
+      const dest1 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-01')!;
+      const dest5 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-05')!;
+      dest1.assignedSourceId = 'SRC:CAM_1' as SourceId;
+      dest5.assignedSourceId = 'SRC:CAM_2' as SourceId;
+
+      const testRepo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(testRepo, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+
+      const outputCard = await screen.findByTestId('output-card-OUT:MV-02-01');
+      const pip1Box = within(outputCard).getByTestId('layout-window-0');
+      const pip4Box = within(outputCard).getByTestId('layout-window-3');
+      expect(within(pip1Box).getByText('CAM 1')).toBeInTheDocument();
+      expect(within(pip4Box).queryByText('CAM 2')).not.toBeInTheDocument();
+
+      const dest5Card = screen.getByTestId('dest-card-DEST:MV-02-05');
+      const dataTransfer = createMockDataTransfer();
+      fireEvent.dragStart(dest5Card, { dataTransfer });
+      fireEvent.drop(screen.getByText('Destination Source Matrix'), { dataTransfer });
+      fireEvent.dragEnd(dest5Card, { dataTransfer });
+
+      expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');
+      expect(within(pip1Box).getByText('CAM 1')).toBeInTheDocument();
+      expect(within(pip4Box).queryByText('CAM 2')).not.toBeInTheDocument();
+    });
+
+    it('Test 4: supports both drag-and-drop and pre-existing dropdown assignment in OutputDetailModal', async () => {
+      const customSnapshot: TrackerSnapshot = JSON.parse(JSON.stringify(SNAPSHOT_WITH_SOURCES));
+      const dest5 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-05')!;
+      const dest6 = customSnapshot.destinations.find((d) => d.id === 'DEST:MV-02-06')!;
+      dest5.assignedSourceId = 'SRC:CAM_1' as SourceId;
+      dest6.assignedSourceId = 'SRC:FS_01' as SourceId;
+
+      const testRepo = new LocalTrackerRepository(customSnapshot, new MemoryTrackerStorage());
+      renderApp(testRepo, '/sources');
+
+      fireEvent.click(await screen.findByRole('tab', { name: /MV-02/i }));
+
+      fireEvent.click(await screen.findByTestId('output-card-OUT:MV-02-01'));
+      const modal = await screen.findByTestId('output-detail-modal');
+
+      const paletteItem5 = within(modal).getByTestId('palette-input-DEST:MV-02-05');
+      const modalPip4 = within(modal).getByTestId('layout-window-3');
+      const dataTransfer = createMockDataTransfer();
+
+      fireEvent.dragStart(paletteItem5, { dataTransfer });
+      fireEvent.dragOver(modalPip4, { dataTransfer });
+      expect(dataTransfer.dropEffect).toBe('move');
+      fireEvent.drop(modalPip4, { dataTransfer });
+      fireEvent.dragEnd(paletteItem5, { dataTransfer });
+
+      expect(within(modalPip4).getByText('CAM 1')).toBeInTheDocument();
+
+      const paletteItem6 = within(modal).getByTestId('palette-input-DEST:MV-02-06');
+      const assignSelect = within(paletteItem6).getByRole('combobox');
+      fireEvent.change(assignSelect, { target: { value: 'PIP-05' } });
+
+      const modalPip5 = within(modal).getByTestId('layout-window-4');
+      expect(within(modalPip5).getByText('FS 01')).toBeInTheDocument();
+    });
+  });
 });
