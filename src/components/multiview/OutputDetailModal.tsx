@@ -653,7 +653,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                           assignmentName: val.length > 0 ? val : null,
                         });
                       }}
-                      data-testid="production-assignment-input"
+                      data-testid="production-assignment-select"
                       aria-label="Production Assignment"
                       style={{
                         width: '100%',
