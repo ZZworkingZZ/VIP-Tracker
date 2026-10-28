@@ -114,8 +114,40 @@ Use only the verified commands defined in `package.json`:
 - Read whole relevant sections once. Don't re-read the same file in small slices.
 - Skip components that are clearly unrelated to the task, like modals and pages that never reference the feature.
 
-### Editing
+### Pre-edit dependency mapping
 
+Before modifying shared domain behavior, repository/context actions, selectors, persistence behavior, diff/change-review behavior, or shared editing behavior:
+
+- Identify likely direct implementation dependencies.
+- Identify existing tests most likely to be affected.
+- Identify serialization/storage/diff dependencies when data model or persisted state is involved.
+- **Identify broadly, read narrowly:** Establish the likely blast radius first, then read only files necessary to implement safely. Do not broadly read the repository.
+- **VIP Tracker Shared-State Checklist:** Changes involving `TrackerSnapshot`, `operationalAssignments`, `MultiviewOutput`, production assignments, or other persisted shared-state concepts should consider the relevant portions of:
+  - domain models (`src/domain/models.ts`)
+  - selectors (`src/domain/selectors.ts`)
+  - serialization/storage (`src/services/storage.ts`, `LocalTrackerRepository.ts`)
+  - diff/change review (`src/domain/diff.ts`, Review modals)
+  - TrackerRepositoryContext / context actions (`src/app/TrackerRepositoryContext.tsx`)
+  - affected UI components and pages
+  - associated editing, reliability, and component tests
+    _(This is a dependency checklist to prevent omissions, NOT permission to automatically read every listed file)._
+
+### Predict test impact before implementation
+
+At the end of an investigation/planning phase, briefly identify:
+
+- existing tests likely to be affected
+- new regression tests likely required
+- important behavioral invariants that must remain intact
+
+Use this prediction to guide the implementation rather than discovering obvious test dependencies only after failures.
+
+### Cohesive edit passes
+
+- When multiple related changes to the same file are already known, plan them together.
+- Prefer one cohesive edit pass over many small sequential edits.
+- Additional edits are appropriate when tests, typechecking, or newly discovered evidence reveal something that was not reasonably knowable during the initial pass.
+- Do not over-plan trivial changes.
 - Edit files directly with the built-in edit tool.
 - Don't create helper or throwaway scripts (e.g. `update_files.js`, `fix_*.js`) to apply edits. If an edit fails because of whitespace or line endings, re-read the exact lines and retry the edit.
 - Line endings: let Prettier normalize them. Don't investigate CRLF manually.
@@ -125,11 +157,20 @@ Use only the verified commands defined in `package.json`:
 - Run `npx.cmd prettier --write <touched files>` only on the files you changed, once, after you finish editing.
 - Don't run the repo-wide `format:check` as a debugging step.
 
-### Testing and validation
+### Validation order & feedback loops
 
-- While iterating, run only the targeted test files related to the change (`npx.cmd vitest run <file>`).
-- Run `npm.cmd run typecheck` once before the full validation.
-- Run `npm.cmd run validate` once at the end. If it fails, fix the specific error and re-run only the failing step, then run validate one final time.
+For substantive changes, follow this validation order:
+`Implementation` → `format touched files` → `run smallest relevant targeted tests` → `run TypeScript/typecheck when applicable` → `fix failures` → `rerun affected targeted validation` → `run full npm run validate (only after targeted checks are green)` → `commit` → `push`.
+
+- **Final gate, not diagnostic tool:** `npm run validate` is the FINAL validation gate, not the primary diagnostic tool. Do not run full validation while known targeted test or TypeScript failures remain.
+- **Avoid repeated full suites:** Avoid repeatedly running the full validation suite unless a subsequent change after the first full validation could realistically affect other parts of the repository.
+- **Optimize for feedback loops, not execution time:** Do not sacrifice correctness or validation just to reduce elapsed execution time. For a normal feature/change, aim for:
+  - one focused investigation pass
+  - one primary implementation pass
+  - one targeted validation/fix loop when possible
+  - one final full validation
+  - one commit/push cycle
+    _(This is a target, not a hard limit; correctness takes priority when additional investigation or validation is genuinely necessary)._
 
 ### Scope discipline
 
@@ -137,22 +178,20 @@ Use only the verified commands defined in `package.json`:
 - If you notice unintended diffs, revert them right away with `git checkout -- <file>`.
 - Never modify the private data repo unless explicitly told to.
 
-### Git hygiene
+### Git hygiene & execution rules
 
 - Before you commit, run `git status` and make sure there are no untracked temp files. Delete any you created.
-- Stage files explicitly by name. Never use `git add .`.
-
+- Stage files explicitly by path (`git add <file> ...`). Never use `git add .` or `git add -A`.
 - Do not re-read a file range already read this session.
 - No baseline test run before changes.
 - While iterating: run only the targeted test file.
-- Before commit: applies to ALL changes including docs: always run `npx prettier --write <changed files>`, then `npm run validate` ONCE before committing. Do not run lint/typecheck/test/format separately.
+- Before commit: for substantive changes, run prettier on touched files, verify targeted tests/typecheck, then run `npm run validate` ONCE as the final gate. Documentation-only changes do not require application tests, typecheck, or full validate (see Section 4).
 - Run `npm run validate` in the foreground and wait for it to finish. Do not background it or poll task status.
 - Shell is Windows PowerShell: do not use `&&`. Run git add, commit, and push as separate commands and stop if any one fails.
-- Stage files explicitly by path (`git add <file> ...`). Never use `git add .` or `git add -A`.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
 - Final report: max 10 lines — files changed, validate result, commit hash.
-- Execution time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
+- Execution-time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. Execution time is an observation metric, not a performance target. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
 
 ---
 
