@@ -30,8 +30,8 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
   });
 
   describe('1. Operator Domain Model & Storage', () => {
-    it('Requirement 1 & 2: OPERATOR_ROSTER contains all 25 names in exact order with deterministic stable IDs', () => {
-      expect(OPERATOR_ROSTER.length).toBe(25);
+    it('Requirement 1 & 2: OPERATOR_ROSTER contains all roster names in exact order with deterministic stable IDs', () => {
+      expect(OPERATOR_ROSTER.length).toBe(26);
 
       const expectedNames = [
         'Alex S',
@@ -43,6 +43,7 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
         'J J',
         'James A',
         'John V',
+        'Jorge M',
         'Julia B',
         'Khirlu B',
         'Maddie P',
@@ -415,7 +416,7 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       expect(screen.getByTestId('current-operator-name').textContent).toBe('TECH OPS');
     });
 
-    it('interactive operator modal: roster dropdown lists all 25 names in order, Continue is disabled until selection, and sets deterministic ID', async () => {
+    it('interactive operator modal: roster dropdown lists all roster names in order, Continue is disabled until selection, and sets deterministic ID', async () => {
       const TestApp = () => {
         const {
           currentOperator,
@@ -455,9 +456,9 @@ describe('Trust-based Operator Identity & Change Attribution', () => {
       const select = screen.getByTestId('operator-select') as HTMLSelectElement;
       expect(select).toBeDefined();
 
-      // Check dropdown options: 1 placeholder + 25 roster names = 26 options
+      // Check dropdown options: 1 placeholder + roster names
       const options = Array.from(select.options);
-      expect(options.length).toBe(26);
+      expect(options.length).toBe(OPERATOR_ROSTER.length + 1);
 
       // Placeholder option
       expect(options[0].textContent).toBe('Select your name…');
