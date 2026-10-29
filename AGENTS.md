@@ -85,6 +85,11 @@ Use only the verified commands defined in `package.json`:
 > [!WARNING]
 > Never run `npm run test:watch` or interactive `vitest` in automated workflows; it will hang indefinitely waiting for input.
 
+### Windows Command Execution
+
+- On Windows PowerShell, use `npm.cmd` and `npx.cmd` instead of bare `npm` or `npx`.
+- This avoids failures caused by PowerShell execution policies blocking `npm.ps1` or `npx.ps1`.
+
 ## Workspace
 
 - Authoritative repo: C:\dev\VIP-Tracker (local clone; same path on home and work PCs). GitHub is the sync point.
@@ -104,6 +109,26 @@ Use only the verified commands defined in `package.json`:
 - Pages: src/pages/ — DashboardPage.tsx (includes the operational status strip / top stats: VIP Cards count), LayoutAssignmentsPage.tsx, DestinationSourcesPage.tsx, NotFoundPage.tsx, ProductionsPage.tsx, SourceDirectoryPage.tsx
 - Styles: src/styles/components.css
 - Tests: src/test/ (UI tests: use src/test/helpers/renderWithProviders.tsx; do not hand-build providers.)
+
+### Source-Related Architecture Map
+
+For features involving source identity, source search, source routing, or source display, inspect these primary locations first:
+
+- `src/domain/models.ts`
+- `src/domain/selectors.ts`
+- `src/pages/SourceDirectoryPage.tsx`
+- `src/pages/DestinationSourcesPage.tsx`
+- `src/components/multiview/LayoutRenderer.tsx`
+- `src/components/multiview/OutputDisplayCard.tsx`
+- `src/components/multiview/OutputDetailModal.tsx`
+- `src/components/multiview/SourceRoutingSelectorModal.tsx`
+- `src/components/multiview/SourceSignalFlowModal.tsx`
+
+Do not inspect `DashboardPage.tsx`, `ProductionsPage.tsx`, or `LayoutAssignmentsPage.tsx` for source-display changes unless references or test failures indicate they are directly involved.
+
+### GitHub Repository Test Mocks
+
+- Mock responses for `GitHubClient.fetchFileContents` and GitHub `/contents/` endpoints must include `type: "file"`.
 
 ## Efficiency rules
 
