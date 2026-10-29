@@ -15,8 +15,8 @@ function getViewName(pathname: string): string {
   if (pathname.startsWith('/layouts')) {
     return 'Layout Assignments';
   }
-  if (pathname.startsWith('/sources')) {
-    return 'Sources';
+  if (pathname.startsWith('/sources') || pathname.startsWith('/signal-flows')) {
+    return 'Signal Flows';
   }
   if (pathname.startsWith('/productions')) {
     return 'Assignments';

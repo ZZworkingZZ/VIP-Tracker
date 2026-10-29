@@ -14,6 +14,7 @@ import {
   formatOutputLabel,
   PipId,
   DestinationId,
+  OutputId,
 } from '../../domain/identifiers';
 import { useTrackerSnapshot } from '../../hooks/useTracker';
 import { LayoutSelectorModal } from './LayoutSelectorModal';
@@ -21,12 +22,15 @@ import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
 import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
 import { normalizeOutputPipAssignments, handleOutputLayoutChange } from '../../domain/pipRouting';
 import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
+import { decomposeTielineUpstream } from '../../domain/signalFlow';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
   readonly destinations?: readonly Destination[];
   readonly sources?: readonly Source[];
   readonly allOutputs?: readonly MultiviewOutput[];
+  readonly initialSelectedPipId?: PipId | null;
+  readonly onViewSignalFlow?: (outputId: OutputId, pipId: PipId) => void;
   readonly onClose: () => void;
   readonly onSelectOutput?: (output: MultiviewOutput) => void;
 }
@@ -36,6 +40,8 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   destinations: propDestinations,
   sources: propSources,
   allOutputs: propAllOutputs,
+  initialSelectedPipId = null,
+  onViewSignalFlow,
   onClose,
   onSelectOutput,
 }) => {
@@ -57,7 +63,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
   } = useTrackerSnapshot();
 
   const [isLayoutSelectorOpen, setIsLayoutSelectorOpen] = useState(false);
-  const [selectedPipId, setSelectedPipId] = useState<PipId | null>(null);
+  const [selectedPipId, setSelectedPipId] = useState<PipId | null>(initialSelectedPipId);
   const [draggingDestId, setDraggingDestId] = useState<DestinationId | null>(null);
   const [inputPaletteFilter, setInputPaletteFilter] = useState<'ALL' | 'AVAILABLE' | 'ASSIGNED'>(
     'ALL'
@@ -143,26 +149,60 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
   // Derive window destination records for LayoutRenderer and Table
   const windowsData: LayoutWindowData[] = useMemo(() => {
-    if (!layout) return [];
+    if (!layout || !output) return [];
 
     return pips.map((p, i) => {
       const assignedDestId = pipAssignments[p.pipId] ?? null;
       const dest = assignedDestId ? destMap.get(assignedDestId) : null;
-      const source = dest?.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+      const source = dest?.assignedSourceId ? (sourceMap.get(dest.assignedSourceId) ?? null) : null;
+      const upstream = decomposeTielineUpstream(source, sourceMap);
+      const inputDisplay = dest ? formatInputDisplay(dest.id) : null;
+
+      const summaryParts: string[] = [];
+      if (upstream.lawoSource) {
+        summaryParts.push(upstream.lawoSource.name);
+      } else {
+        summaryParts.push('BLANK');
+      }
+      for (const proc of upstream.processingStages) {
+        summaryParts.push(proc.name);
+      }
+      if (source) {
+        summaryParts.push(source.name);
+      } else {
+        summaryParts.push('BLANK');
+      }
+      if (inputDisplay) {
+        summaryParts.push(inputDisplay);
+      } else {
+        summaryParts.push('BLANK');
+      }
+      summaryParts.push(`${formatOutputDisplay(output.id)} ${p.pipId}`);
+
+      const isFlowIncomplete = !dest || !source || !upstream.lawoSource;
 
       return {
         pipId: p.pipId,
+        outputId: output.id,
+        multiviewId: output.multiviewId,
         destinationOffset: i,
         destinationNumber: dest?.destinationNumber ?? null,
         destinationId: dest?.id ?? null,
-        destinationLabel: dest ? formatInputDisplay(dest.id) : null,
+        destinationLabel: inputDisplay,
         sourceName: source?.name || null,
         sourceAlias: getSourceAlias(source),
         sourceCategory: source?.category || null,
+        lawoSourceName: upstream.lawoSource?.name ?? null,
+        processingChainLabel:
+          upstream.processingStages.length > 0
+            ? upstream.processingStages.map((s) => s.name).join(' → ')
+            : null,
+        resolvedFlowSummary: summaryParts.join(' → '),
+        isFlowIncomplete,
         isLocked: dest?.locked || false,
       };
     });
-  }, [layout, pips, pipAssignments, destMap, sourceMap]);
+  }, [layout, output, pips, pipAssignments, destMap, sourceMap]);
 
   // Available frame inputs for this multiview
   const frameInputs = useMemo(() => {
@@ -892,6 +932,9 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                       if (isReadOnly) return;
                       clearDraftPipInput(output.id, pipId);
                     }}
+                    onViewSignalFlow={
+                      onViewSignalFlow ? (pipId) => onViewSignalFlow(output.id, pipId) : undefined
+                    }
                   />
                 ) : (
                   <div
@@ -1296,6 +1339,16 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                         >
                           Category
                         </th>
+                        <th
+                          style={{
+                            padding: '6px 10px',
+                            textAlign: 'left',
+                            color: '#b8b8b8',
+                            fontWeight: 700,
+                          }}
+                        >
+                          Resolved Signal Flow
+                        </th>
                         {isEditMode && (
                           <th
                             style={{
@@ -1396,6 +1449,43 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                               ) : (
                                 <span style={{ color: '#555555' }}>—</span>
                               )}
+                            </td>
+                            <td
+                              data-testid={`detail-resolved-flow-${pipId}`}
+                              style={{ padding: '6px 10px', fontSize: '10px', color: '#cbd5e1' }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '6px',
+                                }}
+                              >
+                                <span style={{ fontFamily: 'var(--ev-font)' }}>
+                                  {win.resolvedFlowSummary || '—'}
+                                </span>
+                                {onViewSignalFlow && (
+                                  <button
+                                    type="button"
+                                    data-testid={`modal-view-signal-flow-btn-${pipId}`}
+                                    onClick={() => onViewSignalFlow(output.id, pipId)}
+                                    style={{
+                                      padding: '2px 6px',
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                                      color: '#38bdf8',
+                                      border: '1px solid #38bdf8',
+                                      borderRadius: '2px',
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    View Signal Flow
+                                  </button>
+                                )}
+                              </div>
                             </td>
 
                             {isEditMode && (

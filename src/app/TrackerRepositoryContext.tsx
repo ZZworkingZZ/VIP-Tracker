@@ -643,6 +643,91 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     [isReadOnly, repository, snapshot, draftSnapshot, currentOperator]
   );
 
+  // Commit an individual Signal Flow stage/lock change directly via checkmark confirmation
+  const commitSignalFlowChange = useCallback(
+    async (
+      mutator: (
+        base: TrackerSnapshot,
+        operator: Operator | null,
+        timestamp: string
+      ) => TrackerSnapshot
+    ) => {
+      if (isReadOnly) {
+        setSaveError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
+        return;
+      }
+      if (isSavingRef.current) {
+        return;
+      }
+      if (!snapshot) return;
+
+      const timestamp = new Date().toISOString();
+      let nextSnapshot: TrackerSnapshot;
+      try {
+        nextSnapshot = mutator(snapshot, currentOperator, timestamp);
+        nextSnapshot.validationFindings = validateSnapshot(
+          nextSnapshot.multiviews,
+          nextSnapshot.outputs,
+          nextSnapshot.destinations,
+          nextSnapshot.sources
+        );
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Invalid signal flow change.');
+        throw err;
+      }
+
+      try {
+        setIsSaving(true);
+        isSavingRef.current = true;
+        setSaveError(null);
+
+        const changeSet = createChangeSet(snapshot, nextSnapshot);
+        const updated = await repository.saveSnapshot(nextSnapshot, changeSet, currentOperator);
+
+        setSnapshot(updated);
+        syncGenerationRef.current++;
+        if (repository.getLastLoadedSha) {
+          setLastLoadedSha(repository.getLastLoadedSha());
+        }
+        if (draftSnapshot) {
+          setDraftSnapshot((prev) => {
+            if (!prev) return null;
+            const nextDraft = mutator(prev, currentOperator, timestamp);
+            nextDraft.validationFindings = validateSnapshot(
+              nextDraft.multiviews,
+              nextDraft.outputs,
+              nextDraft.destinations,
+              nextDraft.sources
+            );
+            return nextDraft;
+          });
+        }
+        setIsConflict(false);
+        setIsNewerSharedDataAvailable(false);
+        setSaveError(null);
+      } catch (err) {
+        if (
+          (err instanceof GitHubTrackerRepositoryError && err.code === 'REVISION_CONFLICT') ||
+          (err instanceof Error &&
+            (err.message.toLowerCase().includes('revision conflict') ||
+              err.message.toLowerCase().includes('conflict')))
+        ) {
+          setIsConflict(true);
+          setSaveError(
+            'Shared data changed after you began editing. Your changes have not been saved.'
+          );
+        } else {
+          setSaveError(err instanceof Error ? err.message : 'Failed to save changes.');
+        }
+        throw err;
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
+      }
+    },
+    [isReadOnly, repository, snapshot, draftSnapshot, currentOperator]
+  );
+
   // Add a Production Assignment to the draft operationalAssignments catalog
   const addDraftOperationalAssignment = useCallback(
     (name: string) => {
@@ -1017,6 +1102,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       addDraftSource,
       updateDraftSourceUpstream,
       saveSourceAlias,
+      commitSignalFlowChange,
       addDraftOperationalAssignment,
       renameDraftOperationalAssignment,
       removeDraftOperationalAssignment,
@@ -1066,6 +1152,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       addDraftSource,
       updateDraftSourceUpstream,
       saveSourceAlias,
+      commitSignalFlowChange,
       addDraftOperationalAssignment,
       renameDraftOperationalAssignment,
       removeDraftOperationalAssignment,

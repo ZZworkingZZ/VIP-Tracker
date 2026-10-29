@@ -795,8 +795,8 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('EDIT MODE • UNSAVED');
       expect(screen.getByTestId('edit-mode-banner')).toBeInTheDocument();
 
-      // Navigate back to Sources page
-      fireEvent.click(screen.getByRole('link', { name: /Sources/i }));
+      // Navigate back to Signal Flows page
+      fireEvent.click(screen.getByRole('link', { name: /Signal Flows/i }));
       expect(await screen.findByTestId('dest-card-DEST:MV-01-01')).toBeInTheDocument();
 
       // DEST:MV-01-01 still shows CAM 1
@@ -1219,7 +1219,7 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       const dest5Card = screen.getByTestId('dest-card-DEST:MV-02-05');
       const dataTransfer = createMockDataTransfer();
       fireEvent.dragStart(dest5Card, { dataTransfer });
-      fireEvent.drop(screen.getByText('Destination Source Matrix'), { dataTransfer });
+      fireEvent.drop(screen.getByRole('heading', { name: 'Signal Flows' }), { dataTransfer });
       fireEvent.dragEnd(dest5Card, { dataTransfer });
 
       expect(screen.getByTestId('app-mode-pill')).toHaveTextContent('ACTIVE');

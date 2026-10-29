@@ -41,12 +41,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true, onOpenSet
           <NavLink
             to="/sources"
             className={({ isActive }) => `ev-nav-item ${isActive ? 'active' : ''}`}
-            title="Router Destination Inputs & Patched Sources"
+            title="Lawo-to-Evertz VIP Signal Flows & PIP Routing"
           >
             <span className="ev-nav-icon" aria-hidden="true">
               ⇄
             </span>
-            <span className="ev-nav-label">Sources</span>
+            <span className="ev-nav-label">Signal Flows</span>
           </NavLink>
 
           <NavLink

@@ -27,6 +27,10 @@ export const router = createBrowserRouter(
           element: <DestinationSourcesPage />,
         },
         {
+          path: 'signal-flows',
+          element: <DestinationSourcesPage />,
+        },
+        {
           path: 'productions',
           element: <ProductionsPage />,
         },

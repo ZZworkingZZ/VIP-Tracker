@@ -288,6 +288,40 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
     }
   }
 
+  // 5. Compare SignalFlowLocks
+  const baseLocks = baseline.signalFlowLocks ?? {};
+  const draftLocks = draft.signalFlowLocks ?? {};
+  const allFlowKeys = Array.from(
+    new Set([...Object.keys(baseLocks), ...Object.keys(draftLocks)])
+  ).sort();
+
+  for (const flowKey of allFlowKeys) {
+    const baseLock = baseLocks[flowKey];
+    const draftLock = draftLocks[flowKey];
+    const wasLocked = Boolean(baseLock?.locked);
+    const isNowLocked = Boolean(draftLock?.locked);
+    const prevAvail = baseLock?.availableAt ?? null;
+    const nextAvail = draftLock?.availableAt ?? null;
+
+    if (wasLocked !== isNowLocked || (isNowLocked && prevAvail !== nextAvail)) {
+      const entityLabel = flowKey.replace(/^OUT:/, '').replace(':', ' ');
+      const prevDesc = wasLocked ? `Locked${prevAvail ? ` (until ${prevAvail})` : ''}` : 'Unlocked';
+      const nextDesc = isNowLocked
+        ? `Locked${nextAvail ? ` (until ${nextAvail})` : ''}`
+        : 'Unlocked';
+
+      changes.push({
+        entityType: 'pip',
+        entityId: flowKey,
+        entityLabel,
+        field: 'signalFlowLock',
+        previousValue: prevDesc,
+        newValue: nextDesc,
+        description: `Signal Flow Lock: ${prevDesc} → ${nextDesc}`,
+      });
+    }
+  }
+
   return changes;
 }
 
@@ -343,7 +377,11 @@ function isClearedValue(val: string | null | undefined): boolean {
 
 function classifyEntityHistoryType(changes: FieldChange[]): HistoryEntityType {
   const first = changes[0];
-  if (first.entityType === 'destination' || first.entityType === 'source') {
+  if (
+    first.entityType === 'destination' ||
+    first.entityType === 'source' ||
+    first.entityType === 'pip'
+  ) {
     return 'Source/Destination State';
   }
   if (first.entityType === 'assignment') {

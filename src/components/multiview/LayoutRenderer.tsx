@@ -10,6 +10,8 @@ import { formatSourceNameWithAlias } from '../../domain/models';
 
 export interface LayoutWindowData {
   readonly pipId?: PipId | string;
+  readonly outputId?: string;
+  readonly multiviewId?: string;
   readonly destinationOffset: number;
   readonly destinationNumber?: number | null;
   readonly destinationId?: string | null;
@@ -17,6 +19,10 @@ export interface LayoutWindowData {
   readonly sourceName?: string | null;
   readonly sourceAlias?: string | null;
   readonly sourceCategory?: SourceCategory | null;
+  readonly lawoSourceName?: string | null;
+  readonly processingChainLabel?: string | null;
+  readonly resolvedFlowSummary?: string | null;
+  readonly isFlowIncomplete?: boolean;
   readonly isLocked?: boolean;
 }
 
@@ -25,6 +31,7 @@ export interface LayoutRendererProps {
   readonly windowsData?: readonly LayoutWindowData[];
   readonly mode?: 'thumbnail' | 'card' | 'detail';
   readonly onClickWindow?: (window: LayoutWindowDefinition, data?: LayoutWindowData) => void;
+  readonly onViewSignalFlow?: (pipId: PipId, data?: LayoutWindowData) => void;
   readonly highlightWindowId?: string;
   readonly className?: string;
   readonly onDropDestinationOnPip?: (pipId: PipId, destinationId: DestinationId) => void;
@@ -39,6 +46,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
   windowsData = [],
   mode = 'card',
   onClickWindow,
+  onViewSignalFlow,
   highlightWindowId,
   className = '',
   onDropDestinationOnPip,
@@ -243,13 +251,14 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
             {/* CARD MODE (Evertz Miniature Display Card) */}
             {mode === 'card' && (
               <>
-                {/* Header: PIP ID on left, status dot on right */}
+                {/* Header: PIP ID on left, Flow button + status dot on right */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     lineHeight: 1,
+                    gap: '2px',
                   }}
                 >
                   <span
@@ -265,20 +274,52 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   >
                     {pipId}
                   </span>
-                  {categoryColor && !isHighDensity && (
-                    <span
-                      style={{
-                        width: '4px',
-                        height: '4px',
-                        borderRadius: '50%',
-                        backgroundColor: categoryColor,
-                        display: 'inline-block',
-                      }}
-                    />
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    {onViewSignalFlow && (
+                      <button
+                        type="button"
+                        data-testid={
+                          winData?.outputId
+                            ? `view-signal-flow-btn-${winData.outputId}-${pipId}`
+                            : `view-signal-flow-btn-${pipId}`
+                        }
+                        aria-label={`View Signal Flow for ${pipId}`}
+                        title="View Signal Flow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewSignalFlow(pipId, winData);
+                        }}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.85)',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                          color: '#38bdf8',
+                          fontSize: isHighDensity ? '6px' : '7px',
+                          fontFamily: 'var(--ev-font)',
+                          fontWeight: 700,
+                          padding: '1px 3px',
+                          lineHeight: 1,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Flow
+                      </button>
+                    )}
+                    {categoryColor && !isHighDensity && (
+                      <span
+                        style={{
+                          width: '4px',
+                          height: '4px',
+                          borderRadius: '50%',
+                          backgroundColor: categoryColor,
+                          display: 'inline-block',
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
 
-                {/* Body: Routed Source Name & Input */}
+                {/* Body: Stacked UMD/Alias at top, Routed Source Name & Compact Signal Flow */}
                 <div
                   style={{
                     flex: 1,
@@ -293,6 +334,27 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                 >
                   {hasSource ? (
                     <>
+                      {winData?.sourceAlias && (
+                        <span
+                          data-testid={`pip-source-alias-${pipId}`}
+                          style={{
+                            fontFamily: 'var(--ev-font)',
+                            fontWeight: 700,
+                            fontSize: isHighDensity
+                              ? '6px'
+                              : layout.windowCount <= 4
+                                ? '10px'
+                                : '8px',
+                            color: '#38bdf8',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                          }}
+                        >
+                          {winData.sourceAlias}
+                        </span>
+                      )}
                       <span
                         style={{
                           fontFamily: 'var(--ev-font)',
@@ -312,25 +374,21 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                       >
                         {winData?.sourceName}
                       </span>
-                      {winData?.sourceAlias && (
+                      {winData?.resolvedFlowSummary && !isHighDensity && (
                         <span
-                          data-testid={`pip-source-alias-${pipId}`}
+                          data-testid={`pip-compact-flow-${pipId}`}
                           style={{
                             fontFamily: 'var(--ev-font)',
-                            fontWeight: 600,
-                            fontSize: isHighDensity
-                              ? '6px'
-                              : layout.windowCount <= 4
-                                ? '10px'
-                                : '8px',
-                            color: '#38bdf8',
+                            fontWeight: 500,
+                            fontSize: layout.windowCount <= 4 ? '8px' : '7px',
+                            color: '#94a3b8',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             maxWidth: '100%',
                           }}
                         >
-                          {winData.sourceAlias}
+                          {winData.resolvedFlowSummary}
                         </span>
                       )}
                     </>
@@ -433,6 +491,36 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {onViewSignalFlow && (
+                      <button
+                        type="button"
+                        data-testid={
+                          winData?.outputId
+                            ? `detail-view-signal-flow-btn-${winData.outputId}-${pipId}`
+                            : `detail-view-signal-flow-btn-${pipId}`
+                        }
+                        aria-label={`View Signal Flow for ${pipId}`}
+                        title="View Signal Flow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewSignalFlow(pipId, winData);
+                        }}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid #38bdf8',
+                          borderRadius: '2px',
+                          color: '#38bdf8',
+                          fontSize: '9px',
+                          fontFamily: 'var(--ev-font)',
+                          fontWeight: 700,
+                          padding: '1px 4px',
+                          lineHeight: 1.2,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        View Signal Flow
+                      </button>
+                    )}
                     {winData?.sourceCategory && (
                       <span
                         style={{
@@ -471,7 +559,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   </div>
                 </div>
 
-                {/* Body: Visual clarity per Phase 2F */}
+                {/* Body: Stacked UMD/Alias at top, Source Name, Compact Flow, and MV Input */}
                 <div
                   style={{
                     flex: 1,
@@ -486,6 +574,24 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   {hasInput ? (
                     hasSource ? (
                       <>
+                        {winData?.sourceAlias && (
+                          <span
+                            data-testid={`detail-pip-source-alias-${pipId}`}
+                            style={{
+                              fontFamily: 'var(--ev-font)',
+                              fontSize: layout.windowCount <= 4 ? '13px' : '11px',
+                              fontWeight: 700,
+                              color: '#38bdf8',
+                              marginBottom: '1px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '95%',
+                            }}
+                          >
+                            {winData.sourceAlias}
+                          </span>
+                        )}
                         <span
                           style={{
                             fontFamily: 'var(--ev-font)',
@@ -501,22 +607,21 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                         >
                           {winData?.sourceName}
                         </span>
-                        {winData?.sourceAlias && (
+                        {winData?.resolvedFlowSummary && (
                           <span
-                            data-testid={`detail-pip-source-alias-${pipId}`}
+                            data-testid={`detail-pip-compact-flow-${pipId}`}
                             style={{
                               fontFamily: 'var(--ev-font)',
-                              fontSize: layout.windowCount <= 4 ? '13px' : '11px',
-                              fontWeight: 600,
-                              color: '#38bdf8',
-                              marginTop: '1px',
+                              fontSize: '10px',
+                              color: '#cbd5e1',
+                              marginTop: '2px',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               maxWidth: '95%',
                             }}
                           >
-                            {winData.sourceAlias}
+                            {winData.resolvedFlowSummary}
                           </span>
                         )}
                         <span

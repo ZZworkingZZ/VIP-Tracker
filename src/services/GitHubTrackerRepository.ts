@@ -369,6 +369,14 @@ export class GitHubTrackerRepository implements TrackerRepository {
       history: Array.isArray(data.history)
         ? mergeHistoryEntries(data.history as import('../domain/models').HistoryEntry[], [])
         : [],
+      ...(data.signalFlowLocks && typeof data.signalFlowLocks === 'object'
+        ? {
+            signalFlowLocks: data.signalFlowLocks as Record<
+              string,
+              import('../domain/models').SignalFlowLock
+            >,
+          }
+        : {}),
       ...(data.metadata ? { metadata: data.metadata as TrackerSnapshotMetadata } : {}),
     };
 
@@ -560,12 +568,15 @@ export class GitHubTrackerRepository implements TrackerRepository {
       if (operator) {
         const affectedOutputIds = new Set<string>();
         const affectedDestinationIds = new Set<string>();
+        const affectedSourceIds = new Set<string>();
 
         for (const change of changeSet.changes) {
           if (change.entityType === 'output') {
             affectedOutputIds.add(change.entityId);
           } else if (change.entityType === 'destination') {
             affectedDestinationIds.add(change.entityId);
+          } else if (change.entityType === 'source') {
+            affectedSourceIds.add(change.entityId);
           }
         }
 
@@ -594,6 +605,20 @@ export class GitHubTrackerRepository implements TrackerRepository {
               };
             }
             return dest;
+          });
+        }
+
+        if (affectedSourceIds.size > 0) {
+          cloned.sources = cloned.sources.map((src) => {
+            if (affectedSourceIds.has(src.id)) {
+              return {
+                ...src,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return src;
           });
         }
       }

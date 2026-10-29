@@ -59,6 +59,13 @@ export interface TrackerRepositoryContextValue {
   addDraftSource: (source: Source) => void;
   updateDraftSourceUpstream: (sourceId: SourceId, upstreamSourceId: SourceId | null) => void;
   saveSourceAlias: (sourceId: SourceId, alias: string | null) => Promise<void>;
+  commitSignalFlowChange: (
+    mutator: (
+      base: TrackerSnapshot,
+      operator: import('../domain/operator').Operator | null,
+      timestamp: string
+    ) => TrackerSnapshot
+  ) => Promise<void>;
   addDraftOperationalAssignment: (name: string) => void;
   renameDraftOperationalAssignment: (oldName: string, newName: string) => void;
   removeDraftOperationalAssignment: (name: string) => void;

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTrackerSnapshot } from '../hooks/useTracker';
 import { selectDashboardTotals, selectMultiviewSummaries } from '../domain/selectors';
-import { formatOutputDisplay } from '../domain/identifiers';
+import { formatOutputDisplay, OutputId, PipId } from '../domain/identifiers';
 import { MultiviewOutput } from '../domain/models';
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
@@ -17,11 +18,48 @@ export const DashboardPage: React.FC = () => {
     discardChanges,
   } = useTrackerSnapshot();
   const snapshot = activeSnapshot;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const initialMvParam = searchParams.get('mvId');
+  const initialOutputParam = searchParams.get('outputId') as OutputId | null;
+  const initialPipParam = searchParams.get('pipId') as PipId | null;
 
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
-  const [selectedMvFilter, setSelectedMvFilter] = useState<string>('ALL');
+  const [selectedMvFilter, setSelectedMvFilter] = useState<string>(
+    initialMvParam && ['ALL', 'MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(initialMvParam)
+      ? initialMvParam
+      : 'ALL'
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
+  const [focusedPipId, setFocusedPipId] = useState<PipId | null>(initialPipParam);
+
+  useEffect(() => {
+    if (
+      initialMvParam &&
+      ['ALL', 'MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(initialMvParam)
+    ) {
+      setSelectedMvFilter(initialMvParam);
+    }
+    if (initialOutputParam && snapshot) {
+      const targetOut = snapshot.outputs.find((o) => o.id === initialOutputParam) ?? null;
+      if (targetOut) {
+        setSelectedOutput(targetOut);
+      }
+    }
+    if (initialPipParam) {
+      setFocusedPipId(initialPipParam);
+    }
+  }, [initialMvParam, initialOutputParam, initialPipParam, snapshot]);
+
+  const handleViewSignalFlow = (outputId: OutputId, pipId: PipId) => {
+    const out = snapshot?.outputs.find((o) => o.id === outputId);
+    const mvContext = out?.multiviewId ?? selectedMvFilter;
+    navigate(
+      `/sources?outputId=${encodeURIComponent(outputId)}&pipId=${encodeURIComponent(pipId)}&from=multiviewers&mvId=${encodeURIComponent(mvContext)}`
+    );
+  };
 
   const totals = useMemo(() => (snapshot ? selectDashboardTotals(snapshot) : null), [snapshot]);
   const multiviewSummaries = useMemo(
@@ -225,6 +263,7 @@ export const DashboardPage: React.FC = () => {
                         sources={snapshot.sources}
                         onClick={() => setSelectedOutput(out)}
                         isSelected={selectedOutput?.id === out.id}
+                        onViewSignalFlow={handleViewSignalFlow}
                       />
                     ))}
 
@@ -319,7 +358,12 @@ export const DashboardPage: React.FC = () => {
           destinations={snapshot.destinations}
           sources={snapshot.sources}
           allOutputs={snapshot.outputs}
-          onClose={() => setSelectedOutput(null)}
+          initialSelectedPipId={focusedPipId}
+          onViewSignalFlow={handleViewSignalFlow}
+          onClose={() => {
+            setSelectedOutput(null);
+            setFocusedPipId(null);
+          }}
           onSelectOutput={(newOut) => setSelectedOutput(newOut)}
         />
       )}

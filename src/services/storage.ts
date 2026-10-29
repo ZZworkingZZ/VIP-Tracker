@@ -5,6 +5,7 @@ import {
   OperationalAssignment,
   ChangeRecord,
   HistoryEntry,
+  SignalFlowLock,
 } from '../domain/models';
 import { SourceId, createSourceId } from '../domain/identifiers';
 import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
@@ -25,6 +26,7 @@ export interface PersistedTrackerData {
   savedAt: string;
   customLayouts?: LayoutDefinition[];
   history?: HistoryEntry[];
+  signalFlowLocks?: Record<string, SignalFlowLock>;
 }
 
 export interface TrackerStorage {

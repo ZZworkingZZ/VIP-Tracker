@@ -36,7 +36,7 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
     expect(screen.getByText('TECH OPS')).toBeInTheDocument();
     expect(screen.getByText('Multiviewers')).toBeInTheDocument();
     expect(screen.getByText('Layouts')).toBeInTheDocument();
-    expect(screen.getByText('Sources')).toBeInTheDocument();
+    expect(screen.getByText('Signal Flows')).toBeInTheDocument();
     expect(screen.getByText('Assignments')).toBeInTheDocument();
     expect(screen.getByText('Source Directory')).toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
   it('renders Destination Sources page with MV switcher, active output feeds, and destination windows wall', async () => {
     renderWithRepository(<DestinationSourcesPage />);
 
-    expect(await screen.findByText('Destination Source Matrix')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Signal Flows' })).toBeInTheDocument();
 
     // Switch to MV-04 (58 inputs, active HOH-WKB layouts)
     const mv4Tab = screen.getByRole('tab', { name: /MV-04/ });

@@ -95,6 +95,7 @@ export class LocalTrackerRepository implements TrackerRepository {
         generatedAt: storedData.savedAt,
         customLayouts,
         history: mergeHistoryEntries(storedData.history ?? [], []),
+        ...(storedData.signalFlowLocks ? { signalFlowLocks: storedData.signalFlowLocks } : {}),
       };
 
       if (shouldPersistBootstrap) {
@@ -109,6 +110,7 @@ export class LocalTrackerRepository implements TrackerRepository {
           savedAt: storedData.savedAt,
           customLayouts,
           history: mergeHistoryEntries(storedData.history ?? [], []),
+          ...(storedData.signalFlowLocks ? { signalFlowLocks: storedData.signalFlowLocks } : {}),
         });
       }
     } else {
@@ -195,12 +197,15 @@ export class LocalTrackerRepository implements TrackerRepository {
       if (operator) {
         const affectedOutputIds = new Set<string>();
         const affectedDestinationIds = new Set<string>();
+        const affectedSourceIds = new Set<string>();
 
         for (const change of changeSet.changes) {
           if (change.entityType === 'output') {
             affectedOutputIds.add(change.entityId);
           } else if (change.entityType === 'destination') {
             affectedDestinationIds.add(change.entityId);
+          } else if (change.entityType === 'source') {
+            affectedSourceIds.add(change.entityId);
           }
         }
 
@@ -229,6 +234,20 @@ export class LocalTrackerRepository implements TrackerRepository {
               };
             }
             return dest;
+          });
+        }
+
+        if (affectedSourceIds.size > 0) {
+          cloned.sources = cloned.sources.map((src) => {
+            if (affectedSourceIds.has(src.id)) {
+              return {
+                ...src,
+                updatedAt: changeSet.timestamp,
+                updatedBy: operator.displayName,
+                operatorId: operator.id,
+              };
+            }
+            return src;
           });
         }
       }
@@ -264,6 +283,7 @@ export class LocalTrackerRepository implements TrackerRepository {
       savedAt: this.snapshot.generatedAt,
       history: this.snapshot.history,
       customLayouts,
+      ...(this.snapshot.signalFlowLocks ? { signalFlowLocks: this.snapshot.signalFlowLocks } : {}),
     });
 
     return Promise.resolve(JSON.parse(JSON.stringify(this.snapshot)));

@@ -73,6 +73,50 @@ export interface Destination {
 
 export type SourceType = 'originating' | 'processing' | 'virtual';
 
+export const LAWO_DEVICE_TYPES = [
+  'BSP',
+  'Cam',
+  'Caption',
+  'Color Corrector',
+  'Decap/Encap',
+  'Decode/Encode',
+  'FS',
+  'GFX',
+  'IPTV',
+  'Mon',
+  'Multiview',
+  'QC',
+  'Swr',
+  'Transcode',
+  'UDX',
+] as const;
+
+export type LawoDeviceType = (typeof LAWO_DEVICE_TYPES)[number];
+
+export const LAWO_VENDORS = [
+  'AI-Media',
+  'AJA',
+  'Appear',
+  'AWS',
+  'Blackmagic Design',
+  'CueScript',
+  'Evertz',
+  'Gnural',
+  'Haivision',
+  'Lawo',
+  'LiveU',
+  'Magewell',
+  'QuickLink',
+  'Ross',
+  'Sony',
+] as const;
+
+export type LawoVendor = (typeof LAWO_VENDORS)[number];
+
+export type RouterSystem = 'Lawo' | 'Evertz' | 'Both';
+
+export type RouteRole = 'lawo_source' | 'processing' | 'tieline' | 'evertz_source';
+
 export interface Source {
   id: SourceId;
   name: string;
@@ -82,6 +126,30 @@ export interface Source {
   active: boolean;
   upstreamSourceId: SourceId | null;
   sourceType: SourceType;
+  deviceType?: LawoDeviceType | null;
+  vendor?: LawoVendor | null;
+  router?: RouterSystem | null;
+  routeRole?: RouteRole | null;
+  inputLabel?: string | null;
+  outputLabel?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+  operatorId?: string | null;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface SignalFlowLock {
+  flowKey: string; // e.g. "OUT:MV-03-01:PIP-01"
+  outputId: OutputId;
+  pipId: PipId;
+  locked: boolean;
+  lockedBy: string | null;
+  operatorId?: string | null;
+  lockedAt: string | null;
+  availableAt?: string | null;
+  context?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 }
 
 /**
@@ -202,4 +270,5 @@ export interface TrackerSnapshot {
   generatedAt: string;
   customLayouts?: LayoutDefinition[];
   history?: HistoryEntry[];
+  signalFlowLocks?: Record<string, SignalFlowLock>;
 }

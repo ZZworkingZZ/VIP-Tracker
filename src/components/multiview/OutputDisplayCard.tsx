@@ -7,9 +7,11 @@ import {
   formatInputDisplay,
   PipId,
   DestinationId,
+  OutputId,
 } from '../../domain/identifiers';
 import { normalizeOutputPipAssignments } from '../../domain/pipRouting';
 import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
+import { decomposeTielineUpstream } from '../../domain/signalFlow';
 
 export interface OutputDisplayCardProps {
   readonly output: MultiviewOutput;
@@ -21,6 +23,7 @@ export interface OutputDisplayCardProps {
   readonly isDraggingInput?: boolean;
   readonly onDropDestinationOnPip?: (pipId: PipId, destinationId: DestinationId) => void;
   readonly onMovePip?: (fromPipId: PipId, toPipId: PipId) => void;
+  readonly onViewSignalFlow?: (outputId: OutputId, pipId: PipId) => void;
 }
 
 export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
@@ -33,6 +36,7 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
   isDraggingInput = false,
   onDropDestinationOnPip,
   onMovePip,
+  onViewSignalFlow,
 }) => {
   const isAvailable = output.status === 'Available' || !output.layoutName;
   const layout = React.useMemo(() => getLayoutDefinition(output.layoutName), [output.layoutName]);
@@ -57,17 +61,45 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
     return pips.map((p, i) => {
       const assignedDestId = pipAssignments[p.pipId] ?? null;
       const dest = assignedDestId ? destMap.get(assignedDestId) : null;
-      const source = dest?.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+      const source = dest?.assignedSourceId ? (sourceMap.get(dest.assignedSourceId) ?? null) : null;
+      const upstream = decomposeTielineUpstream(source, sourceMap);
+      const inputDisplay = dest ? formatInputDisplay(dest.id) : null;
+
+      const summaryParts: string[] = [];
+      if (upstream.lawoSource) {
+        summaryParts.push(upstream.lawoSource.name);
+      }
+      for (const proc of upstream.processingStages) {
+        summaryParts.push(proc.name);
+      }
+      if (source && source.id !== upstream.lawoSource?.id) {
+        summaryParts.push(source.name);
+      }
+      if (inputDisplay) {
+        summaryParts.push(inputDisplay);
+      }
+      summaryParts.push(p.pipId);
+
+      const isFlowIncomplete = !dest || !source || !upstream.lawoSource;
 
       return {
         pipId: p.pipId,
+        outputId: output.id,
+        multiviewId: output.multiviewId,
         destinationOffset: i,
         destinationNumber: dest?.destinationNumber ?? null,
         destinationId: dest?.id ?? null,
-        destinationLabel: dest ? formatInputDisplay(dest.id) : null,
+        destinationLabel: inputDisplay,
         sourceName: source?.name || null,
         sourceAlias: getSourceAlias(source),
         sourceCategory: source?.category || null,
+        lawoSourceName: upstream.lawoSource?.name ?? null,
+        processingChainLabel:
+          upstream.processingStages.length > 0
+            ? upstream.processingStages.map((s) => s.name).join(' → ')
+            : null,
+        resolvedFlowSummary: source ? summaryParts.join(' → ') : null,
+        isFlowIncomplete,
         isLocked: dest?.locked || false,
       };
     });
@@ -206,6 +238,9 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
             isDraggingInput={isDraggingInput}
             onDropDestinationOnPip={onDropDestinationOnPip}
             onMovePip={onMovePip}
+            onViewSignalFlow={
+              onViewSignalFlow ? (pipId) => onViewSignalFlow(output.id, pipId) : undefined
+            }
           />
         ) : (
           <div className="ev-custom-layout-fallback">Custom layout</div>
