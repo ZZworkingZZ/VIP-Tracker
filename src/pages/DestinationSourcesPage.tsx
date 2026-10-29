@@ -16,7 +16,7 @@ export const STATE_LABELS = {
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { SourceRoutingSelectorModal } from '../components/multiview/SourceRoutingSelectorModal';
-import { MultiviewOutput } from '../domain/models';
+import { MultiviewOutput, getSourceAlias, formatSourceCompact } from '../domain/models';
 import { getSourceCategoryColor } from '../domain/sourceCategories';
 
 export const DestinationSourcesPage: React.FC = () => {
@@ -86,11 +86,16 @@ export const DestinationSourcesPage: React.FC = () => {
       const destId = formatDestinationDisplay(row.destination.id).toLowerCase();
       const destNum = String(row.destination.destinationNumber);
       const sourceName = row.source?.name.toLowerCase() ?? '';
+      const sourceAlias = getSourceAlias(row.source)?.toLowerCase() ?? '';
       const assignName = row.derivedAssignmentName?.toLowerCase() ?? '';
 
       if (q) {
         const matches =
-          destId.includes(q) || destNum === q || sourceName.includes(q) || assignName.includes(q);
+          destId.includes(q) ||
+          destNum === q ||
+          sourceName.includes(q) ||
+          sourceAlias.includes(q) ||
+          assignName.includes(q);
         if (!matches) return false;
       }
 
@@ -427,6 +432,18 @@ export const DestinationSourcesPage: React.FC = () => {
                           >
                             {row.source.name}
                           </span>
+                          {getSourceAlias(row.source) && (
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                color: '#38bdf8',
+                                fontWeight: 600,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {getSourceAlias(row.source)}
+                            </span>
+                          )}
                           {row.source.upstreamSourceId && (
                             <span
                               style={{
@@ -437,8 +454,9 @@ export const DestinationSourcesPage: React.FC = () => {
                               title="Upstream Source"
                             >
                               ↳{' '}
-                              {snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
-                                ?.name ?? 'Upstream'}
+                              {formatSourceCompact(
+                                snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
+                              ) || 'Upstream'}
                             </span>
                           )}
                         </div>
@@ -604,6 +622,17 @@ export const DestinationSourcesPage: React.FC = () => {
                           {row.source ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               <span style={{ fontWeight: 600 }}>{row.source.name}</span>
+                              {getSourceAlias(row.source) && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#38bdf8',
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {getSourceAlias(row.source)}
+                                </span>
+                              )}
                               {row.source.upstreamSourceId && (
                                 <span
                                   style={{
@@ -614,9 +643,11 @@ export const DestinationSourcesPage: React.FC = () => {
                                   title="Upstream Source"
                                 >
                                   ↳ via{' '}
-                                  {snapshot.sources.find(
-                                    (s) => s.id === row.source?.upstreamSourceId
-                                  )?.name ?? row.source.upstreamSourceId}
+                                  {formatSourceCompact(
+                                    snapshot.sources.find(
+                                      (s) => s.id === row.source?.upstreamSourceId
+                                    )
+                                  ) || row.source.upstreamSourceId}
                                 </span>
                               )}
                             </div>

@@ -1,5 +1,5 @@
 import { SourceId } from './identifiers';
-import { Source } from './models';
+import { Source, formatSourceCompact } from './models';
 
 export const DEFAULT_MAX_SIGNAL_FLOW_DEPTH = 10;
 
@@ -185,7 +185,7 @@ export function resolveSignalFlow(
  */
 export function formatSignalFlowChain(flow: ResolvedSignalFlow): string {
   if (flow.hops.length === 0) return '';
-  return flow.hops.map((h) => h.name).join(' → ');
+  return flow.hops.map((h) => formatSourceCompact(h)).join(' → ');
 }
 
 /**

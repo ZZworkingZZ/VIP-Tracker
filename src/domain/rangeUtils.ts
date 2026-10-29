@@ -1,4 +1,4 @@
-import { MultiviewOutput, Destination, Source } from './models';
+import { MultiviewOutput, Destination, Source, formatSourceCompact } from './models';
 import { MultiviewId } from './identifiers';
 import { VERIFIED_MULTIVIEWS } from './constants';
 
@@ -94,7 +94,7 @@ export function checkDestructiveLayoutReduction(
   }
 
   const newEnd = output.destinationStart + newWindowCount - 1;
-  const sourceMap = new Map(allSources.map((s) => [s.id, s.name]));
+  const sourceMap = new Map(allSources.map((s) => [s.id, formatSourceCompact(s)]));
 
   const removedDestinationNumbers: number[] = [];
   const affectedDestinationsWithSources: { destinationNumber: number; sourceName: string }[] = [];

@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MultiviewOutput, Destination, Source } from '../../domain/models';
+import {
+  MultiviewOutput,
+  Destination,
+  Source,
+  getSourceAlias,
+  formatSourceCompact,
+} from '../../domain/models';
 import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
 import { LayoutRenderer, LayoutWindowData } from './LayoutRenderer';
 import {
@@ -151,6 +157,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         destinationId: dest?.id ?? null,
         destinationLabel: dest ? formatInputDisplay(dest.id) : null,
         sourceName: source?.name || null,
+        sourceAlias: getSourceAlias(source),
         sourceCategory: source?.category || null,
         isLocked: dest?.locked || false,
       };
@@ -198,12 +205,13 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
       if (query) {
         const destLabel = formatInputDisplay(dest.id).toLowerCase();
-        const sourceName = dest.assignedSourceId
-          ? (sourceMap.get(dest.assignedSourceId)?.name.toLowerCase() ?? '')
-          : '';
+        const src = dest.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+        const sourceName = src?.name.toLowerCase() ?? '';
+        const sourceAlias = getSourceAlias(src)?.toLowerCase() ?? '';
         if (
           !destLabel.includes(query) &&
           !sourceName.includes(query) &&
+          !sourceAlias.includes(query) &&
           !String(dest.destinationNumber).includes(query)
         ) {
           return false;
@@ -1140,7 +1148,9 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                   textOverflow: 'ellipsis',
                                 }}
                               >
-                                {source ? `Source: ${source.name}` : 'No routed Source'}
+                                {source
+                                  ? `Source: ${formatSourceCompact(source)}`
+                                  : 'No routed Source'}
                               </span>
                             </div>
 
@@ -1346,7 +1356,28 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
                                 fontStyle: win.sourceName ? 'normal' : 'italic',
                               }}
                             >
-                              {win.sourceName || (hasInput ? 'No routed Source' : '—')}
+                              {win.sourceName ? (
+                                <div
+                                  style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}
+                                >
+                                  <span>{win.sourceName}</span>
+                                  {win.sourceAlias && (
+                                    <span
+                                      style={{
+                                        fontSize: '10px',
+                                        color: '#38bdf8',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {win.sourceAlias}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : hasInput ? (
+                                'No routed Source'
+                              ) : (
+                                '—'
+                              )}
                             </td>
                             <td style={{ padding: '6px 10px' }}>
                               {win.sourceCategory ? (

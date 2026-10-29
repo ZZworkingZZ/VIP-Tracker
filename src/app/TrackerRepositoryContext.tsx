@@ -567,6 +567,82 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
     [snapshot]
   );
 
+  // Save a single source's alias directly via the shared repository save workflow
+  const saveSourceAlias = useCallback(
+    async (sourceId: SourceId, alias: string | null) => {
+      if (isReadOnly) {
+        setSaveError('VIP Tracker is in read-only shared mode. Edits cannot be saved.');
+        return;
+      }
+      if (isSavingRef.current) {
+        return;
+      }
+      if (!snapshot) return;
+
+      const normalizedAlias =
+        typeof alias === 'string' && alias.trim().length > 0 ? alias.trim() : undefined;
+
+      const applyAliasToSources = (sources: Source[]): Source[] =>
+        sources.map((s) => {
+          if (s.id !== sourceId) return s;
+          const next: Source = { ...s };
+          if (normalizedAlias !== undefined) {
+            next.alias = normalizedAlias;
+          } else {
+            delete next.alias;
+          }
+          return next;
+        });
+
+      const nextSnapshot: TrackerSnapshot = {
+        ...JSON.parse(JSON.stringify(snapshot)),
+        sources: applyAliasToSources(snapshot.sources),
+      };
+
+      try {
+        setIsSaving(true);
+        isSavingRef.current = true;
+        setSaveError(null);
+
+        const changeSet = createChangeSet(snapshot, nextSnapshot);
+        const updated = await repository.saveSnapshot(nextSnapshot, changeSet, currentOperator);
+
+        setSnapshot(updated);
+        syncGenerationRef.current++;
+        if (repository.getLastLoadedSha) {
+          setLastLoadedSha(repository.getLastLoadedSha());
+        }
+        if (draftSnapshot) {
+          setDraftSnapshot((prev) =>
+            prev ? { ...prev, sources: applyAliasToSources(prev.sources) } : null
+          );
+        }
+        setIsConflict(false);
+        setIsNewerSharedDataAvailable(false);
+        setSaveError(null);
+      } catch (err) {
+        if (
+          (err instanceof GitHubTrackerRepositoryError && err.code === 'REVISION_CONFLICT') ||
+          (err instanceof Error &&
+            (err.message.toLowerCase().includes('revision conflict') ||
+              err.message.toLowerCase().includes('conflict')))
+        ) {
+          setIsConflict(true);
+          setSaveError(
+            'Shared data changed after you began editing. Your changes have not been saved.'
+          );
+        } else {
+          setSaveError(err instanceof Error ? err.message : 'Failed to save changes.');
+        }
+        throw err;
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
+      }
+    },
+    [isReadOnly, repository, snapshot, draftSnapshot, currentOperator]
+  );
+
   // Add a Production Assignment to the draft operationalAssignments catalog
   const addDraftOperationalAssignment = useCallback(
     (name: string) => {
@@ -940,6 +1016,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestinationsBatch,
       addDraftSource,
       updateDraftSourceUpstream,
+      saveSourceAlias,
       addDraftOperationalAssignment,
       renameDraftOperationalAssignment,
       removeDraftOperationalAssignment,
@@ -988,6 +1065,7 @@ export const TrackerRepositoryProvider: React.FC<TrackerRepositoryProviderProps>
       updateDraftDestinationsBatch,
       addDraftSource,
       updateDraftSourceUpstream,
+      saveSourceAlias,
       addDraftOperationalAssignment,
       renameDraftOperationalAssignment,
       removeDraftOperationalAssignment,

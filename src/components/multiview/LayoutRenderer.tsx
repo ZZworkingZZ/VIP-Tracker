@@ -6,6 +6,7 @@ import {
 } from '../../domain/layoutDefinitions';
 import { SourceCategory, getSourceCategoryColor } from '../../domain/sourceCategories';
 import { PipId, DestinationId } from '../../domain/identifiers';
+import { formatSourceNameWithAlias } from '../../domain/models';
 
 export interface LayoutWindowData {
   readonly pipId?: PipId | string;
@@ -14,6 +15,7 @@ export interface LayoutWindowData {
   readonly destinationId?: string | null;
   readonly destinationLabel?: string | null;
   readonly sourceName?: string | null;
+  readonly sourceAlias?: string | null;
   readonly sourceCategory?: SourceCategory | null;
   readonly isLocked?: boolean;
 }
@@ -215,7 +217,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
             }}
             title={
               winData
-                ? `${pipId} | ${inputLabel || 'No MV Input assigned'} | ${winData.sourceName || 'No routed Source'}`
+                ? `${pipId} | ${inputLabel || 'No MV Input assigned'} | ${formatSourceNameWithAlias(winData.sourceName, winData.sourceAlias) || 'No routed Source'}`
                 : `${pipId} (Unassigned)`
             }
           >
@@ -290,21 +292,48 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   }}
                 >
                   {hasSource ? (
-                    <span
-                      style={{
-                        fontFamily: 'var(--ev-font)',
-                        fontWeight: 700,
-                        fontSize: isHighDensity ? '7px' : layout.windowCount <= 4 ? '12px' : '10px',
-                        color: '#f4f4f4',
-                        letterSpacing: '-0.2px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      {winData?.sourceName}
-                    </span>
+                    <>
+                      <span
+                        style={{
+                          fontFamily: 'var(--ev-font)',
+                          fontWeight: 700,
+                          fontSize: isHighDensity
+                            ? '7px'
+                            : layout.windowCount <= 4
+                              ? '12px'
+                              : '10px',
+                          color: '#f4f4f4',
+                          letterSpacing: '-0.2px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '100%',
+                        }}
+                      >
+                        {winData?.sourceName}
+                      </span>
+                      {winData?.sourceAlias && (
+                        <span
+                          data-testid={`pip-source-alias-${pipId}`}
+                          style={{
+                            fontFamily: 'var(--ev-font)',
+                            fontWeight: 600,
+                            fontSize: isHighDensity
+                              ? '6px'
+                              : layout.windowCount <= 4
+                                ? '10px'
+                                : '8px',
+                            color: '#38bdf8',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                          }}
+                        >
+                          {winData.sourceAlias}
+                        </span>
+                      )}
+                    </>
                   ) : hasInput ? (
                     <span
                       style={{
@@ -472,6 +501,24 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                         >
                           {winData?.sourceName}
                         </span>
+                        {winData?.sourceAlias && (
+                          <span
+                            data-testid={`detail-pip-source-alias-${pipId}`}
+                            style={{
+                              fontFamily: 'var(--ev-font)',
+                              fontSize: layout.windowCount <= 4 ? '13px' : '11px',
+                              fontWeight: 600,
+                              color: '#38bdf8',
+                              marginTop: '1px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '95%',
+                            }}
+                          >
+                            {winData.sourceAlias}
+                          </span>
+                        )}
                         <span
                           style={{
                             fontSize: '10px',

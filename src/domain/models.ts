@@ -76,11 +76,47 @@ export type SourceType = 'originating' | 'processing' | 'virtual';
 export interface Source {
   id: SourceId;
   name: string;
+  alias?: string | null;
   normalizedName: string;
   category: SourceCategory;
   active: boolean;
   upstreamSourceId: SourceId | null;
   sourceType: SourceType;
+}
+
+/**
+ * Returns the trimmed non-empty alias for a source, or null if absent/blank.
+ */
+export function getSourceAlias(
+  source: { alias?: string | null } | null | undefined
+): string | null {
+  if (!source || typeof source.alias !== 'string') return null;
+  const trimmed = source.alias.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Formats a source name and optional alias for compact UI surfaces:
+ * - With alias: "ENC-115-R22-SDI-1 (Haivision 1)"
+ * - Without alias: "ENC-115-R22-SDI-1"
+ */
+export function formatSourceNameWithAlias(
+  name: string | null | undefined,
+  alias?: string | null
+): string {
+  if (!name) return '';
+  const cleanAlias = typeof alias === 'string' && alias.trim().length > 0 ? alias.trim() : null;
+  return cleanAlias ? `${name} (${cleanAlias})` : name;
+}
+
+/**
+ * Formats a Source record for compact UI surfaces (dropdowns, selectors, inline chains).
+ */
+export function formatSourceCompact(
+  source: { name: string; alias?: string | null } | null | undefined
+): string {
+  if (!source) return '';
+  return formatSourceNameWithAlias(source.name, source.alias);
 }
 
 export interface OperationalAssignment {

@@ -66,6 +66,14 @@ export function isValidPersistedTrackerData(data: unknown): data is PersistedTra
     const src = s as Record<string, unknown>;
     if (typeof src.id !== 'string' || typeof src.name !== 'string') return false;
     if (
+      'alias' in src &&
+      src.alias !== undefined &&
+      src.alias !== null &&
+      typeof src.alias !== 'string'
+    ) {
+      return false;
+    }
+    if (
       !('upstreamSourceId' in src) ||
       (src.upstreamSourceId !== null && typeof src.upstreamSourceId !== 'string')
     ) {
@@ -134,6 +142,9 @@ export function migrateV1ToV2(raw: unknown): PersistedTrackerData | null {
         return {
           id,
           name,
+          ...(typeof src.alias === 'string' && src.alias.trim().length > 0
+            ? { alias: src.alias.trim() }
+            : {}),
           normalizedName:
             typeof src.normalizedName === 'string' ? src.normalizedName : name.toUpperCase().trim(),
           category: (typeof src.category === 'string' ? src.category : 'Other') as SourceCategory,

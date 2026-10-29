@@ -6,6 +6,9 @@ import {
   OperationalAssignment,
   ValidationFinding,
   TrackerSnapshot,
+  getSourceAlias,
+  formatSourceCompact,
+  formatSourceNameWithAlias,
 } from './models';
 import { MultiviewId, OutputId, createAssignmentId } from './identifiers';
 import { SourceCategory } from './sourceCategories';
@@ -263,6 +266,7 @@ export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProd
 
 /**
  * Filters and sorts sources for the Source Directory.
+ * Matches against both the technical source name and optional source alias.
  */
 export function selectFilteredSources(
   sources: Source[],
@@ -276,13 +280,19 @@ export function selectFilteredSources(
       if (categoryFilter !== 'ALL' && source.category !== categoryFilter) {
         return false;
       }
-      if (query && !source.name.toLowerCase().includes(query)) {
-        return false;
+      if (query) {
+        const nameMatch = source.name.toLowerCase().includes(query);
+        const alias = getSourceAlias(source);
+        const aliasMatch = alias ? alias.toLowerCase().includes(query) : false;
+        if (!nameMatch && !aliasMatch) {
+          return false;
+        }
       }
       return true;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export { getSourceAlias, formatSourceCompact, formatSourceNameWithAlias };
 export { selectOutputLastChanged, formatLastChanged } from './attribution';
 export type { ChangeAttribution } from './attribution';

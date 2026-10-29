@@ -477,6 +477,8 @@ function formatFieldLabel(field: string): string {
       return 'Production Assignment Catalog';
     case 'upstreamSourceId':
       return 'Upstream Source';
+    case 'alias':
+      return 'Source Alias';
     default:
       return field;
   }

@@ -6,6 +6,7 @@ import {
   HistoryEntry,
   HistoryEntityType,
   HistoryAction,
+  getSourceAlias,
 } from './models';
 import {
   formatOutputDisplay,
@@ -202,6 +203,29 @@ export function diffSnapshots(baseline: TrackerSnapshot, draft: TrackerSnapshot)
         description,
       });
     }
+
+    const baseAlias = getSourceAlias(baseSrc);
+    const draftAlias = getSourceAlias(draftSrc);
+    if (baseAlias !== draftAlias) {
+      let description: string;
+      if (!baseAlias && draftAlias) {
+        description = `${draftSrc.name} alias set to '${draftAlias}'`;
+      } else if (baseAlias && !draftAlias) {
+        description = `${draftSrc.name} alias '${baseAlias}' cleared`;
+      } else {
+        description = `${draftSrc.name} alias changed from '${baseAlias}' to '${draftAlias}'`;
+      }
+
+      changes.push({
+        entityType: 'source',
+        entityId: draftSrc.id,
+        entityLabel: draftSrc.name,
+        field: 'alias',
+        previousValue: baseAlias,
+        newValue: draftAlias,
+        description,
+      });
+    }
   }
 
   // 4. Compare OperationalAssignments (detect added, renamed, or removed Production Assignments)
@@ -385,6 +409,9 @@ function formatHistoryFieldChange(
     }
     if (change.field === 'upstreamSourceId') {
       return `${change.entityLabel} Upstream: ${change.previousValue ?? 'Unassigned'} → ${change.newValue ?? 'Unassigned'}`;
+    }
+    if (change.field === 'alias') {
+      return `${change.entityLabel} Alias: ${change.previousValue ?? 'None'} → ${change.newValue ?? 'None'}`;
     }
   }
   if (change.entityType === 'assignment') {

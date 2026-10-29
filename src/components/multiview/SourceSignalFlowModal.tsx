@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Source, ValidationFinding } from '../../domain/models';
+import {
+  Source,
+  ValidationFinding,
+  getSourceAlias,
+  formatSourceCompact,
+} from '../../domain/models';
 import { SourceId } from '../../domain/identifiers';
 import {
   previewUpstreamSignalFlow,
@@ -109,7 +114,12 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
     const q = searchQuery.trim().toLowerCase();
     return allSources.filter((s) => {
       if (s.id === source.id) return false;
-      if (q && !s.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const nameMatch = s.name.toLowerCase().includes(q);
+        const alias = getSourceAlias(s);
+        const aliasMatch = alias ? alias.toLowerCase().includes(q) : false;
+        if (!nameMatch && !aliasMatch) return false;
+      }
       return true;
     });
   }, [allSources, source.id, searchQuery]);
@@ -203,7 +213,8 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
               {isEditMode ? 'Edit Signal Flow' : 'Source Routing Details'}
             </div>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-              Target Source: <strong style={{ color: '#fff' }}>{source.name}</strong> ·{' '}
+              Target Source:{' '}
+              <strong style={{ color: '#fff' }}>{formatSourceCompact(source)}</strong> ·{' '}
               {source.category}
             </div>
           </div>
@@ -270,6 +281,13 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
               >
                 {source.name}
               </div>
+              {getSourceAlias(source) && (
+                <div
+                  style={{ fontSize: '11px', fontWeight: 600, color: '#38bdf8', marginTop: '2px' }}
+                >
+                  {getSourceAlias(source)}
+                </div>
+              )}
             </div>
 
             <div>
@@ -324,7 +342,9 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
                 {!source.upstreamSourceId ? (
                   <span style={{ color: '#858585' }}>Not assigned</span>
                 ) : currentUpstreamSource ? (
-                  <span style={{ color: '#38bdf8' }}>{currentUpstreamSource.name}</span>
+                  <span style={{ color: '#38bdf8' }}>
+                    {formatSourceCompact(currentUpstreamSource)}
+                  </span>
                 ) : (
                   <span style={{ color: '#f87171' }}>
                     Missing Source ({source.upstreamSourceId})
@@ -454,9 +474,11 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
               }}
             >
               {currentFlow.hops.length === 0 ? (
-                <span style={{ color: '#858585' }}>{source.name} (Origin — no upstream feed)</span>
+                <span style={{ color: '#858585' }}>
+                  {formatSourceCompact(source)} (Origin — no upstream feed)
+                </span>
               ) : currentFlow.hops.length === 1 ? (
-                <span>{source.name} (Origin)</span>
+                <span>{formatSourceCompact(source)} (Origin)</span>
               ) : (
                 <span>{formatSignalFlowChain(currentFlow)}</span>
               )}
@@ -629,7 +651,7 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>
-                            {s.name}
+                            {formatSourceCompact(s)}
                           </span>
                           <span
                             style={{
@@ -722,10 +744,10 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
                 >
                   {previewFlow.hops.length === 0 ? (
                     <span style={{ color: '#858585' }}>
-                      {source.name} (Origin — no upstream feed)
+                      {formatSourceCompact(source)} (Origin — no upstream feed)
                     </span>
                   ) : previewFlow.hops.length === 1 ? (
-                    <span>{source.name} (Origin)</span>
+                    <span>{formatSourceCompact(source)} (Origin)</span>
                   ) : (
                     <span>{formatSignalFlowChain(previewFlow)}</span>
                   )}
@@ -744,13 +766,17 @@ export const SourceSignalFlowModal: React.FC<SourceSignalFlowModalProps> = ({
                   <span>
                     <strong>Origin:</strong>{' '}
                     <span style={{ color: '#e2e8f0' }}>
-                      {previewFlow.originSource ? previewFlow.originSource.name : source.name}
+                      {previewFlow.originSource
+                        ? formatSourceCompact(previewFlow.originSource)
+                        : formatSourceCompact(source)}
                     </span>
                   </span>
                   <span>
                     <strong>Immediate Upstream:</strong>{' '}
                     <span style={{ color: '#e2e8f0' }}>
-                      {previewUpstreamSource ? previewUpstreamSource.name : 'None (Unassigned)'}
+                      {previewUpstreamSource
+                        ? formatSourceCompact(previewUpstreamSource)
+                        : 'None (Unassigned)'}
                     </span>
                   </span>
                 </div>

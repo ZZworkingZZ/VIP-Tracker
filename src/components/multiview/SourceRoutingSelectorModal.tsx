@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Source } from '../../domain/models';
+import { Source, getSourceAlias, formatSourceCompact } from '../../domain/models';
 import { SourceId, createSourceId } from '../../domain/identifiers';
 import { SOURCE_CATEGORIES, SourceCategory, inferSourceType } from '../../domain/sourceCategories';
 
@@ -60,7 +60,12 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
     const q = searchQuery.trim().toLowerCase();
     return sources.filter((s) => {
       if (categoryFilter !== 'ALL' && s.category !== categoryFilter) return false;
-      if (q && !s.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const nameMatch = s.name.toLowerCase().includes(q);
+        const alias = getSourceAlias(s);
+        const aliasMatch = alias ? alias.toLowerCase().includes(q) : false;
+        if (!nameMatch && !aliasMatch) return false;
+      }
       return true;
     });
   }, [sources, categoryFilter, searchQuery]);
@@ -450,7 +455,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>
-                      {source.name}
+                      {formatSourceCompact(source)}
                     </span>
                     <span
                       style={{
