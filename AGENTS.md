@@ -100,6 +100,18 @@ Use only the verified commands defined in `package.json`:
 - Session start: `git pull --ff-only`. If it fails, STOP and report — do not merge or rebase on your own.
 - Session end: all work committed and pushed. Unfinished work goes on a `wip/<feature>` branch, not main.
 
+### Editor State vs. Repository State
+
+If ESLint, TypeScript, targeted tests, and repository validation pass in the terminal but the editor Problems panel reports errors, verify:
+
+- The editor buffer is saved and not conflicting with an on-disk change.
+- No editor prompt reports that the on-disk file is newer.
+- The editor and terminal reference the identical absolute path (`C:\dev\VIP-Tracker`), not another clone, stale mirror, or temporary directory.
+- The editor and command line resolve the same `tsconfig.json` and TypeScript project context.
+- The TypeScript or ESLint language service does not need a reload/restart.
+
+When the editor reports an on-disk file is newer, compare the editor buffer to disk before saving. Never blindly overwrite newer validated code on disk. Reopen or reload the stale buffer after verifying disk content. Do not report editor-only stale diagnostics as repository failures when CLI validation passes.
+
 ## Architecture map (read only what the task touches)
 
 - Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, operatorRoster.ts, attribution.ts, feedback.ts
@@ -138,6 +150,8 @@ Do not inspect `DashboardPage.tsx`, `ProductionsPage.tsx`, or `LayoutAssignments
 - Cap exploration at about 15 searches or reads before the first edit. If you need more, say why in one line.
 - Read whole relevant sections once. Don't re-read the same file in small slices.
 - Skip components that are clearly unrelated to the task, like modals and pages that never reference the feature.
+- **Redundant reads:** Do not reread an unchanged file or range merely for reassurance. Reread only when the file changed, an earlier read lacked necessary context, another change may affect it, or a failure disproves the current understanding.
+- **Current-state evidence over historical logs:** Current repository evidence takes priority over transcript archaeology. Before searching agent transcripts, JSONL files, task logs, or historical command outputs, inspect on-disk file content, absolute paths, active branch, `git status`, targeted tool output, and `git diff`. Search historical logs only when the task explicitly requires investigating a prior run or present-state evidence cannot resolve an anomaly.
 
 ### Pre-edit dependency mapping
 
@@ -156,6 +170,11 @@ Before modifying shared domain behavior, repository/context actions, selectors, 
   - affected UI components and pages
   - associated editing, reliability, and component tests
     _(This is a dependency checklist to prevent omissions, NOT permission to automatically read every listed file)._
+- **Inspect authoritative fixtures before authoring tests:** Before constructing fixtures or assertions involving source IDs, destinations, outputs, layouts, PIPs, normalized identifiers, enums, string unions, categories, or seed data:
+  - Inspect authoritative definitions in `src/domain/identifiers.ts`, `src/domain/models.ts`, `src/domain/sourceCategories.ts`, seed files, or domain constructors first.
+  - Use production helpers (e.g. `createSourceId(...)`) instead of guessing normalized identifier formats.
+  - Explicit fixture overrides must use valid domain values (e.g. valid `SourceCategory` union literals).
+  - When a constructor or helper (e.g. `createDirectorySource`) already auto-derives an optional field correctly, prefer default derivation over arbitrary manual overrides unless the test explicitly requires that override.
 
 ### Predict test impact before implementation
 
@@ -166,6 +185,9 @@ At the end of an investigation/planning phase, briefly identify:
 - important behavioral invariants that must remain intact
 
 Use this prediction to guide the implementation rather than discovering obvious test dependencies only after failures.
+
+- **Minimal UI test render scope:** Integration and component tests should render the minimal application state required to prove the behavior. For large surfaces (such as Signal Flows), prefer scoping routes/context to a focused `mvId`, `outputId`, or single Multiviewer (e.g. `MV-01`) rather than rendering `All VIPs` or the entire facility baseline. Reserve facility-wide rendering for tests explicitly asserting global cross-VIP behavior. Reduce irrelevant render scope, never assertions or coverage.
+- **Respect optional schema properties in assertions:** Test assertions must respect optional model properties (e.g. `snapshot.history?`). Use optional chaining (`snapshot.history?.length`), nullish defaults (`(snapshot.history ?? []).length`), or explicit defined-state assertions. Never use `any`, unsafe casts, or unjustified non-null assertions (`!`) merely to suppress strict TypeScript diagnostics.
 
 ### Cohesive edit passes
 
@@ -184,18 +206,12 @@ Use this prediction to guide the implementation rather than discovering obvious 
 
 ### Validation order & feedback loops
 
-For substantive changes, follow this validation order:
-`Implementation` → `format touched files` → `run smallest relevant targeted tests` → `run TypeScript/typecheck when applicable` → `fix failures` → `rerun affected targeted validation` → `run full npm run validate (only after targeted checks are green)` → `commit` → `push`.
-
-- **Final gate, not diagnostic tool:** `npm run validate` is the FINAL validation gate, not the primary diagnostic tool. Do not run full validation while known targeted test or TypeScript failures remain.
-- **Avoid repeated full suites:** Avoid repeatedly running the full validation suite unless a subsequent change after the first full validation could realistically affect other parts of the repository.
-- **Optimize for feedback loops, not execution time:** Do not sacrifice correctness or validation just to reduce elapsed execution time. For a normal feature/change, aim for:
-  - one focused investigation pass
-  - one primary implementation pass
-  - one targeted validation/fix loop when possible
-  - one final full validation
-  - one commit/push cycle
-    _(This is a target, not a hard limit; correctness takes priority when additional investigation or validation is genuinely necessary)._
+- **Preserve correctness:** Efficiency never means skipping required tests, weakening assertions, deleting meaningful coverage, hiding TypeScript errors, fabricating fixtures, changing production behavior solely to satisfy a faulty test, ignoring failures, committing known failures, or avoiding required final validation. The goal is fewer unnecessary operations, not less verification.
+- **Validation sequencing & non-redundancy:**
+  - _During implementation:_ Run the smallest relevant targeted check (`npm run test -- <path>` or `npm run typecheck`) to answer the immediate question. Do not run `npm run validate` as an iterative diagnostic tool.
+  - _Failure-driven troubleshooting:_ After a targeted failure, inspect the output and identify its likely root cause before rerunning the command. When a failure stems from an incorrect fixture, ID, selector, category, mapping, or type assumption, inspect the authoritative source, apply a materially justified fix, and rerun only after updating code. Do not cycle through guessed one-line changes followed by repeated test executions.
+  - _Final validation gate:_ Match final validation strictly to the Risk-Based Validation Matrix (Section 4). For Level 1 and Level 2 changes, targeted tests, typecheck, and lint provide conclusive evidence without running full repository validation. For Level 3 (high-risk or architectural) changes, run `npm run validate` ONCE as the final gate after targeted failures are resolved. Do not run individual full checks and then immediately duplicate them with `npm run validate`.
+  - Documentation-only and trivial static-content changes require no application tests, typecheck, lint, build, or full validation.
 
 ### Scope discipline
 
@@ -207,14 +223,14 @@ For substantive changes, follow this validation order:
 
 - Before you commit, run `git status` and make sure there are no untracked temp files. Delete any you created.
 - Stage files explicitly by path (`git add <file> ...`). Never use `git add .` or `git add -A`.
-- Do not re-read a file range already read this session.
 - No baseline test run before changes.
 - While iterating: run only the targeted test file.
-- Before commit: for substantive changes, run prettier on touched files, verify targeted tests/typecheck, then run `npm run validate` ONCE as the final gate. Documentation-only changes do not require application tests, typecheck, or full validate (see Section 4).
-- Run `npm run validate` in the foreground and wait for it to finish. Do not background it or poll task status.
+- Before commit: format touched files with Prettier, verify targeted checks, and execute the appropriate risk-based validation level from Section 4. Documentation-only changes do not require application tests, typecheck, or full validate.
+- When `npm run validate` is required (Level 3), run it in the foreground and wait for it to finish. Do not background it or poll task status.
 - Shell is Windows PowerShell: do not use `&&`. Run git add, commit, and push as separate commands and stop if any one fails.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
+- **Honest change attribution:** Final reports must distinguish between changes made during the current task, fixes already present in the baseline commit, editor-buffer-only differences, and uncommitted working-tree changes. Never claim a fix was implemented in the current task if `git diff` and `git status` show no corresponding change.
 - Final report: max 10 lines — files changed, validate result, commit hash.
 - Execution-time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. Execution time is an observation metric, not a performance target. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
 
