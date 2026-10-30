@@ -19,6 +19,7 @@ import {
 import {
   resolveAllPipSignalFlows,
   resolveSinglePipSignalFlow,
+  resolveDestinationSignalFlows,
   getValidLawoSourceOptions,
   getValidProcessingStageOptions,
   getValidTielineOptions,
@@ -647,5 +648,200 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(detailFlowCell.textContent).toContain(
       'LiveU 101 → UDX-01 → vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
     );
+  });
+
+  it('34. renders Destination Windows Wall at the top of Signal Flows above Active Output Feeds and Signal Flows Table with 64 windows intact', async () => {
+    const snapshot = createSignalFlowTestSnapshot();
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=MV-03',
+    });
+
+    const wallContainer = await screen.findByTestId('destination-windows-wall-container');
+    const outputsContainer = screen.getByTestId('active-output-feeds-container');
+    const flowsTable = screen.getByTestId('signal-flows-table');
+
+    // Destination Windows Wall must precede Active Output Feeds in the DOM
+    expect(
+      wallContainer.compareDocumentPosition(outputsContainer) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    // Destination Windows Wall and Active Output Feeds precede Signal Flows Table
+    expect(
+      wallContainer.compareDocumentPosition(flowsTable) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    // 64 destination tiles rendered for MV-03
+    expect(screen.getByText(/Destination Windows Wall \(64 of 64\)/i)).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-64')).toBeInTheDocument();
+    // Unassigned input displays 'Unassigned' without fabricating stages
+    expect(
+      within(screen.getByTestId('dest-card-DEST:MV-03-60')).getByText('Unassigned')
+    ).toBeInTheDocument();
+  });
+
+  it('35. displays full known signal path in Destination Windows Wall tiles without fabricating missing stages and supports building/editing flows directly from the wall', async () => {
+    const snapshot = createSignalFlowTestSnapshot();
+    // Initially DEST:MV-03-01 has only vCam-40 (no upstream Lawo source or processing stage)
+    const initialFlows = resolveDestinationSignalFlows(snapshot, 'MV-03');
+    const dest01Initial = initialFlows.get('DEST:MV-03-01' as DestinationId)!;
+    expect(dest01Initial.lawoSource).toBeNull();
+    expect(dest01Initial.processingStages).toHaveLength(0);
+    expect(dest01Initial.concisePathSummary).toBeNull();
+    // Only stages that actually exist in the data are included
+    expect(dest01Initial.knownPathStages.map((s) => s.label)).toEqual([
+      'vCam-40',
+      'MV-03-01 Input',
+    ]);
+
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=MV-03',
+    });
+
+    const destCard01 = await screen.findByTestId('dest-card-DEST:MV-03-01');
+    expect(within(destCard01).getByText('vCam-40')).toBeInTheDocument();
+    // Does not fabricate BLANK upstream path in compact tile when upstream is unassigned
+    expect(
+      within(destCard01).queryByTestId('dest-card-path-DEST:MV-03-01')
+    ).not.toBeInTheDocument();
+
+    // Click tile to open progressive disclosure Signal Flow Inspector & Builder drawer
+    fireEvent.click(destCard01);
+    const inspector = await screen.findByTestId('wall-flow-inspector-DEST:MV-03-01');
+    expect(inspector).toBeInTheDocument();
+    expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
+      'vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
+    );
+
+    // Build upstream chain directly from the Wall Inspector: LiveU 101 -> UDX-01 -> vCam-40
+    fireEvent.change(screen.getByTestId('wall-select-lawo-DEST:MV-03-01'), {
+      target: { value: 'SRC:LAWO_LIVEU_101' },
+    });
+    fireEvent.change(screen.getByTestId('wall-select-processing-DEST:MV-03-01'), {
+      target: { value: 'SRC:LAWO_UDX_01' },
+    });
+    fireEvent.click(screen.getByTestId('wall-confirm-lawo-chain-btn-DEST:MV-03-01'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('wall-confirm-lawo-chain-btn-DEST:MV-03-01')
+      ).not.toBeInTheDocument();
+    });
+
+    // Tile now shows concise full path and inspector shows full chain
+    expect(screen.getByTestId('dest-card-path-DEST:MV-03-01')).toHaveTextContent(
+      'LiveU 101 → UDX-01 → vCam-40'
+    );
+    expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
+      'LiveU 101 → UDX-01 Input → UDX-01 Output → vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
+    );
+
+    // Also route an unassigned destination (DEST:MV-03-05) and assign it to PIP-03 on OUT:MV-03-01 from the Wall
+    fireEvent.click(screen.getByTestId('dest-card-DEST:MV-03-05'));
+    await screen.findByTestId('wall-flow-inspector-DEST:MV-03-05');
+    fireEvent.change(screen.getByTestId('wall-select-tieline-DEST:MV-03-05'), {
+      target: { value: VCAM_41_ID },
+    });
+    fireEvent.click(screen.getByTestId('wall-confirm-tieline-btn-DEST:MV-03-05'));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('wall-confirm-tieline-btn-DEST:MV-03-05')
+      ).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('wall-select-output-DEST:MV-03-05'), {
+      target: { value: TEST_OUTPUT_ID },
+    });
+    fireEvent.change(screen.getByTestId('wall-select-pip-DEST:MV-03-05'), {
+      target: { value: 'PIP-03' },
+    });
+    fireEvent.click(screen.getByTestId('wall-confirm-pip-btn-DEST:MV-03-05'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('wall-confirm-pip-btn-DEST:MV-03-05')).not.toBeInTheDocument();
+    });
+
+    const savedSnap = await repo.getSnapshot();
+    const savedDest05 = savedSnap.destinations.find((d) => d.id === 'DEST:MV-03-05');
+    expect(savedDest05?.assignedSourceId).toBe(VCAM_41_ID);
+    const savedOut01 = savedSnap.outputs.find((o) => o.id === TEST_OUTPUT_ID);
+    expect(savedOut01?.pipAssignments?.['PIP-03']).toBe('DEST:MV-03-05');
+  });
+
+  it('36. identifies duplicate routing scenarios (same MV card, cross-card tieline, Lawo multi-tieline, shared upstream origin) without blocking intentional duplicates', async () => {
+    let snapshot = createSignalFlowTestSnapshot();
+    // 1. Route vCam-40 to DEST:MV-03-01 and DEST:MV-03-06 (same MV card duplicate) and DEST:MV-02-01 (cross-card shared source)
+    snapshot = applyPipTielineStageChange(
+      snapshot,
+      'DEST:MV-03-06' as DestinationId,
+      VCAM_40_ID,
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+    snapshot = applyPipTielineStageChange(
+      snapshot,
+      'DEST:MV-02-01' as DestinationId,
+      VCAM_40_ID,
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+    // 2. Route LiveU 101 to BOTH vCam-40 (on DEST:MV-03-01) and vCam-41 (on DEST:MV-03-02) -> lawo_multi_tieline & shared_upstream_origin
+    snapshot = applyPipLawoChainUpdate(
+      snapshot,
+      VCAM_40_ID,
+      'SRC:LAWO_LIVEU_101' as SourceId,
+      [],
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:01:00.000Z'
+    );
+    snapshot = applyPipLawoChainUpdate(
+      snapshot,
+      VCAM_41_ID,
+      'SRC:LAWO_LIVEU_101' as SourceId,
+      [],
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:02:00.000Z'
+    );
+
+    const destFlows = resolveDestinationSignalFlows(snapshot, 'MV-03');
+    const flow01 = destFlows.get('DEST:MV-03-01' as DestinationId)!;
+    const flow02 = destFlows.get('DEST:MV-03-02' as DestinationId)!;
+    const flow06 = destFlows.get('DEST:MV-03-06' as DestinationId)!;
+
+    expect(flow01.hasDuplicates).toBe(true);
+    expect(flow01.hasSameCardDuplicate).toBe(true);
+    expect(flow01.hasMultiTielineDuplicate).toBe(true);
+    expect(flow01.duplicateFlags.map((f) => f.kind)).toEqual([
+      'same_mv_card_source',
+      'cross_mv_source',
+      'lawo_multi_tieline',
+      'shared_upstream_origin',
+    ]);
+    expect(flow06.hasSameCardDuplicate).toBe(true);
+    expect(flow02.duplicateFlags.map((f) => f.kind)).toContain('lawo_multi_tieline');
+    expect(flow02.duplicateFlags.map((f) => f.kind)).toContain('shared_upstream_origin');
+
+    // UI renders duplicate badges and filter button on the Destination Windows Wall
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=MV-03',
+    });
+
+    expect(await screen.findByTestId('dest-dup-badge-DEST:MV-03-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-02')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-06')).toBeInTheDocument();
+
+    const dupFilterBtn = screen.getByTestId('wall-duplicate-filter-btn');
+    fireEvent.click(dupFilterBtn);
+
+    // When duplicate filter is active, only destinations with duplicate flags are shown
+    expect(screen.getByTestId('dest-card-DEST:MV-03-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-02')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-06')).toBeInTheDocument();
+    expect(screen.queryByTestId('dest-card-DEST:MV-03-60')).not.toBeInTheDocument();
   });
 });

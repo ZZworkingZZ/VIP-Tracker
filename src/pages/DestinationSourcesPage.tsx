@@ -5,6 +5,8 @@ import {
   MultiviewId,
   DestinationId,
   SourceId,
+  OutputId,
+  PipId,
   formatDestinationDisplay,
   formatOutputDisplay,
   formatInputDisplay,
@@ -23,17 +25,20 @@ import {
 import { SOURCE_CATEGORIES, getSourceCategoryColor } from '../domain/sourceCategories';
 import {
   resolveAllPipSignalFlows,
+  resolveDestinationSignalFlows,
   filterPipSignalFlows,
   getValidLawoSourceOptions,
   getValidProcessingStageOptions,
   getValidTielineOptions,
   getValidMvInputOptions,
+  getValidPipOptions,
   evaluateDuplicateLawoSourceWarning,
   applyPipMvInputStageChange,
   applyPipTielineStageChange,
   applyPipLawoChainUpdate,
   applyPipFlowLockChange,
   ResolvedPipSignalFlow,
+  ResolvedDestinationSignalFlow,
   inferLawoDeviceType,
   inferLawoVendor,
 } from '../domain/signalFlow';
@@ -106,6 +111,19 @@ export const DestinationSourcesPage: React.FC = () => {
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
   const [routingDestId, setRoutingDestId] = useState<DestinationId | null>(null);
   const [draggingDestId, setDraggingDestId] = useState<DestinationId | null>(null);
+  const [selectedDestId, setSelectedDestId] = useState<DestinationId | null>(null);
+  const [duplicateOnlyFilter, setDuplicateOnlyFilter] = useState<boolean>(false);
+
+  // Destination Windows Wall signal flow builder state
+  const [wallPendingLawoId, setWallPendingLawoId] = useState<SourceId | null | undefined>(
+    undefined
+  );
+  const [wallPendingProcIds, setWallPendingProcIds] = useState<SourceId[] | undefined>(undefined);
+  const [wallPendingTielineId, setWallPendingTielineId] = useState<SourceId | null | undefined>(
+    undefined
+  );
+  const [wallTargetOutputId, setWallTargetOutputId] = useState<OutputId | ''>('');
+  const [wallTargetPipId, setWallTargetPipId] = useState<PipId | ''>('');
 
   // Per-row pending stage edits (only committed when checkmark ✓ is clicked)
   const [pendingLawoEdits, setPendingLawoEdits] = useState<Record<string, PendingStageEdit>>({});
@@ -208,15 +226,35 @@ export const DestinationSourcesPage: React.FC = () => {
     return selectDestinationsForMultiview(snapshot, selectedMv);
   }, [snapshot, selectedMv]);
 
+  const destSignalFlowsMap = useMemo(() => {
+    if (!snapshot) return new Map<DestinationId, ResolvedDestinationSignalFlow>();
+    return resolveDestinationSignalFlows(snapshot, selectedMv);
+  }, [snapshot, selectedMv]);
+
+  const duplicateDestinationsCount = useMemo(() => {
+    let count = 0;
+    for (const df of destSignalFlowsMap.values()) {
+      if (df.hasDuplicates) count++;
+    }
+    return count;
+  }, [destSignalFlowsMap]);
+
+  const selectedDestFlow = useMemo(() => {
+    if (!selectedDestId) return null;
+    return destSignalFlowsMap.get(selectedDestId) ?? null;
+  }, [selectedDestId, destSignalFlowsMap]);
+
   const filteredDestinations = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
     return derivedDestinations.filter((row) => {
+      const destFlow = destSignalFlowsMap.get(row.destination.id);
       const destId = formatDestinationDisplay(row.destination.id).toLowerCase();
       const destNum = String(row.destination.destinationNumber);
       const sourceName = row.source?.name.toLowerCase() ?? '';
-      const sourceAlias = getSourceAlias(row.source)?.toLowerCase() ?? '';
+      const sourceAlias = (destFlow?.alias ?? getSourceAlias(row.source) ?? '').toLowerCase();
       const assignName = row.derivedAssignmentName?.toLowerCase() ?? '';
+      const fullPathText = destFlow?.fullPathSummary.toLowerCase() ?? '';
 
       if (q) {
         const matches =
@@ -224,17 +262,19 @@ export const DestinationSourcesPage: React.FC = () => {
           destNum === q ||
           sourceName.includes(q) ||
           sourceAlias.includes(q) ||
-          assignName.includes(q);
+          assignName.includes(q) ||
+          fullPathText.includes(q);
         if (!matches) return false;
       }
 
       const isAssigned = Boolean(row.destination.assignedSourceId);
       if (statusFilter === 'ASSIGNED' && !isAssigned) return false;
       if (statusFilter === 'UNASSIGNED' && isAssigned) return false;
+      if (duplicateOnlyFilter && !destFlow?.hasDuplicates) return false;
 
       return true;
     });
-  }, [derivedDestinations, searchQuery, statusFilter]);
+  }, [derivedDestinations, destSignalFlowsMap, searchQuery, statusFilter, duplicateOnlyFilter]);
 
   if (!snapshot || !currentMv) return null;
 
@@ -422,6 +462,93 @@ export const DestinationSourcesPage: React.FC = () => {
       setFeedbackBanner({
         type: 'error',
         message: err instanceof Error ? err.message : 'Failed to unlock signal flow.',
+      });
+    }
+  };
+
+  // Destination Windows Wall signal flow builder handlers
+  const handleSelectWallDestination = (destId: DestinationId) => {
+    if (selectedDestId === destId) {
+      setSelectedDestId(null);
+    } else {
+      setSelectedDestId(destId);
+    }
+    setWallPendingLawoId(undefined);
+    setWallPendingProcIds(undefined);
+    setWallPendingTielineId(undefined);
+    setWallTargetOutputId('');
+    setWallTargetPipId('');
+  };
+
+  const handleConfirmWallTieline = async (destFlow: ResolvedDestinationSignalFlow) => {
+    if (isReadOnly || wallPendingTielineId === undefined) return;
+    const nextTielineId = wallPendingTielineId;
+    try {
+      await commitSignalFlowChange((base, op, ts) =>
+        applyPipTielineStageChange(base, destFlow.destinationId, nextTielineId, op, ts)
+      );
+      setWallPendingTielineId(undefined);
+      setFeedbackBanner({
+        type: 'success',
+        message: `Saved Evertz tieline/source route for ${destFlow.destinationDisplay}.`,
+      });
+    } catch (err) {
+      setFeedbackBanner({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save destination source route.',
+      });
+    }
+  };
+
+  const handleConfirmWallLawoChain = async (destFlow: ResolvedDestinationSignalFlow) => {
+    if (isReadOnly || !destFlow.immediateSourceId) return;
+    const nextLawoId = wallPendingLawoId !== undefined ? wallPendingLawoId : destFlow.lawoSourceId;
+    const nextProcIds =
+      wallPendingProcIds !== undefined
+        ? wallPendingProcIds
+        : destFlow.processingStages.map((s) => s.id);
+
+    try {
+      await commitSignalFlowChange((base, op, ts) =>
+        applyPipLawoChainUpdate(base, destFlow.immediateSourceId!, nextLawoId, nextProcIds, op, ts)
+      );
+      setWallPendingLawoId(undefined);
+      setWallPendingProcIds(undefined);
+      setFeedbackBanner({
+        type: 'success',
+        message: `Saved upstream Lawo signal path for ${destFlow.destinationDisplay}.`,
+      });
+    } catch (err) {
+      setFeedbackBanner({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save upstream Lawo signal path.',
+      });
+    }
+  };
+
+  const handleConfirmWallAssignPip = async (destFlow: ResolvedDestinationSignalFlow) => {
+    if (isReadOnly || !wallTargetOutputId || !wallTargetPipId) return;
+    try {
+      await commitSignalFlowChange((base, op, ts) =>
+        applyPipMvInputStageChange(
+          base,
+          wallTargetOutputId as OutputId,
+          wallTargetPipId as PipId,
+          destFlow.destinationId,
+          op,
+          ts
+        )
+      );
+      setWallTargetOutputId('');
+      setWallTargetPipId('');
+      setFeedbackBanner({
+        type: 'success',
+        message: `Assigned ${destFlow.destinationDisplay} to ${formatOutputDisplay(wallTargetOutputId as OutputId)} ${wallTargetPipId}.`,
+      });
+    } catch (err) {
+      setFeedbackBanner({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to assign MV Input to PIP.',
       });
     }
   };
@@ -723,7 +850,864 @@ export const DestinationSourcesPage: React.FC = () => {
       </div>
 
       {/* ====================================================================
-         SIGNAL FLOWS TABLE VIEW (Primary Operational View)
+         DESTINATION WINDOWS WALL & ACTIVE OUTPUT FEEDS (PRIMARY WORKSPACE AT TOP)
+         ==================================================================== */}
+      {(viewMode === 'flows' || viewMode === 'display') && (
+        <section
+          aria-label={`${selectedMv} Visual Destination Feed Wall`}
+          data-testid="destination-windows-wall-section"
+          style={{ marginBottom: '28px' }}
+        >
+          {/* Destination Tiles Matrix (PRIMARY VIEW AT TOP) */}
+          <div data-testid="destination-windows-wall-container" style={{ marginBottom: '24px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+                marginBottom: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', margin: 0 }}>
+                  Destination Windows Wall ({filteredDestinations.length} of{' '}
+                  {currentMv.inputCapacity})
+                </h2>
+                {duplicateDestinationsCount > 0 && (
+                  <button
+                    type="button"
+                    data-testid="wall-duplicate-filter-btn"
+                    onClick={() => setDuplicateOnlyFilter((prev) => !prev)}
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: duplicateOnlyFilter
+                        ? 'rgba(245, 158, 11, 0.25)'
+                        : 'rgba(245, 158, 11, 0.12)',
+                      color: '#fbbf24',
+                      border: `1px solid ${duplicateOnlyFilter ? '#f59e0b' : 'rgba(245, 158, 11, 0.4)'}`,
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                    }}
+                    title="Filter to destinations with duplicate or shared routing"
+                  >
+                    ⚠ {duplicateDestinationsCount} Duplicate / Shared Route
+                    {duplicateDestinationsCount === 1 ? '' : 's'}
+                    {duplicateOnlyFilter ? ' (Filtered)' : ''}
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                {isEditMode
+                  ? 'Click any destination tile or Flow to build/inspect signal flow, click Route to patch Evertz sources, or drag onto an output PIP below'
+                  : 'Click any destination tile to inspect or build its signal flow, or drag a tile onto an output layout box below'}
+              </span>
+            </div>
+
+            <div
+              data-testid="destination-windows-wall-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+                gap: '8px',
+              }}
+            >
+              {filteredDestinations.map((row) => {
+                const dest = row.destination;
+                const destDisplay = formatDestinationDisplay(dest.id);
+                const destFlow = destSignalFlowsMap.get(dest.id);
+                const hasSource = Boolean(row.source);
+                const isDraggingThis = draggingDestId === dest.id;
+                const isSelectedTile = selectedDestId === dest.id;
+                const hasDuplicates = Boolean(destFlow?.hasDuplicates);
+                const hasSameCardDup = Boolean(destFlow?.hasSameCardDuplicate);
+                const categoryColor = row.source?.category
+                  ? getSourceCategoryColor(row.source.category)
+                  : undefined;
+                const effectiveAlias = destFlow?.alias ?? getSourceAlias(row.source);
+
+                return (
+                  <div
+                    key={dest.id}
+                    data-testid={`dest-card-${dest.id}`}
+                    data-draggable={!isReadOnly ? 'true' : 'false'}
+                    data-selected={isSelectedTile ? 'true' : 'false'}
+                    data-has-duplicate={hasDuplicates ? 'true' : 'false'}
+                    data-same-card-duplicate={hasSameCardDup ? 'true' : 'false'}
+                    draggable={!isReadOnly}
+                    onDragStart={(e) => {
+                      if (isReadOnly) {
+                        e.preventDefault();
+                        return;
+                      }
+                      e.dataTransfer.setData('application/vip-dest-id', dest.id);
+                      e.dataTransfer.setData('text/plain', dest.id);
+                      e.dataTransfer.effectAllowed = 'copyMove';
+                      setDraggingDestId(dest.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingDestId(null);
+                    }}
+                    onClick={() => {
+                      if (isEditMode) {
+                        setRoutingDestId(dest.id);
+                      } else {
+                        handleSelectWallDestination(dest.id);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: isSelectedTile
+                        ? '#172536'
+                        : hasSource
+                          ? '#191919'
+                          : '#0f0f0f',
+                      border: row.hasConflict
+                        ? '1px solid var(--ev-status-error)'
+                        : isSelectedTile
+                          ? '1px solid #38bdf8'
+                          : isDraggingThis
+                            ? '1px solid #38bdf8'
+                            : hasSameCardDup
+                              ? '1px solid #f59e0b'
+                              : isEditMode
+                                ? '1px solid #38bdf8'
+                                : hasDuplicates
+                                  ? '1px solid rgba(245, 158, 11, 0.55)'
+                                  : hasSource
+                                    ? '1px solid #363636'
+                                    : '1px dashed #262626',
+                      borderRadius: '2px',
+                      padding: '7px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      minHeight: '78px',
+                      opacity: isDraggingThis ? 0.6 : 1,
+                      cursor: !isReadOnly ? (isDraggingThis ? 'grabbing' : 'grab') : 'pointer',
+                      transition:
+                        'border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
+                      boxShadow: isSelectedTile
+                        ? '0 0 0 1px #38bdf8, 0 4px 10px rgba(56, 189, 248, 0.25)'
+                        : isEditMode
+                          ? '0 2px 6px rgba(56, 189, 248, 0.15)'
+                          : '0 2px 4px rgba(0, 0, 0, 0.4)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontFamily: 'monospace',
+                          fontWeight: 700,
+                          color: isEditMode || isSelectedTile ? '#38bdf8' : '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        {!isReadOnly && (
+                          <span
+                            aria-hidden="true"
+                            style={{ color: '#475569', fontSize: '9px', letterSpacing: '-1px' }}
+                          >
+                            ⋮⋮
+                          </span>
+                        )}
+                        {destDisplay}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {hasDuplicates && destFlow && (
+                          <span
+                            data-testid={`dest-dup-badge-${dest.id}`}
+                            title={destFlow.duplicateFlags.map((f) => f.description).join(' | ')}
+                            style={{
+                              fontSize: '8px',
+                              fontWeight: 800,
+                              padding: '1px 4px',
+                              borderRadius: '2px',
+                              backgroundColor: hasSameCardDup
+                                ? 'rgba(245, 158, 11, 0.22)'
+                                : 'rgba(56, 189, 248, 0.16)',
+                              color: hasSameCardDup ? '#fbbf24' : '#7dd3fc',
+                              border: `1px solid ${
+                                hasSameCardDup
+                                  ? 'rgba(245, 158, 11, 0.5)'
+                                  : 'rgba(56, 189, 248, 0.4)'
+                              }`,
+                              fontFamily: 'monospace',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            ⚠ {destFlow.duplicateFlags[0].label}
+                          </span>
+                        )}
+                        {categoryColor && (
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: categoryColor,
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'center', margin: '4px 0' }}>
+                      {row.source ? (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '1px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontWeight: 800,
+                              fontSize: '11px',
+                              color: '#f8fafc',
+                              wordBreak: 'break-all',
+                            }}
+                          >
+                            {row.source.name}
+                          </span>
+                          {effectiveAlias && (
+                            <span
+                              data-testid={`dest-card-alias-${dest.id}`}
+                              style={{
+                                fontSize: '10px',
+                                color: '#38bdf8',
+                                fontWeight: 600,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {effectiveAlias}
+                            </span>
+                          )}
+                          {destFlow?.concisePathSummary ? (
+                            <span
+                              data-testid={`dest-card-path-${dest.id}`}
+                              style={{
+                                fontSize: '9px',
+                                color: '#93c5fd',
+                                fontFamily: 'monospace',
+                                lineHeight: 1.2,
+                                wordBreak: 'break-word',
+                              }}
+                              title={`Signal Path: ${destFlow.fullPathSummary}`}
+                            >
+                              ↳ {destFlow.concisePathSummary}
+                            </span>
+                          ) : row.source.upstreamSourceId ? (
+                            <span
+                              data-testid={`dest-card-path-${dest.id}`}
+                              style={{
+                                fontSize: '9px',
+                                color: '#38bdf8',
+                                fontFamily: 'monospace',
+                              }}
+                              title="Upstream Source"
+                            >
+                              ↳{' '}
+                              {formatSourceCompact(
+                                snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
+                              ) || 'Upstream'}
+                            </span>
+                          ) : null}
+                          {destFlow && destFlow.pipUsages.length > 0 && (
+                            <span
+                              data-testid={`dest-card-pips-${dest.id}`}
+                              style={{
+                                fontSize: '8px',
+                                color: '#a7f3d0',
+                                fontFamily: 'monospace',
+                                marginTop: '1px',
+                              }}
+                              title={`Active PIPs: ${destFlow.pipUsages.map((u) => u.pipDisplayLabel).join(', ')}`}
+                            >
+                              →{' '}
+                              {destFlow.pipUsages
+                                .map((u) => u.pipDisplayLabel.replace(/^MV-\d{2}-/, 'Out '))
+                                .join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '10px', color: '#475569', fontStyle: 'italic' }}>
+                          Unassigned
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '9px',
+                        color: '#64748b',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      <span>
+                        #{dest.destinationNumber}
+                        {isEditMode && row.coveringOutput ? (
+                          <span style={{ color: '#fbbf24', marginLeft: '3px' }}>
+                            ({formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')})
+                          </span>
+                        ) : null}
+                      </span>
+                      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                        {!isEditMode && row.coveringOutput && (
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOutput(row.coveringOutput);
+                            }}
+                            style={{ color: '#fbbf24', fontWeight: 600, cursor: 'pointer' }}
+                            title="Inspect covering output layout"
+                          >
+                            {formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          data-testid={`dest-flow-btn-${dest.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectWallDestination(dest.id);
+                          }}
+                          style={{
+                            padding: '1px 4px',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            backgroundColor: isSelectedTile ? '#0284c7' : '#1e293b',
+                            color: isSelectedTile ? '#ffffff' : '#93c5fd',
+                            border: `1px solid ${isSelectedTile ? '#38bdf8' : '#334155'}`,
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                          title={`Inspect or build signal flow for ${destDisplay}`}
+                        >
+                          Flow
+                        </button>
+                        {isEditMode && (
+                          <>
+                            <button
+                              type="button"
+                              data-testid={`dest-route-btn-${dest.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRoutingDestId(dest.id);
+                              }}
+                              style={{
+                                padding: '1px 5px',
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                backgroundColor: '#2864a3',
+                                color: '#ffffff',
+                                border: '1px solid #38bdf8',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                              }}
+                              title={`Route source to ${destDisplay}`}
+                            >
+                              Route
+                            </button>
+                            {hasSource && (
+                              <button
+                                type="button"
+                                data-testid={`dest-clear-btn-${dest.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateDraftDestination(
+                                    dest.multiviewId,
+                                    dest.destinationNumber,
+                                    null
+                                  );
+                                }}
+                                style={{
+                                  padding: '1px 4px',
+                                  fontSize: '9px',
+                                  fontWeight: 700,
+                                  backgroundColor: '#262626',
+                                  color: '#94a3b8',
+                                  border: '1px solid #444',
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                }}
+                                title="Clear source"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progressive Disclosure: Selected Destination Signal Flow Inspector & Builder Drawer */}
+            {selectedDestFlow && (
+              <div
+                data-testid={`wall-flow-inspector-${selectedDestFlow.destinationId}`}
+                style={{
+                  marginTop: '12px',
+                  padding: '12px 14px',
+                  backgroundColor: '#141c26',
+                  border: '1px solid #38bdf8',
+                  borderRadius: '3px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                  }}
+                >
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        color: '#38bdf8',
+                      }}
+                    >
+                      {selectedDestFlow.destinationDisplay} (#
+                      {selectedDestFlow.destinationNumber}) Signal Flow
+                    </span>
+                    <span
+                      data-testid={`wall-inspector-full-path-${selectedDestFlow.destinationId}`}
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        backgroundColor: '#0f172a',
+                        border: '1px solid #334155',
+                        borderRadius: '2px',
+                        color: '#e2e8f0',
+                      }}
+                    >
+                      {selectedDestFlow.fullPathSummary}
+                      {selectedDestFlow.pipUsages.length > 0
+                        ? ` → ${selectedDestFlow.pipUsages.map((u) => u.pipDisplayLabel).join(', ')}`
+                        : ''}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="close-wall-flow-inspector-btn"
+                    onClick={() => setSelectedDestId(null)}
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      backgroundColor: '#1e293b',
+                      color: '#cbd5e1',
+                      border: '1px solid #475569',
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Close ×
+                  </button>
+                </div>
+
+                {/* Duplicate Routing Warnings / Relationships */}
+                {selectedDestFlow.hasDuplicates && (
+                  <div
+                    data-testid={`wall-inspector-duplicates-${selectedDestFlow.destinationId}`}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      padding: '6px 10px',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      borderRadius: '2px',
+                    }}
+                  >
+                    {selectedDestFlow.duplicateFlags.map((flag, i) => (
+                      <div
+                        key={`${flag.kind}-${i}`}
+                        style={{
+                          fontSize: '11px',
+                          color: '#fbbf24',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <strong>⚠ {flag.label}:</strong>
+                        <span>{flag.description}</span>
+                        {flag.relatedDestinationIds.map((relId) => (
+                          <button
+                            key={relId}
+                            type="button"
+                            data-testid={`jump-related-dest-${relId}`}
+                            onClick={() => handleSelectWallDestination(relId)}
+                            style={{
+                              padding: '1px 5px',
+                              fontSize: '10px',
+                              fontFamily: 'monospace',
+                              backgroundColor: '#1e293b',
+                              color: '#38bdf8',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Inspect {formatDestinationDisplay(relId)}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Interactive Stage Builder Controls */}
+                {!isReadOnly && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                      gap: '10px',
+                      alignItems: 'end',
+                    }}
+                  >
+                    {/* Stage 1: Lawo Source */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                        1. Lawo Source
+                      </label>
+                      <select
+                        aria-label={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
+                        data-testid={`wall-select-lawo-${selectedDestFlow.destinationId}`}
+                        disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                        value={
+                          wallPendingLawoId !== undefined
+                            ? (wallPendingLawoId ?? '')
+                            : (selectedDestFlow.lawoSourceId ?? '')
+                        }
+                        onChange={(e) =>
+                          setWallPendingLawoId(e.target.value ? (e.target.value as SourceId) : null)
+                        }
+                        style={{
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <option value="">-- Unassigned (Origin / Direct) --</option>
+                        {validLawoSources
+                          .filter((s) => s.id !== selectedDestFlow.immediateSourceId)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {formatSourceCompact(s)}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Stage 2: Lawo Processing */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                        2. Lawo Processing (Optional)
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <select
+                          aria-label={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
+                          data-testid={`wall-select-processing-${selectedDestFlow.destinationId}`}
+                          disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                          value={
+                            wallPendingProcIds !== undefined
+                              ? (wallPendingProcIds[0] ?? '')
+                              : (selectedDestFlow.processingStages[0]?.id ?? '')
+                          }
+                          onChange={(e) =>
+                            setWallPendingProcIds(
+                              e.target.value ? [e.target.value as SourceId] : []
+                            )
+                          }
+                          style={{
+                            flex: 1,
+                            padding: '4px 6px',
+                            fontSize: '11px',
+                            backgroundColor: '#0f172a',
+                            color: '#f8fafc',
+                            border: '1px solid #334155',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <option value="">-- Direct (No Processing) --</option>
+                          {validProcessingSources.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} ({inferLawoDeviceType(s) ?? 'Processing'})
+                            </option>
+                          ))}
+                        </select>
+                        {(wallPendingLawoId !== undefined || wallPendingProcIds !== undefined) && (
+                          <button
+                            type="button"
+                            data-testid={`wall-confirm-lawo-chain-btn-${selectedDestFlow.destinationId}`}
+                            onClick={() => void handleConfirmWallLawoChain(selectedDestFlow)}
+                            disabled={isSaving}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: '#2864a3',
+                              color: '#ffffff',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✓ Save Upstream
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stage 3: Lawo Dest / Evertz Tieline / Evertz Source */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                        3. Lawo Dest / Evertz Source → {selectedDestFlow.destinationDisplay}
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <select
+                          aria-label={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
+                          data-testid={`wall-select-tieline-${selectedDestFlow.destinationId}`}
+                          disabled={isSaving}
+                          value={
+                            wallPendingTielineId !== undefined
+                              ? (wallPendingTielineId ?? '')
+                              : (selectedDestFlow.immediateSourceId ?? '')
+                          }
+                          onChange={(e) =>
+                            setWallPendingTielineId(
+                              e.target.value ? (e.target.value as SourceId) : null
+                            )
+                          }
+                          style={{
+                            flex: 1,
+                            padding: '4px 6px',
+                            fontSize: '11px',
+                            backgroundColor: '#0f172a',
+                            color: '#f8fafc',
+                            border: '1px solid #334155',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <option value="">-- Unassigned --</option>
+                          {validTielineSources.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {formatSourceCompact(s)}
+                            </option>
+                          ))}
+                        </select>
+                        {wallPendingTielineId !== undefined && (
+                          <button
+                            type="button"
+                            data-testid={`wall-confirm-tieline-btn-${selectedDestFlow.destinationId}`}
+                            onClick={() => void handleConfirmWallTieline(selectedDestFlow)}
+                            disabled={isSaving}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: '#2864a3',
+                              color: '#ffffff',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✓ Save Route
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          data-testid={`wall-open-route-modal-btn-${selectedDestFlow.destinationId}`}
+                          onClick={() => setRoutingDestId(selectedDestFlow.destinationId)}
+                          style={{
+                            padding: '4px 7px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            backgroundColor: '#1e293b',
+                            color: '#38bdf8',
+                            border: '1px solid #38bdf8',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                          title="Open searchable Evertz Source Routing Modal"
+                        >
+                          Catalog / Search…
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stage 4: Assign MV Input to Active Output PIP */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                        4. Assign {selectedDestFlow.destinationDisplay} to Output PIP
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <select
+                          aria-label={`Target Output for ${selectedDestFlow.destinationDisplay}`}
+                          data-testid={`wall-select-output-${selectedDestFlow.destinationId}`}
+                          value={wallTargetOutputId}
+                          onChange={(e) => {
+                            const outId = e.target.value as OutputId | '';
+                            setWallTargetOutputId(outId);
+                            setWallTargetPipId('');
+                          }}
+                          style={{
+                            padding: '4px 6px',
+                            fontSize: '11px',
+                            backgroundColor: '#0f172a',
+                            color: '#f8fafc',
+                            border: '1px solid #334155',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <option value="">-- Output --</option>
+                          {mvOutputs
+                            .filter((o) => o.status !== 'Available' && Boolean(o.layoutName))
+                            .map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {formatOutputDisplay(o.id)} ({o.layoutName})
+                              </option>
+                            ))}
+                        </select>
+                        <select
+                          aria-label={`Target PIP for ${selectedDestFlow.destinationDisplay}`}
+                          data-testid={`wall-select-pip-${selectedDestFlow.destinationId}`}
+                          disabled={!wallTargetOutputId}
+                          value={wallTargetPipId}
+                          onChange={(e) => setWallTargetPipId(e.target.value as PipId | '')}
+                          style={{
+                            padding: '4px 6px',
+                            fontSize: '11px',
+                            backgroundColor: '#0f172a',
+                            color: '#f8fafc',
+                            border: '1px solid #334155',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <option value="">-- PIP --</option>
+                          {wallTargetOutputId &&
+                            (() => {
+                              const targetOut = mvOutputs.find((o) => o.id === wallTargetOutputId);
+                              if (!targetOut) return null;
+                              return getValidPipOptions(targetOut, snapshot.customLayouts).map(
+                                (pId) => (
+                                  <option key={pId} value={pId}>
+                                    {pId}
+                                  </option>
+                                )
+                              );
+                            })()}
+                        </select>
+                        {wallTargetOutputId && wallTargetPipId && (
+                          <button
+                            type="button"
+                            data-testid={`wall-confirm-pip-btn-${selectedDestFlow.destinationId}`}
+                            onClick={() => void handleConfirmWallAssignPip(selectedDestFlow)}
+                            disabled={isSaving}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: '#2864a3',
+                              color: '#ffffff',
+                              border: '1px solid #38bdf8',
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✓ Assign PIP
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Active Output Feeds (SECONDARY DETAILED LAYOUT VIEW BELOW WALL) */}
+          <div data-testid="active-output-feeds-container">
+            <h2
+              style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', marginBottom: '12px' }}
+            >
+              Active Output Feeds ({mvOutputs.length} Outputs on {selectedMv})
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gap: '14px',
+              }}
+            >
+              {mvOutputs.map((out) => (
+                <OutputDisplayCard
+                  key={out.id}
+                  output={out}
+                  destinations={snapshot.destinations}
+                  sources={snapshot.sources}
+                  onClick={() => setSelectedOutput(out)}
+                  isSelected={selectedOutput?.id === out.id}
+                  isEditable={!isReadOnly}
+                  isDraggingInput={Boolean(draggingDestId)}
+                  onDropDestinationOnPip={(pipId, destId) => {
+                    if (isReadOnly) return;
+                    if (!destId.startsWith(`DEST:${out.multiviewId}-`)) return;
+                    assignDraftPipInput(out.id, pipId, destId);
+                  }}
+                  onMovePip={(fromPipId, toPipId) => {
+                    if (isReadOnly) return;
+                    moveDraftPipInput(out.id, fromPipId, toPipId);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ====================================================================
+         SIGNAL FLOWS TABLE VIEW (PIP Stage Breakdown)
          ==================================================================== */}
       {viewMode === 'flows' && (
         <section aria-label="Signal Flows Table Section">
@@ -1756,325 +2740,6 @@ export const DestinationSourcesPage: React.FC = () => {
                 )}
               </tbody>
             </table>
-          </div>
-        </section>
-      )}
-
-      {/* ====================================================================
-         VISUAL DISPLAY VIEW (Destination Matrix & Active Output Cards)
-         ==================================================================== */}
-      {(viewMode === 'flows' || viewMode === 'display') && (
-        <section aria-label={`${selectedMv} Visual Destination Feed Wall`}>
-          {/* Outputs Miniature Feeds for this Multiviewer */}
-          <div style={{ marginBottom: '24px' }}>
-            <h2
-              style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', marginBottom: '12px' }}
-            >
-              Active Output Feeds ({mvOutputs.length} Outputs on {selectedMv})
-            </h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: '14px',
-              }}
-            >
-              {mvOutputs.map((out) => (
-                <OutputDisplayCard
-                  key={out.id}
-                  output={out}
-                  destinations={snapshot.destinations}
-                  sources={snapshot.sources}
-                  onClick={() => setSelectedOutput(out)}
-                  isSelected={selectedOutput?.id === out.id}
-                  isEditable={!isReadOnly}
-                  isDraggingInput={Boolean(draggingDestId)}
-                  onDropDestinationOnPip={(pipId, destId) => {
-                    if (isReadOnly) return;
-                    if (!destId.startsWith(`DEST:${out.multiviewId}-`)) return;
-                    assignDraftPipInput(out.id, pipId, destId);
-                  }}
-                  onMovePip={(fromPipId, toPipId) => {
-                    if (isReadOnly) return;
-                    moveDraftPipInput(out.id, fromPipId, toPipId);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Destination Tiles Matrix */}
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-              }}
-            >
-              <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', margin: 0 }}>
-                Destination Windows Wall ({filteredDestinations.length} of {currentMv.inputCapacity}
-                )
-              </h2>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
-                {isEditMode
-                  ? 'Drag any destination tile onto an output layout box above, or click Route to patch broadcast sources directly'
-                  : 'Drag any destination tile onto an output layout box above, or click output feed for high-res layout inspection'}
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
-                gap: '8px',
-              }}
-            >
-              {filteredDestinations.map((row) => {
-                const dest = row.destination;
-                const destDisplay = formatDestinationDisplay(dest.id);
-                const hasSource = Boolean(row.source);
-                const isDraggingThis = draggingDestId === dest.id;
-                const categoryColor = row.source?.category
-                  ? getSourceCategoryColor(row.source.category)
-                  : undefined;
-
-                return (
-                  <div
-                    key={dest.id}
-                    data-testid={`dest-card-${dest.id}`}
-                    data-draggable={!isReadOnly ? 'true' : 'false'}
-                    draggable={!isReadOnly}
-                    onDragStart={(e) => {
-                      if (isReadOnly) {
-                        e.preventDefault();
-                        return;
-                      }
-                      e.dataTransfer.setData('application/vip-dest-id', dest.id);
-                      e.dataTransfer.setData('text/plain', dest.id);
-                      e.dataTransfer.effectAllowed = 'copyMove';
-                      setDraggingDestId(dest.id);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingDestId(null);
-                    }}
-                    onClick={() => {
-                      if (isEditMode) {
-                        setRoutingDestId(dest.id);
-                      } else if (row.coveringOutput) {
-                        setSelectedOutput(row.coveringOutput);
-                      }
-                    }}
-                    style={{
-                      backgroundColor: hasSource ? '#191919' : '#0f0f0f',
-                      border: row.hasConflict
-                        ? '1px solid var(--ev-status-error)'
-                        : isDraggingThis
-                          ? '1px solid #38bdf8'
-                          : isEditMode
-                            ? '1px solid #38bdf8'
-                            : hasSource
-                              ? '1px solid #363636'
-                              : '1px dashed #262626',
-                      borderRadius: '2px',
-                      padding: '7px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      minHeight: '70px',
-                      opacity: isDraggingThis ? 0.6 : 1,
-                      cursor: !isReadOnly
-                        ? isDraggingThis
-                          ? 'grabbing'
-                          : 'grab'
-                        : row.coveringOutput
-                          ? 'pointer'
-                          : 'default',
-                      transition:
-                        'border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
-                      boxShadow: isEditMode
-                        ? '0 2px 6px rgba(56, 189, 248, 0.15)'
-                        : '0 2px 4px rgba(0, 0, 0, 0.4)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          fontFamily: 'monospace',
-                          fontWeight: 700,
-                          color: isEditMode ? '#38bdf8' : '#64748b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
-                      >
-                        {!isReadOnly && (
-                          <span
-                            aria-hidden="true"
-                            style={{ color: '#475569', fontSize: '9px', letterSpacing: '-1px' }}
-                          >
-                            ⋮⋮
-                          </span>
-                        )}
-                        {destDisplay}
-                      </span>
-                      {categoryColor && (
-                        <span
-                          style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: categoryColor,
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    <div style={{ textAlign: 'center', margin: '4px 0' }}>
-                      {row.source ? (
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '1px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontFamily: 'monospace',
-                              fontWeight: 800,
-                              fontSize: '11px',
-                              color: '#f8fafc',
-                              wordBreak: 'break-all',
-                            }}
-                          >
-                            {row.source.name}
-                          </span>
-                          {getSourceAlias(row.source) && (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                color: '#38bdf8',
-                                fontWeight: 600,
-                                wordBreak: 'break-word',
-                              }}
-                            >
-                              {getSourceAlias(row.source)}
-                            </span>
-                          )}
-                          {row.source.upstreamSourceId && (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                color: '#38bdf8',
-                                fontFamily: 'monospace',
-                              }}
-                              title="Upstream Source"
-                            >
-                              ↳{' '}
-                              {formatSourceCompact(
-                                snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
-                              ) || 'Upstream'}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: '10px', color: '#475569', fontStyle: 'italic' }}>
-                          Unassigned
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '9px',
-                        color: '#64748b',
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      <span>
-                        #{dest.destinationNumber}
-                        {isEditMode && row.coveringOutput ? (
-                          <span style={{ color: '#fbbf24', marginLeft: '3px' }}>
-                            ({formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')})
-                          </span>
-                        ) : null}
-                      </span>
-                      {isEditMode ? (
-                        <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                          <button
-                            type="button"
-                            data-testid={`dest-route-btn-${dest.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRoutingDestId(dest.id);
-                            }}
-                            style={{
-                              padding: '1px 5px',
-                              fontSize: '9px',
-                              fontWeight: 700,
-                              backgroundColor: '#2864a3',
-                              color: '#ffffff',
-                              border: '1px solid #38bdf8',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                            }}
-                            title={`Route source to ${destDisplay}`}
-                          >
-                            Route
-                          </button>
-                          {hasSource && (
-                            <button
-                              type="button"
-                              data-testid={`dest-clear-btn-${dest.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateDraftDestination(
-                                  dest.multiviewId,
-                                  dest.destinationNumber,
-                                  null
-                                );
-                              }}
-                              style={{
-                                padding: '1px 4px',
-                                fontSize: '9px',
-                                fontWeight: 700,
-                                backgroundColor: '#262626',
-                                color: '#94a3b8',
-                                border: '1px solid #444',
-                                borderRadius: '2px',
-                                cursor: 'pointer',
-                              }}
-                              title="Clear source"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        row.coveringOutput && (
-                          <span style={{ color: '#fbbf24', fontWeight: 600 }}>
-                            {formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')}
-                          </span>
-                        )
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </section>
       )}

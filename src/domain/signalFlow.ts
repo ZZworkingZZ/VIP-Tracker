@@ -1127,6 +1127,360 @@ export function formatResolvedPipChainText(flow: ResolvedPipSignalFlow): string 
 }
 
 /* ============================================================================
+   DESTINATION SIGNAL FLOW & DUPLICATE ROUTING ANALYSIS
+   ============================================================================ */
+
+export type DuplicateRoutingKind =
+  'same_mv_card_source' | 'cross_mv_source' | 'lawo_multi_tieline' | 'shared_upstream_origin';
+
+export interface DuplicateRoutingFlag {
+  kind: DuplicateRoutingKind;
+  label: string;
+  description: string;
+  relatedDestinationIds: DestinationId[];
+  relatedDestinationLabels: string[];
+  relatedTielineIds: SourceId[];
+  relatedTielineNames: string[];
+}
+
+export interface DestinationPipUsage {
+  outputId: OutputId;
+  outputDisplayLabel: string;
+  pipId: PipId;
+  pipDisplayLabel: string;
+  layoutName: string;
+  assignmentName: string | null;
+}
+
+export interface ResolvedDestinationSignalFlow {
+  destination: Destination;
+  destinationId: DestinationId;
+  destinationDisplay: string;
+  mvInputLabel: string;
+  multiviewId: MultiviewId;
+  destinationNumber: number;
+
+  // Immediate assigned source (Lawo Destination / Evertz Tieline or direct Evertz source)
+  immediateSourceId: SourceId | null;
+  immediateSource: Source | null;
+  isAssigned: boolean;
+
+  // Decomposed upstream stages (only real stages that exist in the data)
+  lawoSourceId: SourceId | null;
+  lawoSource: Source | null;
+  processingStages: Source[];
+  processingStageHops: ProcessingStageHop[];
+  upstreamFlow: ResolvedSignalFlow;
+  originSource: Source | null;
+
+  // Effective alias
+  aliasSource: Source | null;
+  alias: string | null;
+
+  // Known path stages in origin-to-destination order (no fabricated stages)
+  knownPathStages: {
+    role: 'lawo_source' | 'processing' | 'tieline' | 'evertz_source' | 'mv_input';
+    label: string;
+    sublabel?: string | null;
+    entityId: string;
+  }[];
+  concisePathSummary: string | null;
+  fullPathSummary: string;
+
+  // Downstream PIP usage on active outputs
+  pipUsages: DestinationPipUsage[];
+
+  // Duplicate routing indicators (informational / troubleshooting, non-blocking)
+  duplicateFlags: DuplicateRoutingFlag[];
+  hasDuplicates: boolean;
+  hasSameCardDuplicate: boolean;
+  hasMultiTielineDuplicate: boolean;
+}
+
+/**
+ * Resolves the full known signal flow path and duplicate routing relationships
+ * for all destinations (or a subset for a specific Multiviewer) using the existing
+ * source inventory and destination assignments.
+ * Never fabricates missing stages.
+ */
+export function resolveDestinationSignalFlows(
+  snapshot: TrackerSnapshot,
+  multiviewId?: MultiviewId | 'ALL'
+): Map<DestinationId, ResolvedDestinationSignalFlow> {
+  const sourceMap = new Map<SourceId, Source>(snapshot.sources.map((s) => [s.id, s]));
+  const lawoToTielines = buildLawoSourceToTielinesMap(snapshot.sources, snapshot.destinations);
+
+  // Map each destinationId to active PIPs using it
+  const destToPipUsages = new Map<DestinationId, DestinationPipUsage[]>();
+  for (const output of snapshot.outputs) {
+    if (output.status === 'Available' || !output.layoutName) continue;
+    const layout = getLayoutDefinition(output.layoutName, snapshot.customLayouts);
+    if (!layout) continue;
+    const pips = getLayoutPips(layout);
+    const pipAssignments = output.pipAssignments || normalizeOutputPipAssignments(output, layout);
+    const outLabel = formatOutputDisplay(output.id);
+
+    for (const p of pips) {
+      const assignedDestId = pipAssignments[p.pipId];
+      if (!assignedDestId) continue;
+      const list = destToPipUsages.get(assignedDestId) ?? [];
+      list.push({
+        outputId: output.id,
+        outputDisplayLabel: outLabel,
+        pipId: p.pipId,
+        pipDisplayLabel: `${outLabel} ${p.pipId}`,
+        layoutName: output.layoutName,
+        assignmentName: output.assignmentName,
+      });
+      destToPipUsages.set(assignedDestId, list);
+    }
+  }
+
+  // Pre-index all assigned destinations across the entire facility for duplicate analysis
+  const sourceToDestinations = new Map<SourceId, Destination[]>();
+  const originToDestinations = new Map<SourceId, Destination[]>();
+  const destUpstreamCache = new Map<
+    DestinationId,
+    {
+      immediateSource: Source | null;
+      lawoSource: Source | null;
+      processingStages: Source[];
+      upstreamFlow: ResolvedSignalFlow;
+      originSource: Source | null;
+    }
+  >();
+
+  for (const dest of snapshot.destinations) {
+    const immediateSource = dest.assignedSourceId
+      ? (sourceMap.get(dest.assignedSourceId) ?? null)
+      : null;
+    const { lawoSource, processingStages, upstreamFlow } = decomposeTielineUpstream(
+      immediateSource,
+      sourceMap
+    );
+    const originSource = lawoSource ?? upstreamFlow.originSource ?? immediateSource;
+
+    destUpstreamCache.set(dest.id, {
+      immediateSource,
+      lawoSource,
+      processingStages,
+      upstreamFlow,
+      originSource,
+    });
+
+    if (immediateSource) {
+      const list = sourceToDestinations.get(immediateSource.id) ?? [];
+      list.push(dest);
+      sourceToDestinations.set(immediateSource.id, list);
+    }
+
+    if (originSource) {
+      const list = originToDestinations.get(originSource.id) ?? [];
+      list.push(dest);
+      originToDestinations.set(originSource.id, list);
+    }
+  }
+
+  const result = new Map<DestinationId, ResolvedDestinationSignalFlow>();
+  const targetDestinations =
+    multiviewId && multiviewId !== 'ALL'
+      ? snapshot.destinations.filter((d) => d.multiviewId === multiviewId)
+      : snapshot.destinations;
+
+  for (const dest of targetDestinations) {
+    const cached = destUpstreamCache.get(dest.id)!;
+    const { immediateSource, lawoSource, processingStages, upstreamFlow, originSource } = cached;
+    const processingStageHops = buildProcessingStageHops(processingStages);
+    const destDisplay = formatDestinationDisplay(dest.id);
+    const mvInputLabel = formatInputDisplay(dest.id);
+
+    const alias = resolveEffectiveSourceAlias(lawoSource, immediateSource);
+    const aliasSource = (getSourceAlias(lawoSource) ? lawoSource : immediateSource) ?? null;
+
+    // Build only stages that actually exist in the data
+    const knownPathStages: ResolvedDestinationSignalFlow['knownPathStages'] = [];
+    if (lawoSource && lawoSource.id !== immediateSource?.id) {
+      knownPathStages.push({
+        role: 'lawo_source',
+        label: lawoSource.name,
+        sublabel: getSourceAlias(lawoSource),
+        entityId: lawoSource.id,
+      });
+    }
+    for (const hop of processingStageHops) {
+      knownPathStages.push({
+        role: 'processing',
+        label: hop.displayLabel,
+        sublabel: getSourceAlias(hop.source),
+        entityId: hop.source.id,
+      });
+    }
+    if (immediateSource) {
+      const isDirectLawo =
+        immediateSource.routeRole === 'lawo_source' && lawoSource?.id === immediateSource.id;
+      knownPathStages.push({
+        role: isDirectLawo
+          ? 'lawo_source'
+          : immediateSource.routeRole === 'evertz_source'
+            ? 'evertz_source'
+            : 'tieline',
+        label: immediateSource.name,
+        sublabel: getSourceAlias(immediateSource),
+        entityId: immediateSource.id,
+      });
+    }
+    knownPathStages.push({
+      role: 'mv_input',
+      label: mvInputLabel,
+      sublabel: null,
+      entityId: dest.id,
+    });
+
+    // Concise path summary for compact tile display (upstream hops leading into immediateSource)
+    let concisePathSummary: string | null = null;
+    if (immediateSource) {
+      const upstreamNames: string[] = [];
+      if (lawoSource && lawoSource.id !== immediateSource.id) {
+        upstreamNames.push(lawoSource.name);
+      }
+      for (const proc of processingStages) {
+        upstreamNames.push(proc.name);
+      }
+      if (upstreamNames.length > 0) {
+        concisePathSummary = `${upstreamNames.join(' → ')} → ${immediateSource.name}`;
+      }
+    }
+
+    const fullPathSummary = knownPathStages.map((s) => s.label).join(' → ');
+    const pipUsages = destToPipUsages.get(dest.id) ?? [];
+
+    // Evaluate duplicate routing conditions
+    const duplicateFlags: DuplicateRoutingFlag[] = [];
+
+    if (immediateSource) {
+      const allDestsWithSameSource = (sourceToDestinations.get(immediateSource.id) ?? []).filter(
+        (d) => d.id !== dest.id
+      );
+      const sameCardDests = allDestsWithSameSource.filter(
+        (d) => d.multiviewId === dest.multiviewId
+      );
+      const crossCardDests = allDestsWithSameSource.filter(
+        (d) => d.multiviewId !== dest.multiviewId
+      );
+
+      // 1. Same source/tieline appearing on multiple inputs of the SAME MV card
+      if (sameCardDests.length > 0) {
+        const labels = sameCardDests.map((d) => formatDestinationDisplay(d.id));
+        duplicateFlags.push({
+          kind: 'same_mv_card_source',
+          label: `Dup on ${dest.multiviewId} (${sameCardDests.length + 1}×)`,
+          description: `${immediateSource.name} is routed to multiple inputs on ${dest.multiviewId}: ${[
+            destDisplay,
+            ...labels,
+          ].join(', ')}.`,
+          relatedDestinationIds: sameCardDests.map((d) => d.id),
+          relatedDestinationLabels: labels,
+          relatedTielineIds: [immediateSource.id],
+          relatedTielineNames: [immediateSource.name],
+        });
+      }
+
+      // 2. Same source/tieline reused across different MV cards
+      if (crossCardDests.length > 0) {
+        const labels = crossCardDests.map((d) => formatDestinationDisplay(d.id));
+        duplicateFlags.push({
+          kind: 'cross_mv_source',
+          label: `Shared Source (${allDestsWithSameSource.length + 1} Inputs)`,
+          description: `${immediateSource.name} is also routed to ${labels.join(', ')}.`,
+          relatedDestinationIds: crossCardDests.map((d) => d.id),
+          relatedDestinationLabels: labels,
+          relatedTielineIds: [immediateSource.id],
+          relatedTielineNames: [immediateSource.name],
+        });
+      }
+
+      // 3. Same Lawo source routed to multiple distinct tielines
+      if (lawoSource && lawoSource.id !== immediateSource.id) {
+        const tielineSet = lawoToTielines.get(lawoSource.id);
+        const otherTielineIds = tielineSet
+          ? Array.from(tielineSet).filter((id) => id !== immediateSource.id)
+          : [];
+        if (otherTielineIds.length > 0) {
+          const otherTielineNames = otherTielineIds
+            .map((id) => sourceMap.get(id)?.name ?? id)
+            .sort((a, b) => a.localeCompare(b));
+          duplicateFlags.push({
+            kind: 'lawo_multi_tieline',
+            label: `Dup Tieline (${otherTielineIds.length + 1} Ties)`,
+            description: `Lawo source ${lawoSource.name} is routed to multiple tielines (${[
+              immediateSource.name,
+              ...otherTielineNames,
+            ].join(', ')}).`,
+            relatedDestinationIds: [],
+            relatedDestinationLabels: [],
+            relatedTielineIds: otherTielineIds,
+            relatedTielineNames: otherTielineNames,
+          });
+        }
+      }
+
+      // 4. Multiple destinations resolving back to the same upstream origin via different immediate sources
+      if (originSource) {
+        const otherDestsSameOriginDiffImmediate = (
+          originToDestinations.get(originSource.id) ?? []
+        ).filter((d) => d.id !== dest.id && d.assignedSourceId !== dest.assignedSourceId);
+        if (otherDestsSameOriginDiffImmediate.length > 0) {
+          const labels = otherDestsSameOriginDiffImmediate.map((d) =>
+            formatDestinationDisplay(d.id)
+          );
+          duplicateFlags.push({
+            kind: 'shared_upstream_origin',
+            label: `Shared Upstream (${otherDestsSameOriginDiffImmediate.length + 1} Inputs)`,
+            description: `Resolves to the same upstream origin (${originSource.name}) as ${labels.join(
+              ', '
+            )}.`,
+            relatedDestinationIds: otherDestsSameOriginDiffImmediate.map((d) => d.id),
+            relatedDestinationLabels: labels,
+            relatedTielineIds: [],
+            relatedTielineNames: [],
+          });
+        }
+      }
+    }
+
+    result.set(dest.id, {
+      destination: dest,
+      destinationId: dest.id,
+      destinationDisplay: destDisplay,
+      mvInputLabel,
+      multiviewId: dest.multiviewId,
+      destinationNumber: dest.destinationNumber,
+      immediateSourceId: immediateSource?.id ?? null,
+      immediateSource,
+      isAssigned: Boolean(immediateSource),
+      lawoSourceId: lawoSource?.id ?? null,
+      lawoSource,
+      processingStages,
+      processingStageHops,
+      upstreamFlow,
+      originSource,
+      aliasSource,
+      alias,
+      knownPathStages,
+      concisePathSummary,
+      fullPathSummary,
+      pipUsages,
+      duplicateFlags,
+      hasDuplicates: duplicateFlags.length > 0,
+      hasSameCardDuplicate: duplicateFlags.some((f) => f.kind === 'same_mv_card_source'),
+      hasMultiTielineDuplicate: duplicateFlags.some((f) => f.kind === 'lawo_multi_tieline'),
+    });
+  }
+
+  return result;
+}
+
+/* ============================================================================
    PURE SNAPSHOT MUTATION HELPERS FOR CHECKMARK STAGE SAVES
    ============================================================================ */
 
