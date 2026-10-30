@@ -19,6 +19,7 @@ import {
   LAWO_DEVICE_TYPES,
   LAWO_VENDORS,
   getSourceAlias,
+  resolveEffectiveSourceAlias,
   formatSourceCompact,
 } from './models';
 import { LayoutDefinition, getLayoutDefinition, getLayoutPips } from './layoutDefinitions';
@@ -322,7 +323,14 @@ export function isProcessingDirectorySource(source: Source): boolean {
   if (source.routeRole === 'processing' || source.sourceType === 'processing') {
     return true;
   }
-  if (source.routeRole === 'lawo_source' || source.routeRole === 'tieline') {
+  if (
+    source.routeRole === 'lawo_source' ||
+    source.routeRole === 'tieline' ||
+    source.routeRole === 'evertz_source'
+  ) {
+    return false;
+  }
+  if (source.category === 'Switcher') {
     return false;
   }
   const devType = source.deviceType;
@@ -351,13 +359,25 @@ export function isTielineDirectorySource(source: Source): boolean {
 }
 
 /**
+ * Alias helper for isTielineDirectorySource, making the domain intent explicit for Evertz routing.
+ */
+export const isEvertzRoutableSource = isTielineDirectorySource;
+
+/**
  * Determines whether a Source record is a valid upstream Lawo originating source.
  */
 export function isLawoOriginDirectorySource(source: Source): boolean {
   if (source.routeRole === 'lawo_source') {
     return true;
   }
-  if (source.routeRole === 'processing' || source.routeRole === 'tieline') {
+  if (
+    source.routeRole === 'processing' ||
+    source.routeRole === 'tieline' ||
+    source.routeRole === 'evertz_source'
+  ) {
+    return false;
+  }
+  if (source.router === 'Evertz') {
     return false;
   }
   if (isProcessingDirectorySource(source)) {
@@ -404,6 +424,11 @@ export function getValidTielineOptions(sources: readonly Source[]): Source[] {
     .filter((s) => s.active !== false && isTielineDirectorySource(s))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/**
+ * Alias helper for getValidTielineOptions.
+ */
+export const getValidEvertzRoutableOptions = getValidTielineOptions;
 
 /**
  * Returns valid Evertz MV Input options constrained strictly to the given VIP card (multiviewId).
@@ -861,8 +886,8 @@ export function resolveSinglePipSignalFlow(
   const lawoSourceBlank = !lawoSource;
   const processingStageHops = buildProcessingStageHops(processingStages);
 
-  const aliasSource = lawoSource ?? tielineSource;
-  const alias = getSourceAlias(lawoSource) ?? getSourceAlias(tielineSource);
+  const alias = resolveEffectiveSourceAlias(lawoSource, tielineSource);
+  const aliasSource = (getSourceAlias(lawoSource) ? lawoSource : tielineSource) ?? null;
 
   const isDangling =
     Boolean(assignedDestId && !destination) ||

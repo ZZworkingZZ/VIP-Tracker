@@ -7,11 +7,14 @@ import {
   ValidationFinding,
   TrackerSnapshot,
   getSourceAlias,
+  resolveEffectiveSourceAlias,
   formatSourceCompact,
   formatSourceNameWithAlias,
 } from './models';
 import { MultiviewId, OutputId, createAssignmentId } from './identifiers';
 import { SourceCategory } from './sourceCategories';
+
+export { resolveEffectiveSourceAlias };
 
 export interface DashboardTotals {
   totalMultiviews: number;

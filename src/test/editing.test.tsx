@@ -25,6 +25,8 @@ const SNAPSHOT_WITH_SOURCES: TrackerSnapshot = {
       active: true,
       upstreamSourceId: null,
       sourceType: 'virtual',
+      routeRole: 'tieline',
+      router: 'Both',
     },
     {
       id: 'SRC:CAM_2' as SourceId,
@@ -34,6 +36,8 @@ const SNAPSHOT_WITH_SOURCES: TrackerSnapshot = {
       active: true,
       upstreamSourceId: null,
       sourceType: 'virtual',
+      routeRole: 'tieline',
+      router: 'Both',
     },
     {
       id: 'SRC:FS_01' as SourceId,
@@ -43,6 +47,8 @@ const SNAPSHOT_WITH_SOURCES: TrackerSnapshot = {
       active: true,
       upstreamSourceId: null,
       sourceType: 'originating',
+      routeRole: 'evertz_source',
+      router: 'Evertz',
     },
   ],
 };

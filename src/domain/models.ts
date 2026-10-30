@@ -164,6 +164,19 @@ export function getSourceAlias(
 }
 
 /**
+ * Resolves the effective alias/UMD name for a routed signal:
+ * 1. The originating Lawo Source Alias/UMD when available.
+ * 2. Otherwise the tieline/direct Evertz Source Alias when available.
+ * 3. Returns null if neither has a valid alias.
+ */
+export function resolveEffectiveSourceAlias(
+  lawoSource: { alias?: string | null } | null | undefined,
+  tielineOrEvertzSource: { alias?: string | null } | null | undefined
+): string | null {
+  return getSourceAlias(lawoSource) ?? getSourceAlias(tielineOrEvertzSource);
+}
+
+/**
  * Formats a source name and optional alias for compact UI surfaces:
  * - With alias: "ENC-115-R22-SDI-1 (Haivision 1)"
  * - Without alias: "ENC-115-R22-SDI-1"

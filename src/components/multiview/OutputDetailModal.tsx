@@ -3,7 +3,7 @@ import {
   MultiviewOutput,
   Destination,
   Source,
-  getSourceAlias,
+  resolveEffectiveSourceAlias,
   formatSourceCompact,
 } from '../../domain/models';
 import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
@@ -22,7 +22,7 @@ import { SourceRoutingSelectorModal } from './SourceRoutingSelectorModal';
 import { VERIFIED_MULTIVIEWS } from '../../domain/constants';
 import { normalizeOutputPipAssignments, handleOutputLayoutChange } from '../../domain/pipRouting';
 import { selectOutputLastChanged, formatLastChanged } from '../../domain/attribution';
-import { decomposeTielineUpstream } from '../../domain/signalFlow';
+import { decomposeTielineUpstream, getValidTielineOptions } from '../../domain/signalFlow';
 
 export interface OutputDetailModalProps {
   readonly output: MultiviewOutput | null;
@@ -112,6 +112,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
     () => activeSnapshot?.sources ?? propSources ?? [],
     [activeSnapshot?.sources, propSources]
   );
+  const validEvertzSources = useMemo(() => getValidTielineOptions(sources), [sources]);
   const allOutputs = useMemo(
     () => activeSnapshot?.outputs ?? propAllOutputs ?? [],
     [activeSnapshot?.outputs, propAllOutputs]
@@ -190,7 +191,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
         destinationId: dest?.id ?? null,
         destinationLabel: inputDisplay,
         sourceName: source?.name || null,
-        sourceAlias: getSourceAlias(source),
+        sourceAlias: resolveEffectiveSourceAlias(upstream.lawoSource, source),
         sourceCategory: source?.category || null,
         lawoSourceName: upstream.lawoSource?.name ?? null,
         processingChainLabel:
@@ -245,9 +246,12 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
 
       if (query) {
         const destLabel = formatInputDisplay(dest.id).toLowerCase();
-        const src = dest.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null;
+        const src = (dest.assignedSourceId ? sourceMap.get(dest.assignedSourceId) : null) ?? null;
         const sourceName = src?.name.toLowerCase() ?? '';
-        const sourceAlias = getSourceAlias(src)?.toLowerCase() ?? '';
+        const upstream = decomposeTielineUpstream(src, sourceMap);
+        const sourceAlias = (
+          resolveEffectiveSourceAlias(upstream.lawoSource, src) ?? ''
+        ).toLowerCase();
         if (
           !destLabel.includes(query) &&
           !sourceName.includes(query) &&
@@ -1610,7 +1614,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
           destinationNumber={routingWindow.destinationNumber}
           destinationId={routingWindow.destinationId}
           currentSourceId={routingWindow.currentSourceId}
-          sources={sources}
+          sources={validEvertzSources}
           onApplySource={(sourceId) => {
             updateDraftDestination(output.multiviewId, routingWindow.destinationNumber, sourceId);
             setRoutingWindow(null);

@@ -1,8 +1,9 @@
 import { Source } from '../../domain/models';
 import { createSourceId } from '../../domain/identifiers';
-import { classifySourceCategory, inferSourceType } from '../../domain/sourceCategories';
+import { classifySourceCategory } from '../../domain/sourceCategories';
 
 function createSeedSource(name: string): Source {
+  const isVirtualTieline = /^v/i.test(name);
   return {
     id: createSourceId(name),
     name,
@@ -10,7 +11,9 @@ function createSeedSource(name: string): Source {
     category: classifySourceCategory(name),
     active: true,
     upstreamSourceId: null,
-    sourceType: inferSourceType(name),
+    sourceType: isVirtualTieline ? 'virtual' : 'originating',
+    routeRole: isVirtualTieline ? 'tieline' : 'evertz_source',
+    router: isVirtualTieline ? 'Both' : 'Evertz',
   };
 }
 

@@ -53,11 +53,27 @@ export class LocalTrackerRepository implements TrackerRepository {
       let shouldPersistBootstrap = false;
 
       // Existing installation that predates authoritative source catalog seeding
-      if (
-        storedData.sourceSeedVersion === undefined ||
-        storedData.sourceSeedVersion < CURRENT_SOURCE_SEED_VERSION
-      ) {
+      if (storedData.sourceSeedVersion === undefined) {
         sources = JSON.parse(JSON.stringify(this.initialSnapshot.sources));
+        storedData.sourceSeedVersion = CURRENT_SOURCE_SEED_VERSION;
+        storedData.sources = sources;
+        shouldPersistBootstrap = true;
+      } else if (storedData.sourceSeedVersion < CURRENT_SOURCE_SEED_VERSION) {
+        // Upgrade existing stored sources with explicit routeRole and router classifications
+        const initialSourceMap = new Map(this.initialSnapshot.sources.map((s) => [s.id, s]));
+        sources = sources.map((s) => {
+          const seed = initialSourceMap.get(s.id);
+          if (seed && (!s.routeRole || !s.router)) {
+            return {
+              ...s,
+              routeRole: s.routeRole ?? seed.routeRole,
+              router: s.router ?? seed.router,
+              sourceType: s.sourceType ?? seed.sourceType,
+            };
+          }
+          return s;
+        });
+
         storedData.sourceSeedVersion = CURRENT_SOURCE_SEED_VERSION;
         storedData.sources = sources;
         shouldPersistBootstrap = true;

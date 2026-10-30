@@ -2321,7 +2321,7 @@ export const DestinationSourcesPage: React.FC = () => {
           destinationNumber={routingDestination.destinationNumber}
           destinationId={routingDestination.id}
           currentSourceId={routingDestination.assignedSourceId}
-          sources={snapshot.sources}
+          sources={validTielineSources}
           onApplySource={(sourceId) => {
             updateDraftDestination(
               routingDestination.multiviewId,

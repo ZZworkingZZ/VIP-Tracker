@@ -6,6 +6,10 @@ import {
   ChangeRecord,
   HistoryEntry,
   SignalFlowLock,
+  RouteRole,
+  LawoDeviceType,
+  LawoVendor,
+  RouterSystem,
 } from '../domain/models';
 import { SourceId, createSourceId } from '../domain/identifiers';
 import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
@@ -13,7 +17,7 @@ import { LayoutDefinition } from '../domain/layoutDefinitions';
 
 export const TRACKER_STORAGE_KEY = 'vip_tracker_data_v1';
 export const TRACKER_SCHEMA_VERSION = 2;
-export const CURRENT_SOURCE_SEED_VERSION = 1;
+export const CURRENT_SOURCE_SEED_VERSION = 2;
 
 export interface PersistedTrackerData {
   schemaVersion: number;
@@ -88,6 +92,25 @@ export function isValidPersistedTrackerData(data: unknown): data is PersistedTra
     ) {
       return false;
     }
+    if (
+      'routeRole' in src &&
+      src.routeRole !== undefined &&
+      src.routeRole !== null &&
+      src.routeRole !== 'lawo_source' &&
+      src.routeRole !== 'processing' &&
+      src.routeRole !== 'tieline' &&
+      src.routeRole !== 'evertz_source'
+    ) {
+      return false;
+    }
+    if (
+      'metadata' in src &&
+      src.metadata !== undefined &&
+      src.metadata !== null &&
+      (typeof src.metadata !== 'object' || Array.isArray(src.metadata))
+    ) {
+      return false;
+    }
   }
   if ('customLayouts' in d && d.customLayouts !== undefined) {
     if (!Array.isArray(d.customLayouts)) return false;
@@ -141,6 +164,25 @@ export function migrateV1ToV2(raw: unknown): PersistedTrackerData | null {
             ? src.sourceType
             : inferSourceType(name);
 
+        const routeRole =
+          typeof src.routeRole === 'string' ? (src.routeRole as RouteRole) : undefined;
+
+        const deviceType =
+          typeof src.deviceType === 'string' ? (src.deviceType as LawoDeviceType) : undefined;
+
+        const vendor = typeof src.vendor === 'string' ? (src.vendor as LawoVendor) : undefined;
+
+        const router = typeof src.router === 'string' ? (src.router as RouterSystem) : undefined;
+
+        const inputLabel = typeof src.inputLabel === 'string' ? src.inputLabel : undefined;
+
+        const outputLabel = typeof src.outputLabel === 'string' ? src.outputLabel : undefined;
+
+        const metadata =
+          src.metadata && typeof src.metadata === 'object' && !Array.isArray(src.metadata)
+            ? (src.metadata as Record<string, string | number | boolean | null>)
+            : undefined;
+
         return {
           id,
           name,
@@ -153,6 +195,16 @@ export function migrateV1ToV2(raw: unknown): PersistedTrackerData | null {
           active: src.active !== false,
           upstreamSourceId,
           sourceType,
+          ...(routeRole ? { routeRole } : {}),
+          ...(deviceType ? { deviceType } : {}),
+          ...(vendor ? { vendor } : {}),
+          ...(router ? { router } : {}),
+          ...(inputLabel !== undefined ? { inputLabel } : {}),
+          ...(outputLabel !== undefined ? { outputLabel } : {}),
+          ...(metadata ? { metadata } : {}),
+          ...(typeof src.updatedAt === 'string' ? { updatedAt: src.updatedAt } : {}),
+          ...(typeof src.updatedBy === 'string' ? { updatedBy: src.updatedBy } : {}),
+          ...(typeof src.operatorId === 'string' ? { operatorId: src.operatorId } : {}),
         };
       });
     };

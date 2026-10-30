@@ -1,5 +1,10 @@
 import React from 'react';
-import { MultiviewOutput, Destination, Source, getSourceAlias } from '../../domain/models';
+import {
+  MultiviewOutput,
+  Destination,
+  Source,
+  resolveEffectiveSourceAlias,
+} from '../../domain/models';
 import { getLayoutDefinition, getLayoutPips } from '../../domain/layoutDefinitions';
 import { LayoutRenderer } from './LayoutRenderer';
 import {
@@ -91,7 +96,7 @@ export const OutputDisplayCard: React.FC<OutputDisplayCardProps> = ({
         destinationId: dest?.id ?? null,
         destinationLabel: inputDisplay,
         sourceName: source?.name || null,
-        sourceAlias: getSourceAlias(source),
+        sourceAlias: resolveEffectiveSourceAlias(upstream.lawoSource, source),
         sourceCategory: source?.category || null,
         lawoSourceName: upstream.lawoSource?.name ?? null,
         processingChainLabel:

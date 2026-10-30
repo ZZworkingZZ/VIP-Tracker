@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Source, getSourceAlias, formatSourceCompact } from '../../domain/models';
 import { SourceId, createSourceId } from '../../domain/identifiers';
 import { SOURCE_CATEGORIES, SourceCategory, inferSourceType } from '../../domain/sourceCategories';
+import { isTielineDirectorySource } from '../../domain/signalFlow';
 
 export interface SourceRoutingSelectorModalProps {
   readonly isOpen: boolean;
@@ -56,9 +57,14 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isAddingNew, onClose]);
 
+  const evertzRoutableSources = useMemo(
+    () => sources.filter((s) => isTielineDirectorySource(s)),
+    [sources]
+  );
+
   const filteredSources = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return sources.filter((s) => {
+    return evertzRoutableSources.filter((s) => {
       if (categoryFilter !== 'ALL' && s.category !== categoryFilter) return false;
       if (q) {
         const nameMatch = s.name.toLowerCase().includes(q);
@@ -68,7 +74,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
       }
       return true;
     });
-  }, [sources, categoryFilter, searchQuery]);
+  }, [evertzRoutableSources, categoryFilter, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -90,6 +96,8 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
       return;
     }
 
+    const newSourceType = inferSourceType(trimmed);
+    const isVirtual = newSourceType === 'virtual';
     const newSource: Source = {
       id: createSourceId(trimmed),
       name: trimmed,
@@ -97,7 +105,9 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
       category: newSourceCategory,
       active: true,
       upstreamSourceId: null,
-      sourceType: inferSourceType(trimmed),
+      sourceType: newSourceType,
+      routeRole: isVirtual ? 'tieline' : 'evertz_source',
+      router: isVirtual ? 'Both' : 'Evertz',
     };
 
     onAddNewSource(newSource);
