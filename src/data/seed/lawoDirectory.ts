@@ -52,15 +52,4 @@ export function createDirectorySource(options: CreateDirectorySourceOptions): So
   };
 }
 
-/**
- * Authoritative ingestion placeholder for Lawo routable originating sources.
- * Per Zero Data Fabrication policy, no fictional Lawo sources are populated here.
- * Populate this array or ingest via VIP-Tracker-Data when authoritative Lawo source exports are provided.
- */
-export const SEED_LAWO_SOURCES: readonly Source[] = [];
-
-/**
- * Authoritative ingestion placeholder for Lawo processing devices (UDX, FS, Color Corrector, etc.).
- * Per Zero Data Fabrication policy, no fictional processing devices are populated here.
- */
-export const SEED_LAWO_PROCESSING_DEVICES: readonly Source[] = [];
+export { SEED_LAWO_SOURCES, SEED_LAWO_PROCESSING_DEVICES } from './sourceInventory';

@@ -208,7 +208,7 @@ describe('Storage Persistence & Reset', () => {
     const snap = await repo.getSnapshot();
 
     expect(snap.sources).toHaveLength(SEED_SOURCES.length);
-    expect(snap.sources).toHaveLength(231);
+    expect(snap.sources).toHaveLength(712);
     expect(snap.sources[0].id).toBe(SEED_SOURCES[0].id);
   });
 
@@ -231,13 +231,13 @@ describe('Storage Persistence & Reset', () => {
     const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
     const snap = await repo.getSnapshot();
 
-    expect(snap.sources).toHaveLength(231);
-    expect(snap.sources[0].name).toBe('Bars');
+    expect(snap.sources).toHaveLength(712);
+    expect(snap.sources[0].id).toBe(SEED_SOURCES[0].id);
 
     // Storage is updated with sourceSeedVersion
     const updatedStorage = storage.load();
     expect(updatedStorage?.sourceSeedVersion).toBe(CURRENT_SOURCE_SEED_VERSION);
-    expect(updatedStorage?.sources).toHaveLength(231);
+    expect(updatedStorage?.sources).toHaveLength(712);
   });
 
   it('preserves subsequent user modifications and intentionally empty catalogs once seeded', async () => {
@@ -550,8 +550,8 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     const baseline = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT)) as TrackerSnapshot;
     const draft = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT)) as TrackerSnapshot;
 
-    const vCam1 = draft.sources.find((s) => s.name === 'vCam-01')!;
-    const vTie101 = draft.sources.find((s) => s.name === 'vTie-101')!;
+    const vCam1 = draft.sources.find((s) => s.name === 'vCam 01')!;
+    const vTie101 = draft.sources.find((s) => s.name === 'vTie 101')!;
     vCam1.upstreamSourceId = vTie101.id;
 
     const changes = diffSnapshots(baseline, draft);
@@ -560,50 +560,50 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     const change = changes[0];
     expect(change.entityType).toBe('source');
     expect(change.entityId).toBe(vCam1.id);
-    expect(change.entityLabel).toBe('vCam-01');
+    expect(change.entityLabel).toBe('vCam 01');
     expect(change.field).toBe('upstreamSourceId');
     expect(change.previousValue).toBe('Unassigned');
-    expect(change.newValue).toBe('vTie-101');
-    expect(change.description).toBe('vCam-01 upstream changed from Unassigned to vTie-101');
+    expect(change.newValue).toBe('vTie 101');
+    expect(change.description).toBe('vCam 01 upstream changed from Unassigned to vTie 101');
   });
 
   it('captures upstream source replacement: previous upstream to new upstream', () => {
     const baseline = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT)) as TrackerSnapshot;
-    const vCam1Base = baseline.sources.find((s) => s.name === 'vCam-01')!;
-    const vTie101Base = baseline.sources.find((s) => s.name === 'vTie-101')!;
+    const vCam1Base = baseline.sources.find((s) => s.name === 'vCam 01')!;
+    const vTie101Base = baseline.sources.find((s) => s.name === 'vTie 101')!;
     vCam1Base.upstreamSourceId = vTie101Base.id;
 
     const draft = JSON.parse(JSON.stringify(baseline)) as TrackerSnapshot;
-    const vCam1Draft = draft.sources.find((s) => s.name === 'vCam-01')!;
-    const swr201Draft = draft.sources.find((s) => s.name === 'Swr-201')!;
+    const vCam1Draft = draft.sources.find((s) => s.name === 'vCam 01')!;
+    const swr201Draft = draft.sources.find((s) => s.name === 'Swr 201')!;
     vCam1Draft.upstreamSourceId = swr201Draft.id;
 
     const changes = diffSnapshots(baseline, draft);
     expect(changes).toHaveLength(1);
 
     const change = changes[0];
-    expect(change.previousValue).toBe('vTie-101');
-    expect(change.newValue).toBe('Swr-201');
-    expect(change.description).toBe('vCam-01 upstream changed from vTie-101 to Swr-201');
+    expect(change.previousValue).toBe('vTie 101');
+    expect(change.newValue).toBe('Swr 201');
+    expect(change.description).toBe('vCam 01 upstream changed from vTie 101 to Swr 201');
   });
 
   it('captures upstream source cleared: previous upstream to unassigned', () => {
     const baseline = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT)) as TrackerSnapshot;
-    const vCam1Base = baseline.sources.find((s) => s.name === 'vCam-01')!;
-    const vTie101Base = baseline.sources.find((s) => s.name === 'vTie-101')!;
+    const vCam1Base = baseline.sources.find((s) => s.name === 'vCam 01')!;
+    const vTie101Base = baseline.sources.find((s) => s.name === 'vTie 101')!;
     vCam1Base.upstreamSourceId = vTie101Base.id;
 
     const draft = JSON.parse(JSON.stringify(baseline)) as TrackerSnapshot;
-    const vCam1Draft = draft.sources.find((s) => s.name === 'vCam-01')!;
+    const vCam1Draft = draft.sources.find((s) => s.name === 'vCam 01')!;
     vCam1Draft.upstreamSourceId = null;
 
     const changes = diffSnapshots(baseline, draft);
     expect(changes).toHaveLength(1);
 
     const change = changes[0];
-    expect(change.previousValue).toBe('vTie-101');
+    expect(change.previousValue).toBe('vTie 101');
     expect(change.newValue).toBe('Unassigned');
-    expect(change.description).toBe('vCam-01 upstream cleared from vTie-101');
+    expect(change.description).toBe('vCam 01 upstream cleared from vTie 101');
   });
 
   it('persists upstream source changes across repository reload', async () => {
@@ -612,8 +612,8 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     const initial = await repo1.getSnapshot();
 
     const draft = JSON.parse(JSON.stringify(initial)) as TrackerSnapshot;
-    const vCam1 = draft.sources.find((s) => s.name === 'vCam-01')!;
-    const vTie101 = draft.sources.find((s) => s.name === 'vTie-101')!;
+    const vCam1 = draft.sources.find((s) => s.name === 'vCam 01')!;
+    const vTie101 = draft.sources.find((s) => s.name === 'vTie 101')!;
     vCam1.upstreamSourceId = vTie101.id;
 
     const changeSet = createChangeSet(initial, draft);
@@ -622,7 +622,7 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     // Verify reloaded repository instance sees the persisted upstream relationship
     const repo2 = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
     const reloaded = await repo2.getSnapshot();
-    const reloadedCam = reloaded.sources.find((s) => s.name === 'vCam-01')!;
+    const reloadedCam = reloaded.sources.find((s) => s.name === 'vCam 01')!;
 
     expect(reloadedCam.upstreamSourceId).toBe(vTie101.id);
   });
@@ -633,24 +633,24 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     const initial = await repo.getSnapshot();
 
     const draft = JSON.parse(JSON.stringify(initial)) as TrackerSnapshot;
-    const vCam1 = draft.sources.find((s) => s.name === 'vCam-01')!;
-    const vTie101 = draft.sources.find((s) => s.name === 'vTie-101')!;
-    const swr201 = draft.sources.find((s) => s.name === 'Swr-201')!;
+    const vCam1 = draft.sources.find((s) => s.name === 'vCam 01')!;
+    const vTie101 = draft.sources.find((s) => s.name === 'vTie 101')!;
+    const swr201 = draft.sources.find((s) => s.name === 'Swr 201')!;
 
-    // 1. Assign vCam-01 directly to destination MV-01-01
+    // 1. Assign vCam 01 directly to destination MV-01-01
     const dest1 = draft.destinations.find(
       (d) => d.multiviewId === 'MV-01' && d.destinationNumber === 1
     )!;
     dest1.assignedSourceId = vCam1.id;
 
-    // 2. Establish upstream chain: Swr-201 -> vTie-101 -> vCam-01
+    // 2. Establish upstream chain: Swr 201 -> vTie 101 -> vCam 01
     vTie101.upstreamSourceId = swr201.id;
     vCam1.upstreamSourceId = vTie101.id;
 
     const changeSet = createChangeSet(initial, draft);
     const saved = await repo.saveSnapshot(draft, changeSet);
 
-    // VIP destination assignment MUST remain vCam-01
+    // VIP destination assignment MUST remain vCam 01
     const savedDest1 = saved.destinations.find(
       (d) => d.multiviewId === 'MV-01' && d.destinationNumber === 1
     )!;
@@ -659,8 +659,8 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     expect(savedDest1.assignedSourceId).not.toBe(swr201.id);
   });
 
-  it('confirms all 231 seeded sources retain upstreamSourceId: null before operator editing', () => {
-    expect(SEED_SOURCES).toHaveLength(231);
+  it('confirms all 712 seeded sources retain upstreamSourceId: null before operator editing', () => {
+    expect(SEED_SOURCES).toHaveLength(712);
     for (const s of SEED_SOURCES) {
       expect(s.upstreamSourceId).toBeNull();
     }

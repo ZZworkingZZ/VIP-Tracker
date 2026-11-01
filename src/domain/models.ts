@@ -74,6 +74,7 @@ export interface Destination {
 export type SourceType = 'originating' | 'processing' | 'virtual';
 
 export const LAWO_DEVICE_TYPES = [
+  'AJA',
   'BSP',
   'Cam',
   'Caption',
@@ -81,14 +82,22 @@ export const LAWO_DEVICE_TYPES = [
   'Decap/Encap',
   'Decode/Encode',
   'FS',
+  'Frame Sync',
   'GFX',
+  'Haivision',
   'IPTV',
+  'LiveToAir',
+  'LiveU',
   'Mon',
   'Multiview',
+  'Prompter',
   'QC',
+  'QuickLink',
   'Swr',
+  'Tablet',
   'Transcode',
   'UDX',
+  'vMix',
 ] as const;
 
 export type LawoDeviceType = (typeof LAWO_DEVICE_TYPES)[number];
@@ -117,6 +126,31 @@ export type RouterSystem = 'Lawo' | 'Evertz' | 'Both';
 
 export type RouteRole = 'lawo_source' | 'processing' | 'tieline' | 'evertz_source';
 
+export type InventoryCategory =
+  | 'lawo-source'
+  | 'lawo-processing'
+  | 'lawo-destination/tieline'
+  | 'evertz-source'
+  | 'evertz-mv-input';
+
+export interface SourceInventoryItem {
+  id: string;
+  name: string;
+  displayName: string;
+  category: SourceCategory;
+  type: string;
+  inventoryCategory: InventoryCategory;
+  rawType: string;
+}
+
+export interface WorkbookSourceDirectory {
+  lawoSources: SourceInventoryItem[];
+  lawoProcessing: SourceInventoryItem[];
+  lawoTielines: SourceInventoryItem[];
+  evertzSources: SourceInventoryItem[];
+  evertzMvInputs: SourceInventoryItem[];
+}
+
 export interface Source {
   id: SourceId;
   name: string;
@@ -135,6 +169,8 @@ export interface Source {
   updatedAt?: string | null;
   updatedBy?: string | null;
   operatorId?: string | null;
+  inventoryCategory?: InventoryCategory;
+  inventoryCategories?: InventoryCategory[];
   metadata?: Record<string, string | number | boolean | null>;
 }
 

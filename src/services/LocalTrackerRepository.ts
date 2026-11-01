@@ -59,7 +59,7 @@ export class LocalTrackerRepository implements TrackerRepository {
         storedData.sources = sources;
         shouldPersistBootstrap = true;
       } else if (storedData.sourceSeedVersion < CURRENT_SOURCE_SEED_VERSION) {
-        // Upgrade existing stored sources with explicit routeRole and router classifications
+        // Upgrade existing stored sources with explicit routeRole, router classifications, and inventory categories
         const initialSourceMap = new Map(this.initialSnapshot.sources.map((s) => [s.id, s]));
         sources = sources.map((s) => {
           const seed = initialSourceMap.get(s.id);
@@ -69,6 +69,8 @@ export class LocalTrackerRepository implements TrackerRepository {
               routeRole: s.routeRole ?? seed.routeRole,
               router: s.router ?? seed.router,
               sourceType: s.sourceType ?? seed.sourceType,
+              deviceType: s.deviceType ?? seed.deviceType,
+              inventoryCategory: s.inventoryCategory ?? seed.inventoryCategory,
             };
           }
           return s;

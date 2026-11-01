@@ -26,36 +26,33 @@ import { SourceId, PipId, createSourceId } from '../domain/identifiers';
 
 describe('Source Architecture Hardening — Pre-Lawo Import Audits & Invariants', () => {
   describe('Objective 1: Explicit Seed Classification', () => {
-    it('ensures all 231 authoritative seed sources have explicit routeRole and router classifications', () => {
+    it('ensures all 712 authoritative seed sources have explicit routeRole and router classifications', () => {
       expect(SEED_SOURCES).toHaveLength(RAW_SEED_SOURCE_NAMES.length);
+      expect(SEED_SOURCES).toHaveLength(712);
 
       for (const s of SEED_SOURCES) {
         expect(s.id).toBe(createSourceId(s.name));
         expect(s.id.startsWith('SRC:')).toBe(true);
         expect(s.active).toBe(true);
         expect(s.upstreamSourceId).toBeNull();
-
-        if (/^v/i.test(s.name)) {
-          // Virtual Lawo <-> Evertz tielines
-          expect(s.routeRole).toBe('tieline');
-          expect(s.router).toBe('Both');
-          expect(s.sourceType).toBe('virtual');
-        } else {
-          // Direct Evertz-native sources
-          expect(s.routeRole).toBe('evertz_source');
-          expect(s.router).toBe('Evertz');
-          expect(s.sourceType).toBe('originating');
-        }
+        expect(s.routeRole).toBeDefined();
+        expect(s.router).toBeDefined();
       }
     });
 
-    it('preserves exact counts of tieline and direct Evertz sources in baseline catalog', () => {
+    it('preserves exact counts of tieline, direct Evertz, Lawo, and processing sources in catalog', () => {
       const tielines = SEED_SOURCES.filter((s) => s.routeRole === 'tieline');
       const evertzSources = SEED_SOURCES.filter((s) => s.routeRole === 'evertz_source');
+      const lawoSources = SEED_SOURCES.filter((s) => s.routeRole === 'lawo_source');
+      const processingSources = SEED_SOURCES.filter((s) => s.routeRole === 'processing');
 
-      expect(tielines.length + evertzSources.length).toBe(SEED_SOURCES.length);
+      expect(
+        tielines.length + evertzSources.length + lawoSources.length + processingSources.length
+      ).toBe(SEED_SOURCES.length);
       expect(tielines.length).toBe(117);
-      expect(evertzSources.length).toBe(114);
+      expect(evertzSources.length).toBe(150);
+      expect(lawoSources.length).toBe(307);
+      expect(processingSources.length).toBe(138);
     });
   });
 

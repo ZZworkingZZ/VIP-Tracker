@@ -6,6 +6,7 @@ import {
   OperationalAssignment,
   ValidationFinding,
   TrackerSnapshot,
+  InventoryCategory,
   getSourceAlias,
   resolveEffectiveSourceAlias,
   formatSourceCompact,
@@ -269,12 +270,13 @@ export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProd
 
 /**
  * Filters and sorts sources for the Source Directory.
- * Matches against both the technical source name and optional source alias.
+ * Matches against technical source name, optional alias, device type, category, and inventory group.
  */
 export function selectFilteredSources(
   sources: Source[],
   categoryFilter: SourceCategory | 'ALL',
-  searchQuery: string
+  searchQuery: string,
+  inventoryFilter: InventoryCategory | 'ALL' = 'ALL'
 ): Source[] {
   const query = searchQuery.trim().toLowerCase();
 
@@ -283,11 +285,22 @@ export function selectFilteredSources(
       if (categoryFilter !== 'ALL' && source.category !== categoryFilter) {
         return false;
       }
+      if (inventoryFilter !== 'ALL') {
+        const matchesInventory =
+          source.inventoryCategory === inventoryFilter ||
+          (source.inventoryCategories && source.inventoryCategories.includes(inventoryFilter));
+        if (!matchesInventory) {
+          return false;
+        }
+      }
       if (query) {
         const nameMatch = source.name.toLowerCase().includes(query);
         const alias = getSourceAlias(source);
         const aliasMatch = alias ? alias.toLowerCase().includes(query) : false;
-        if (!nameMatch && !aliasMatch) {
+        const typeMatch = source.deviceType
+          ? source.deviceType.toLowerCase().includes(query)
+          : false;
+        if (!nameMatch && !aliasMatch && !typeMatch) {
           return false;
         }
       }

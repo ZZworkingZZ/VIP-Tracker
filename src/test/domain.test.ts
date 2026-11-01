@@ -830,33 +830,37 @@ describe('Source Graph Validation & Cycle Deduplication', () => {
 
 describe('Phase 4B — Authoritative Source Catalog Inventory & Seed Properties', () => {
   it('loads the full authoritative facility source inventory with exact count and no additional sources', () => {
-    expect(SEED_SOURCES).toHaveLength(231);
+    expect(SEED_SOURCES).toHaveLength(712);
 
     const virtualSources = SEED_SOURCES.filter((s) => s.sourceType === 'virtual');
     const processingSources = SEED_SOURCES.filter((s) => s.sourceType === 'processing');
     const originatingSources = SEED_SOURCES.filter((s) => s.sourceType === 'originating');
 
     expect(virtualSources).toHaveLength(117);
-    expect(processingSources).toHaveLength(0);
-    expect(originatingSources).toHaveLength(114);
+    expect(processingSources).toHaveLength(138);
+    expect(originatingSources).toHaveLength(457);
   });
 
   it('preserves representative exact source names without normalization or modification', () => {
     const sourceNames = new Set(SEED_SOURCES.map((s) => s.name));
     const representativeNames = [
       'Bars',
-      'Cap Enc-03',
-      'J2K Clip-1C',
-      'JXS Clip-6B',
-      'MV-05-08',
-      'Swr-216',
-      'Tx TWD 9936',
-      'vCam-50',
-      'vCam-601',
-      'vCam-606',
-      'vIngest-16',
-      'vPgm-08',
-      'vTie-137',
+      'Caption Enc 01',
+      'J2K Clip 1C',
+      'JXS Clip 6B',
+      'MV 05-08',
+      'Swr 216',
+      'RX TWD 9936',
+      'vCam 50',
+      'vCam 601',
+      'vCam 606',
+      'vIngest 16',
+      'vPgm 08',
+      'vTie 137',
+      'BSP-B 101',
+      'UDX 01',
+      'FS 101',
+      'CC 01',
     ];
 
     for (const name of representativeNames) {
@@ -864,41 +868,40 @@ describe('Phase 4B — Authoritative Source Catalog Inventory & Seed Properties'
     }
   });
 
-  it('preserves vCam-601 through vCam-606 without inventing vCam-51 through vCam-600', () => {
+  it('preserves vCam 601 through vCam 606 without inventing vCam 51 through vCam 600', () => {
     const sourceNames = new Set(SEED_SOURCES.map((s) => s.name));
 
-    // Valid vCam-01 to vCam-50 exist
+    // Valid vCam 01 to vCam 50 exist
     for (let i = 1; i <= 50; i++) {
       const padded = String(i).padStart(2, '0');
-      expect(sourceNames.has(`vCam-${padded}`)).toBe(true);
+      expect(sourceNames.has(`vCam ${padded}`)).toBe(true);
     }
 
-    // Valid vCam-601 to vCam-606 exist
+    // Valid vCam 601 to vCam 606 exist
     for (let i = 601; i <= 606; i++) {
-      expect(sourceNames.has(`vCam-${i}`)).toBe(true);
+      expect(sourceNames.has(`vCam ${i}`)).toBe(true);
     }
 
-    // vCam-51 through vCam-600 must NOT exist
-    expect(sourceNames.has('vCam-51')).toBe(false);
-    expect(sourceNames.has('vCam-100')).toBe(false);
-    expect(sourceNames.has('vCam-600')).toBe(false);
+    // vCam 51 through vCam 600 must NOT exist
+    expect(sourceNames.has('vCam 51')).toBe(false);
+    expect(sourceNames.has('vCam 100')).toBe(false);
+    expect(sourceNames.has('vCam 600')).toBe(false);
   });
 
-  it('classifies all v* sources as virtual', () => {
-    const vSources = SEED_SOURCES.filter((s) => s.name.startsWith('v'));
-    expect(vSources).toHaveLength(117);
-    for (const src of vSources) {
+  it('classifies all tieline sources as virtual', () => {
+    const tielines = SEED_SOURCES.filter((s) => s.routeRole === 'tieline');
+    expect(tielines).toHaveLength(117);
+    for (const src of tielines) {
       expect(src.sourceType).toBe('virtual');
       expect(isVirtualSource(src)).toBe(true);
     }
   });
 
-  it('classifies all non-v sources in this supplied inventory as originating', () => {
-    const origSources = SEED_SOURCES.filter((s) => !s.name.startsWith('v'));
-    expect(origSources).toHaveLength(114);
-    for (const src of origSources) {
-      expect(src.sourceType).toBe('originating');
-      expect(isOriginatingSource(src)).toBe(true);
+  it('classifies all non-virtual sources as processing or originating', () => {
+    const nonVirtual = SEED_SOURCES.filter((s) => s.sourceType !== 'virtual');
+    expect(nonVirtual).toHaveLength(595);
+    for (const src of nonVirtual) {
+      expect(src.sourceType === 'originating' || src.sourceType === 'processing').toBe(true);
     }
   });
 

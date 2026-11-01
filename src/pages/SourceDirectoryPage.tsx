@@ -3,6 +3,7 @@ import { useTrackerSnapshot } from '../hooks/useTracker';
 import { SOURCE_CATEGORIES, SourceCategory } from '../domain/sourceCategories';
 import { selectFilteredSources, getSourceAlias, formatSourceCompact } from '../domain/selectors';
 import { SourceId } from '../domain/identifiers';
+import { InventoryCategory } from '../domain/models';
 import { SourceSignalFlowModal } from '../components/multiview/SourceSignalFlowModal';
 import { resolveSignalFlow, formatSignalFlowChain } from '../domain/signalFlow';
 
@@ -24,6 +25,7 @@ export const SourceDirectoryPage: React.FC = () => {
 
   const snapshot = activeSnapshot;
   const [selectedCategory, setSelectedCategory] = useState<SourceCategory | 'ALL'>('ALL');
+  const [selectedInventory, setSelectedInventory] = useState<InventoryCategory | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [routingModalSourceId, setRoutingModalSourceId] = useState<SourceId | null>(null);
   const [aliasEdits, setAliasEdits] = useState<Record<string, string>>({});
@@ -36,8 +38,8 @@ export const SourceDirectoryPage: React.FC = () => {
   );
 
   const filteredSources = useMemo(() => {
-    return selectFilteredSources(sources, selectedCategory, searchQuery);
-  }, [sources, selectedCategory, searchQuery]);
+    return selectFilteredSources(sources, selectedCategory, searchQuery, selectedInventory);
+  }, [sources, selectedCategory, searchQuery, selectedInventory]);
 
   const selectedSource = useMemo(() => {
     if (!routingModalSourceId) return null;
@@ -133,6 +135,25 @@ export const SourceDirectoryPage: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <section className="controls-bar" aria-label="Source Filters">
+        <div className="control-group">
+          <label htmlFor="inventory-filter" className="control-label">
+            Inventory
+          </label>
+          <select
+            id="inventory-filter"
+            className="filter-select"
+            value={selectedInventory}
+            onChange={(e) => setSelectedInventory(e.target.value as InventoryCategory | 'ALL')}
+            data-testid="inventory-filter-select"
+          >
+            <option value="ALL">All Inventories</option>
+            <option value="lawo-source">Lawo Sources</option>
+            <option value="lawo-processing">Lawo Processing</option>
+            <option value="lawo-destination/tieline">Lawo Destinations / Tielines</option>
+            <option value="evertz-source">Evertz Sources</option>
+          </select>
+        </div>
+
         <div className="control-group">
           <label htmlFor="cat-filter" className="control-label">
             Category

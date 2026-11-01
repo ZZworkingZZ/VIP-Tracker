@@ -872,11 +872,11 @@ describe('Active Edit Mode & Interactive Staging Workflows', () => {
       expect(await screen.findByTestId('source-routing-modal')).toBeInTheDocument();
 
       // Verify populated facility sources across categories are present in the selector
-      expect(screen.getByTestId('source-option-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-option-SRC:VCAM_01')).toBeInTheDocument();
       expect(screen.getByTestId('source-option-SRC:BARS')).toBeInTheDocument();
-      expect(screen.getByTestId('source-option-SRC:SWR-201')).toBeInTheDocument();
-      expect(screen.getByTestId('source-option-SRC:J2K_CLIP-1A')).toBeInTheDocument();
-      expect(screen.getByTestId('source-option-SRC:VTIE-101')).toBeInTheDocument();
+      expect(screen.getByTestId('source-option-SRC:SWR_201')).toBeInTheDocument();
+      expect(screen.getByTestId('source-option-SRC:J2K_CLIP_1A')).toBeInTheDocument();
+      expect(screen.getByTestId('source-option-SRC:VTIE_101')).toBeInTheDocument();
     });
   });
 

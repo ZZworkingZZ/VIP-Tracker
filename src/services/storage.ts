@@ -10,6 +10,7 @@ import {
   LawoDeviceType,
   LawoVendor,
   RouterSystem,
+  InventoryCategory,
 } from '../domain/models';
 import { SourceId, createSourceId } from '../domain/identifiers';
 import { inferSourceType, SourceCategory } from '../domain/sourceCategories';
@@ -17,7 +18,7 @@ import { LayoutDefinition } from '../domain/layoutDefinitions';
 
 export const TRACKER_STORAGE_KEY = 'vip_tracker_data_v1';
 export const TRACKER_SCHEMA_VERSION = 2;
-export const CURRENT_SOURCE_SEED_VERSION = 2;
+export const CURRENT_SOURCE_SEED_VERSION = 3;
 
 export interface PersistedTrackerData {
   schemaVersion: number;
@@ -199,6 +200,12 @@ export function migrateV1ToV2(raw: unknown): PersistedTrackerData | null {
           ...(deviceType ? { deviceType } : {}),
           ...(vendor ? { vendor } : {}),
           ...(router ? { router } : {}),
+          ...(typeof src.inventoryCategory === 'string'
+            ? { inventoryCategory: src.inventoryCategory as InventoryCategory }
+            : {}),
+          ...(Array.isArray(src.inventoryCategories)
+            ? { inventoryCategories: src.inventoryCategories as InventoryCategory[] }
+            : {}),
           ...(inputLabel !== undefined ? { inputLabel } : {}),
           ...(outputLabel !== undefined ? { outputLabel } : {}),
           ...(metadata ? { metadata } : {}),

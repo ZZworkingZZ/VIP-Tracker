@@ -59,17 +59,17 @@ describe('Source Aliases Feature', () => {
     renderTrackerApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-row-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-row-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    const row = screen.getByTestId('source-row-SRC:VCAM-01');
-    expect(within(row).getByText('vCam-01')).toBeInTheDocument();
+    const row = screen.getByTestId('source-row-SRC:VCAM_01');
+    expect(within(row).getByText('vCam 01')).toBeInTheDocument();
 
     // No secondary alias label rendered when no alias exists
-    expect(screen.queryByTestId('source-alias-label-SRC:VCAM-01')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-alias-label-SRC:VCAM_01')).not.toBeInTheDocument();
 
     // Input value is empty string, no "N/A", "No Alias", or "()"
-    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM-01') as HTMLInputElement;
+    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM_01') as HTMLInputElement;
     expect(aliasInput.value).toBe('');
     expect(within(row).queryByText(/N\/A/i)).not.toBeInTheDocument();
     expect(within(row).queryByText(/No Alias/i)).not.toBeInTheDocument();
@@ -77,9 +77,9 @@ describe('Source Aliases Feature', () => {
 
     // Domain formatting helpers return clean source name with no parentheses
     const snapshot = await repo.getSnapshot();
-    const vcam1 = snapshot.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const vcam1 = snapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     expect(getSourceAlias(vcam1)).toBeNull();
-    expect(formatSourceCompact(vcam1)).toBe('vCam-01');
+    expect(formatSourceCompact(vcam1)).toBe('vCam 01');
     expect(formatSourceCompact(vcam1)).not.toContain('()');
   });
 
@@ -88,11 +88,11 @@ describe('Source Aliases Feature', () => {
     const { unmount } = renderTrackerApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-input-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-alias-input-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM-01');
-    const saveBtn = screen.getByTestId('save-source-alias-btn-SRC:VCAM-01');
+    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM_01');
+    const saveBtn = screen.getByTestId('save-source-alias-btn-SRC:VCAM_01');
 
     // Typing does NOT immediately trigger a shared save
     fireEvent.change(aliasInput, { target: { value: 'Haivision 1' } });
@@ -107,8 +107,8 @@ describe('Source Aliases Feature', () => {
 
     // Verify persisted source record in repository and storage
     const savedSnapshot = await repo.getSnapshot();
-    const updatedSource = savedSnapshot.sources.find((s) => s.id === 'SRC:VCAM-01')!;
-    expect(updatedSource.name).toBe('vCam-01');
+    const updatedSource = savedSnapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
+    expect(updatedSource.name).toBe('vCam 01');
     expect(updatedSource.alias).toBe('Haivision 1');
     expect(updatedSource.category).toBe('Virtual Camera');
     expect(updatedSource.sourceType).toBe('virtual');
@@ -119,9 +119,9 @@ describe('Source Aliases Feature', () => {
     renderTrackerApp(reloadedRepo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-01')).toHaveTextContent('Haivision 1');
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_01')).toHaveTextContent('Haivision 1');
     });
-    expect((screen.getByTestId('source-alias-input-SRC:VCAM-01') as HTMLInputElement).value).toBe(
+    expect((screen.getByTestId('source-alias-input-SRC:VCAM_01') as HTMLInputElement).value).toBe(
       'Haivision 1'
     );
   });
@@ -175,13 +175,13 @@ describe('Source Aliases Feature', () => {
     const { unmount } = renderTrackerApp(browserARepo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-input-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-alias-input-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM-01'), {
+    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM_01'), {
       target: { value: 'Haivision 1' },
     });
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_01'));
 
     await waitFor(() => {
       expect(currentRemoteSha).toBe('sha_updated_200');
@@ -195,7 +195,7 @@ describe('Source Aliases Feature', () => {
     });
 
     const browserBSnapshot = await browserBRepo.getSnapshot();
-    const sharedSource = browserBSnapshot.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const sharedSource = browserBSnapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     expect(sharedSource.alias).toBe('Haivision 1');
   });
 
@@ -203,77 +203,77 @@ describe('Source Aliases Feature', () => {
     renderTrackerApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-input-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-alias-input-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    // Assign alias "Haivision 1" to vCam-01
-    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM-01'), {
+    // Assign alias "Haivision 1" to vCam 01
+    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM_01'), {
       target: { value: 'Haivision 1' },
     });
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_01'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-01')).toHaveTextContent('Haivision 1');
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_01')).toHaveTextContent('Haivision 1');
     });
 
     const searchInput = screen.getByLabelText(/Search Source/i);
 
     // TEST 5: Search by Alias
     fireEvent.change(searchInput, { target: { value: 'Haivision 1' } });
-    expect(screen.getByTestId('source-row-SRC:VCAM-01')).toBeInTheDocument();
-    expect(screen.queryByTestId('source-row-SRC:VCAM-02')).not.toBeInTheDocument();
+    expect(screen.getByTestId('source-row-SRC:VCAM_01')).toBeInTheDocument();
+    expect(screen.queryByTestId('source-row-SRC:VCAM_02')).not.toBeInTheDocument();
 
     // TEST 6: Search by actual technical source name
-    fireEvent.change(searchInput, { target: { value: 'vCam-01' } });
-    expect(screen.getByTestId('source-row-SRC:VCAM-01')).toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: 'vCam 01' } });
+    expect(screen.getByTestId('source-row-SRC:VCAM_01')).toBeInTheDocument();
 
     // Sources without an Alias continue to work normally in search
-    fireEvent.change(searchInput, { target: { value: 'vCam-02' } });
-    expect(screen.getByTestId('source-row-SRC:VCAM-02')).toBeInTheDocument();
-    expect(screen.queryByTestId('source-row-SRC:VCAM-01')).not.toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: 'vCam 02' } });
+    expect(screen.getByTestId('source-row-SRC:VCAM_02')).toBeInTheDocument();
+    expect(screen.queryByTestId('source-row-SRC:VCAM_01')).not.toBeInTheDocument();
   });
 
   it('TEST 7: Duplicate Aliases are allowed across multiple different sources without uniqueness errors', async () => {
     renderTrackerApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-input-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-alias-input-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    // Assign "Haivision 1" to vCam-01
-    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM-01'), {
+    // Assign "Haivision 1" to vCam 01
+    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM_01'), {
       target: { value: 'Haivision 1' },
     });
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_01'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-01')).toHaveTextContent('Haivision 1');
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_01')).toHaveTextContent('Haivision 1');
     });
 
-    // Assign the exact same alias "Haivision 1" to vCam-02
-    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM-02'), {
+    // Assign the exact same alias "Haivision 1" to vCam 02
+    fireEvent.change(screen.getByTestId('source-alias-input-SRC:VCAM_02'), {
       target: { value: 'Haivision 1' },
     });
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-02'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_02'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-02')).toHaveTextContent('Haivision 1');
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_02')).toHaveTextContent('Haivision 1');
     });
 
     expect(screen.queryByTestId('directory-save-error-banner')).not.toBeInTheDocument();
 
     const snapshot = await repo.getSnapshot();
-    expect(snapshot.sources.find((s) => s.id === 'SRC:VCAM-01')?.alias).toBe('Haivision 1');
-    expect(snapshot.sources.find((s) => s.id === 'SRC:VCAM-02')?.alias).toBe('Haivision 1');
+    expect(snapshot.sources.find((s) => s.id === 'SRC:VCAM_01')?.alias).toBe('Haivision 1');
+    expect(snapshot.sources.find((s) => s.id === 'SRC:VCAM_02')?.alias).toBe('Haivision 1');
   });
 
   it('TEST 8: Alias displays alongside actual source name across Multiview cards, detail modal, destination matrix, and compact selectors', async () => {
-    // Route vCam-01 (with alias "Haivision 1") to DEST:MV-01-01 (which is covered by OUT:MV-01-01)
+    // Route vCam 01 (with alias "Haivision 1") to DEST:MV-01-01 (which is covered by OUT:MV-01-01)
     const seeded: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const vcam1 = seeded.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const vcam1 = seeded.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     vcam1.alias = 'Haivision 1';
     const dest1 = seeded.destinations.find((d) => d.id === 'DEST:MV-01-01')!;
-    dest1.assignedSourceId = 'SRC:VCAM-01';
+    dest1.assignedSourceId = 'SRC:VCAM_01';
     const out1 = seeded.outputs.find((o) => o.id === 'OUT:MV-01-01')!;
     out1.layoutName = '4 BOX';
     out1.status = 'Assigned';
@@ -294,14 +294,14 @@ describe('Source Aliases Feature', () => {
       expect(screen.getByTestId('output-card-OUT:MV-01-01')).toBeInTheDocument();
     });
     const outputCard = screen.getByTestId('output-card-OUT:MV-01-01');
-    expect(within(outputCard).getByText('vCam-01')).toBeInTheDocument();
+    expect(within(outputCard).getByText('vCam 01')).toBeInTheDocument();
     expect(within(outputCard).getByTestId('pip-source-alias-PIP-01')).toHaveTextContent(
       'Haivision 1'
     );
 
     // 2. Destination Matrix Tile (spacious 2-line display)
     const destTile = screen.getByTestId('dest-card-DEST:MV-01-01');
-    expect(within(destTile).getByText('vCam-01')).toBeInTheDocument();
+    expect(within(destTile).getByText('vCam 01')).toBeInTheDocument();
     expect(within(destTile).getByText('Haivision 1')).toBeInTheDocument();
 
     // 3. Output Detail Modal (spacious PIP detail + Covered Destinations table + compact MV Inputs palette)
@@ -311,56 +311,56 @@ describe('Source Aliases Feature', () => {
       'Haivision 1'
     );
 
-    // Compact MV Inputs palette item: "Source: vCam-01 (Haivision 1)"
+    // Compact MV Inputs palette item: "Source: vCam 01 (Haivision 1)"
     const paletteItem = within(detailModal).getByTestId('palette-input-DEST:MV-01-01');
-    expect(paletteItem).toHaveTextContent('Source: vCam-01 (Haivision 1)');
+    expect(paletteItem).toHaveTextContent('Source: vCam 01 (Haivision 1)');
 
-    // Covered Destinations table row shows both vCam-01 and Haivision 1
+    // Covered Destinations table row shows both vCam 01 and Haivision 1
     const breakdownRow = within(detailModal).getByTestId('window-row-0');
-    expect(within(breakdownRow).getByText('vCam-01')).toBeInTheDocument();
+    expect(within(breakdownRow).getByText('vCam 01')).toBeInTheDocument();
     expect(within(breakdownRow).getByText('Haivision 1')).toBeInTheDocument();
 
-    // 4. Compact Source Routing Selector Modal displays "vCam-01 (Haivision 1)"
+    // 4. Compact Source Routing Selector Modal displays "vCam 01 (Haivision 1)"
     fireEvent.click(within(detailModal).getByTestId('enter-edit-mode-btn'));
     fireEvent.click(within(detailModal).getByTestId('route-btn-0'));
     const routingModal = await screen.findByTestId('source-routing-modal');
-    const sourceOption = within(routingModal).getByTestId('source-option-SRC:VCAM-01');
-    expect(sourceOption).toHaveTextContent('vCam-01 (Haivision 1)');
+    const sourceOption = within(routingModal).getByTestId('source-option-SRC:VCAM_01');
+    expect(sourceOption).toHaveTextContent('vCam 01 (Haivision 1)');
   });
 
   it('TEST 10: Clearing an existing Alias and clicking check mark saves and removes Alias everywhere', async () => {
     const seeded: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const vcam1 = seeded.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const vcam1 = seeded.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     vcam1.alias = 'Haivision 1';
 
     const customRepo = new LocalTrackerRepository(seeded, storage);
     renderTrackerApp(customRepo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-01')).toHaveTextContent('Haivision 1');
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_01')).toHaveTextContent('Haivision 1');
     });
 
-    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM-01') as HTMLInputElement;
+    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM_01') as HTMLInputElement;
     expect(aliasInput.value).toBe('Haivision 1');
 
     // Clear the Alias input and click check mark
     fireEvent.change(aliasInput, { target: { value: '' } });
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_01'));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('source-alias-label-SRC:VCAM-01')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('source-alias-label-SRC:VCAM_01')).not.toBeInTheDocument();
     });
 
     expect(aliasInput.value).toBe('');
-    const row = screen.getByTestId('source-row-SRC:VCAM-01');
-    expect(within(row).getByText('vCam-01')).toBeInTheDocument();
+    const row = screen.getByTestId('source-row-SRC:VCAM_01');
+    expect(within(row).getByText('vCam 01')).toBeInTheDocument();
     expect(within(row).queryByText('Haivision 1')).not.toBeInTheDocument();
     expect(within(row).queryByText(/\(\)/)).not.toBeInTheDocument();
 
     const updatedSnapshot = await customRepo.getSnapshot();
-    const clearedSource = updatedSnapshot.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const clearedSource = updatedSnapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     expect(getSourceAlias(clearedSource)).toBeNull();
-    expect(formatSourceCompact(clearedSource)).toBe('vCam-01');
+    expect(formatSourceCompact(clearedSource)).toBe('vCam 01');
   });
 
   it('TEST 11: Free-form typing with spaces works normally without premature commit or lost state', async () => {
@@ -368,16 +368,16 @@ describe('Source Aliases Feature', () => {
     renderTrackerApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-alias-input-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-alias-input-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM-01') as HTMLInputElement;
+    const aliasInput = screen.getByTestId('source-alias-input-SRC:VCAM_01') as HTMLInputElement;
 
     // Simulate progressive typing with spaces
     fireEvent.change(aliasInput, { target: { value: 'Studio ' } });
     expect(aliasInput.value).toBe('Studio ');
     expect(saveSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('source-alias-label-SRC:VCAM-01')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-alias-label-SRC:VCAM_01')).not.toBeInTheDocument();
 
     fireEvent.change(aliasInput, { target: { value: 'Studio X ' } });
     expect(aliasInput.value).toBe('Studio X ');
@@ -388,17 +388,17 @@ describe('Source Aliases Feature', () => {
     expect(saveSpy).not.toHaveBeenCalled();
 
     // Commit by clicking check mark
-    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('save-source-alias-btn-SRC:VCAM_01'));
 
     await waitFor(() => {
       expect(saveSpy).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('source-alias-label-SRC:VCAM-01')).toHaveTextContent(
+      expect(screen.getByTestId('source-alias-label-SRC:VCAM_01')).toHaveTextContent(
         'Studio X Camera 1'
       );
     });
 
     const savedSnapshot = await repo.getSnapshot();
-    expect(savedSnapshot.sources.find((s) => s.id === 'SRC:VCAM-01')?.alias).toBe(
+    expect(savedSnapshot.sources.find((s) => s.id === 'SRC:VCAM_01')?.alias).toBe(
       'Studio X Camera 1'
     );
   });

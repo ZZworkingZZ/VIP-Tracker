@@ -40,8 +40,8 @@ import { DestinationId, OutputId, PipId, SourceId, createSourceId } from '../dom
 const TEST_OUTPUT_ID = 'OUT:MV-03-01' as OutputId; // Active '4 BOX' output on MV-03 in INITIAL_SNAPSHOT
 const TEST_PIP_01 = 'PIP-01' as PipId;
 const TEST_PIP_02 = 'PIP-02' as PipId;
-const VCAM_40_ID = createSourceId('vCam-40'); // Existing Evertz tieline 'vCam-40' in SEED_SOURCES
-const VCAM_41_ID = createSourceId('vCam-41'); // Existing Evertz tieline 'vCam-41' in SEED_SOURCES
+const VCAM_40_ID = createSourceId('vCam 40'); // Existing Evertz tieline 'vCam 40' in SEED_SOURCES
+const VCAM_41_ID = createSourceId('vCam 41'); // Existing Evertz tieline 'vCam 41' in SEED_SOURCES
 
 function createSignalFlowTestSnapshot(): TrackerSnapshot {
   const liveU101 = createDirectorySource({
@@ -81,7 +81,7 @@ function createSignalFlowTestSnapshot(): TrackerSnapshot {
     vendor: 'AJA',
   });
 
-  // Preserve existing Evertz source-to-MV-Input routes on DEST:MV-03-01 (vCam-40) and DEST:MV-03-02 (vCam-41)
+  // Preserve existing Evertz source-to-MV-Input routes on DEST:MV-03-01 (vCam 40) and DEST:MV-03-02 (vCam 41)
   const destinations = INITIAL_SNAPSHOT.destinations.map((d) => {
     if (d.id === ('DEST:MV-03-01' as DestinationId)) {
       return { ...d, assignedSourceId: VCAM_40_ID };
@@ -165,7 +165,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(flow).toBeDefined();
     expect(flow.destinationId).toBe('DEST:MV-03-01');
     expect(flow.tielineId).toBe(VCAM_40_ID);
-    expect(flow.tielineSource?.name).toBe('vCam-40');
+    expect(flow.tielineSource?.name).toBe('vCam 40');
     // Upstream Lawo source is not fabricated; remains null (BLANK) until mapped
     expect(flow.lawoSourceId).toBeNull();
     expect(flow.lawoSource).toBeNull();
@@ -177,7 +177,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
   });
 
   it('8. enforces stage-constrained dropdown options and supports all 15 Lawo device types and 15 vendors', () => {
-    expect(LAWO_DEVICE_TYPES).toEqual([
+    for (const dt of [
       'BSP',
       'Cam',
       'Caption',
@@ -193,7 +193,9 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       'Swr',
       'Transcode',
       'UDX',
-    ]);
+    ]) {
+      expect(LAWO_DEVICE_TYPES).toContain(dt);
+    }
     expect(LAWO_VENDORS).toEqual([
       'AI-Media',
       'AJA',
@@ -221,15 +223,16 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const mv03InputOpts = getValidMvInputOptions(snapshot.destinations, 'MV-03');
     const pipOpts = getValidPipOptions(out01);
 
-    // Lawo source options contain LiveU 101 & Sony Cam A, not UDX-01 processing stage or vCam-40 virtual tieline
+    // Lawo source options contain LiveU 101 & Sony Cam A, not UDX-01 processing stage or vCam 40 virtual tieline
     expect(lawoOpts.some((s) => s.id === 'SRC:LAWO_LIVEU_101')).toBe(true);
     expect(lawoOpts.some((s) => s.id === 'SRC:LAWO_UDX_01')).toBe(false);
     expect(lawoOpts.some((s) => s.id === VCAM_40_ID)).toBe(false);
 
     // Processing stage options contain UDX-01 and FS-02, not LiveU 101 or tielines
-    expect(procOpts.map((s) => s.id)).toEqual(['SRC:LAWO_FS_02', 'SRC:LAWO_UDX_01']);
-
-    // Tieline options contain vCam-40, not LiveU 101 or UDX-01
+    expect(procOpts.some((s) => s.id === 'SRC:LAWO_FS_02')).toBe(true);
+    expect(procOpts.some((s) => s.id === 'SRC:LAWO_UDX_01')).toBe(true);
+    expect(procOpts.some((s) => s.id === 'SRC:LAWO_LIVEU_101')).toBe(false);
+    expect(procOpts.some((s) => s.id === VCAM_40_ID)).toBe(false);
     expect(tielineOpts.some((s) => s.id === VCAM_40_ID)).toBe(true);
     expect(tielineOpts.some((s) => s.id === 'SRC:LAWO_LIVEU_101')).toBe(false);
 
@@ -245,7 +248,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     let snapshot = createSignalFlowTestSnapshot();
     const out01 = snapshot.outputs.find((o) => o.id === TEST_OUTPUT_ID)!;
 
-    // Standard 4-stage flow: LiveU 101 -> vCam-40 -> MV-03-01 Input -> MV-03-01 PIP-01
+    // Standard 4-stage flow: LiveU 101 -> vCam 40 -> MV-03-01 Input -> MV-03-01 PIP-01
     snapshot = applyPipLawoChainUpdate(
       snapshot,
       VCAM_40_ID,
@@ -257,13 +260,13 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const standardFlow = resolveSinglePipSignalFlow(out01, TEST_PIP_01, 0, snapshot);
     expect(standardFlow.lawoSource?.name).toBe('LiveU 101');
     expect(standardFlow.processingStages).toHaveLength(0);
-    expect(standardFlow.tielineSource?.name).toBe('vCam-40');
+    expect(standardFlow.tielineSource?.name).toBe('vCam 40');
     expect(standardFlow.destinationId).toBe('DEST:MV-03-01');
     expect(standardFlow.pipId).toBe('PIP-01');
     expect(standardFlow.isComplete).toBe(true);
     expect(standardFlow.isUnrouted).toBe(false);
 
-    // Single processing stage flow: LiveU 101 -> UDX-01 Input -> UDX-01 Output -> vCam-40 -> MV-03-01 Input -> MV-03-01 PIP-01
+    // Single processing stage flow: LiveU 101 -> UDX-01 Input -> UDX-01 Output -> vCam 40 -> MV-03-01 Input -> MV-03-01 PIP-01
     snapshot = applyPipLawoChainUpdate(
       snapshot,
       VCAM_40_ID,
@@ -278,7 +281,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(singleProcFlow.processingStageHops[0].inputLabel).toBe('UDX-01 Input');
     expect(singleProcFlow.processingStageHops[0].outputLabel).toBe('UDX-01 Output');
 
-    // Variable-depth 2-stage processing chain: LiveU 101 -> FS-02 -> UDX-01 -> vCam-40
+    // Variable-depth 2-stage processing chain: LiveU 101 -> FS-02 -> UDX-01 -> vCam 40
     snapshot = applyPipLawoChainUpdate(
       snapshot,
       VCAM_40_ID,
@@ -406,7 +409,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     let snapshot = createSignalFlowTestSnapshot();
     const out01 = snapshot.outputs.find((o) => o.id === TEST_OUTPUT_ID)!;
 
-    // Route LiveU 101 to vCam-40 (on DEST:MV-03-01)
+    // Route LiveU 101 to vCam 40 (on DEST:MV-03-01)
     snapshot = applyPipLawoChainUpdate(
       snapshot,
       VCAM_40_ID,
@@ -416,7 +419,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       '2026-10-29T18:25:00.000Z'
     );
 
-    // Single tieline (vCam-40) also routed to another MV Input (DEST:MV-02-01) -> NO warning!
+    // Single tieline (vCam 40) also routed to another MV Input (DEST:MV-02-01) -> NO warning!
     snapshot = applyPipTielineStageChange(
       snapshot,
       'DEST:MV-02-01' as DestinationId,
@@ -432,7 +435,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     );
     expect(singleTielineWarning).toBeNull();
 
-    // Now check routing LiveU 101 to a SECOND distinct tieline (vCam-41 on DEST:MV-03-02) -> triggers exact warning!
+    // Now check routing LiveU 101 to a SECOND distinct tieline (vCam 41 on DEST:MV-03-02) -> triggers exact warning!
     const multiTielineWarning = evaluateDuplicateLawoSourceWarning(
       'SRC:LAWO_LIVEU_101' as SourceId,
       VCAM_41_ID,
@@ -441,7 +444,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     );
     expect(multiTielineWarning).not.toBeNull();
     expect(multiTielineWarning?.message).toBe(
-      'This Lawo source is already routed to another tieline (vCam-40).'
+      'This Lawo source is already routed to another tieline (vCam 40).'
     );
 
     // Non-blocking save: applying the change succeeds and both flows show the warning
@@ -456,10 +459,10 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const flow1After = resolveSinglePipSignalFlow(out01, TEST_PIP_01, 0, snapshot);
     const flow2After = resolveSinglePipSignalFlow(out01, TEST_PIP_02, 1, snapshot);
     expect(flow1After.duplicateWarning?.message).toBe(
-      'This Lawo source is already routed to another tieline (vCam-41).'
+      'This Lawo source is already routed to another tieline (vCam 41).'
     );
     expect(flow2After.duplicateWarning?.message).toBe(
-      'This Lawo source is already routed to another tieline (vCam-40).'
+      'This Lawo source is already routed to another tieline (vCam 40).'
     );
   });
 
@@ -611,7 +614,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const aliasEl = within(out01Card).getByTestId('pip-source-alias-PIP-01');
     expect(aliasEl).toHaveTextContent('Main Court UMD');
     const compactFlowEl = within(out01Card).getByTestId('pip-compact-flow-PIP-01');
-    expect(compactFlowEl.textContent).toContain('LiveU 101 → UDX-01 → vCam-40');
+    expect(compactFlowEl.textContent).toContain('LiveU 101 → UDX-01 → vCam 40');
 
     // Verify "View Signal Flow" button exists on PIP-01
     const viewFlowBtn = within(out01Card).getByTestId(
@@ -646,7 +649,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
 
     const detailFlowCell = await screen.findByTestId('detail-resolved-flow-PIP-01');
     expect(detailFlowCell.textContent).toContain(
-      'LiveU 101 → UDX-01 → vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
+      'LiveU 101 → UDX-01 → vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
     );
   });
 
@@ -684,7 +687,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
 
   it('35. displays full known signal path in Destination Windows Wall tiles without fabricating missing stages and supports building/editing flows directly from the wall', async () => {
     const snapshot = createSignalFlowTestSnapshot();
-    // Initially DEST:MV-03-01 has only vCam-40 (no upstream Lawo source or processing stage)
+    // Initially DEST:MV-03-01 has only vCam 40 (no upstream Lawo source or processing stage)
     const initialFlows = resolveDestinationSignalFlows(snapshot, 'MV-03');
     const dest01Initial = initialFlows.get('DEST:MV-03-01' as DestinationId)!;
     expect(dest01Initial.lawoSource).toBeNull();
@@ -692,7 +695,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(dest01Initial.concisePathSummary).toBeNull();
     // Only stages that actually exist in the data are included
     expect(dest01Initial.knownPathStages.map((s) => s.label)).toEqual([
-      'vCam-40',
+      'vCam 40',
       'MV-03-01 Input',
     ]);
 
@@ -703,7 +706,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     });
 
     const destCard01 = await screen.findByTestId('dest-card-DEST:MV-03-01');
-    expect(within(destCard01).getByText('vCam-40')).toBeInTheDocument();
+    expect(within(destCard01).getByText('vCam 40')).toBeInTheDocument();
     // Does not fabricate BLANK upstream path in compact tile when upstream is unassigned
     expect(
       within(destCard01).queryByTestId('dest-card-path-DEST:MV-03-01')
@@ -714,10 +717,10 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const inspector = await screen.findByTestId('wall-flow-inspector-DEST:MV-03-01');
     expect(inspector).toBeInTheDocument();
     expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
-      'vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
+      'vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
     );
 
-    // Build upstream chain directly from the Wall Inspector: LiveU 101 -> UDX-01 -> vCam-40
+    // Build upstream chain directly from the Wall Inspector: LiveU 101 -> UDX-01 -> vCam 40
     fireEvent.change(screen.getByTestId('wall-select-lawo-DEST:MV-03-01'), {
       target: { value: 'SRC:LAWO_LIVEU_101' },
     });
@@ -734,10 +737,10 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
 
     // Tile now shows concise full path and inspector shows full chain
     expect(screen.getByTestId('dest-card-path-DEST:MV-03-01')).toHaveTextContent(
-      'LiveU 101 → UDX-01 → vCam-40'
+      'LiveU 101 → UDX-01 → vCam 40'
     );
     expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
-      'LiveU 101 → UDX-01 Input → UDX-01 Output → vCam-40 → MV-03-01 Input → MV-03-01 PIP-01'
+      'LiveU 101 → UDX-01 Input → UDX-01 Output → vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
     );
 
     // Also route an unassigned destination (DEST:MV-03-05) and assign it to PIP-03 on OUT:MV-03-01 from the Wall
@@ -773,7 +776,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
 
   it('36. identifies duplicate routing scenarios (same MV card, cross-card tieline, Lawo multi-tieline, shared upstream origin) without blocking intentional duplicates', async () => {
     let snapshot = createSignalFlowTestSnapshot();
-    // 1. Route vCam-40 to DEST:MV-03-01 and DEST:MV-03-06 (same MV card duplicate) and DEST:MV-02-01 (cross-card shared source)
+    // 1. Route vCam 40 to DEST:MV-03-01 and DEST:MV-03-06 (same MV card duplicate) and DEST:MV-02-01 (cross-card shared source)
     snapshot = applyPipTielineStageChange(
       snapshot,
       'DEST:MV-03-06' as DestinationId,
@@ -788,7 +791,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       { id: 'op_zach_z', displayName: 'Zach Zweibel' },
       '2026-10-30T12:00:00.000Z'
     );
-    // 2. Route LiveU 101 to BOTH vCam-40 (on DEST:MV-03-01) and vCam-41 (on DEST:MV-03-02) -> lawo_multi_tieline & shared_upstream_origin
+    // 2. Route LiveU 101 to BOTH vCam 40 (on DEST:MV-03-01) and vCam 41 (on DEST:MV-03-02) -> lawo_multi_tieline & shared_upstream_origin
     snapshot = applyPipLawoChainUpdate(
       snapshot,
       VCAM_40_ID,

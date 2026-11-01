@@ -49,14 +49,14 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
       expect(screen.getByRole('heading', { name: /Source Directory/i })).toBeInTheDocument();
     });
 
-    // Check row for vCam-01
-    const vCam1Row = screen.getByTestId('source-row-SRC:VCAM-01');
-    expect(within(vCam1Row).getByText('vCam-01')).toBeInTheDocument();
+    // Check row for vCam 01
+    const vCam1Row = screen.getByTestId('source-row-SRC:VCAM_01');
+    expect(within(vCam1Row).getByText('vCam 01')).toBeInTheDocument();
 
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
     expect(within(upstreamCell).getByText('Not assigned')).toBeInTheDocument();
 
-    const signalFlowCell = screen.getByTestId('signal-flow-cell-SRC:VCAM-01');
+    const signalFlowCell = screen.getByTestId('signal-flow-cell-SRC:VCAM_01');
     expect(within(signalFlowCell).getByText('Origin')).toBeInTheDocument();
   });
 
@@ -64,17 +64,17 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-row-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-row-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    const editBtn = screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01');
+    const editBtn = screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01');
     fireEvent.click(editBtn);
 
     const modal = await screen.findByTestId('source-signal-flow-modal');
     expect(modal).toBeInTheDocument();
 
     // Verify Read-Only metadata
-    expect(within(modal).getAllByText('vCam-01').length).toBeGreaterThanOrEqual(1);
+    expect(within(modal).getAllByText('vCam 01').length).toBeGreaterThanOrEqual(1);
     expect(within(modal).getAllByText('Virtual Camera').length).toBeGreaterThanOrEqual(1);
     expect(within(modal).getByText('Virtual Source')).toBeInTheDocument();
 
@@ -83,56 +83,56 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     expect(screen.getByTestId('modal-validation-state')).toHaveTextContent('Valid');
 
     // Current signal flow chain
-    expect(screen.getByTestId('current-signal-flow-chain')).toHaveTextContent('vCam-01 (Origin)');
+    expect(screen.getByTestId('current-signal-flow-chain')).toHaveTextContent('vCam 01 (Origin)');
   });
 
   it('Requirement 3, 4, 5: Upstream Source selector receives full catalog, excludes current source, and filters by search', async () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
     // Open modal in edit mode
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Requirement 5: Current source (vCam-01) must NOT be present as an option
-    expect(screen.queryByTestId('upstream-option-SRC:VCAM-01')).not.toBeInTheDocument();
+    // Requirement 5: Current source (vCam 01) must NOT be present as an option
+    expect(screen.queryByTestId('upstream-option-SRC:VCAM_01')).not.toBeInTheDocument();
 
-    // Requirement 3: Total eligible sources is 231 - 1 = 230
-    expect(screen.getByText(/230 of 230 eligible sources/i)).toBeInTheDocument();
+    // Requirement 3: Total eligible sources is 712 - 1 = 711
+    expect(screen.getByText(/711 of 711 eligible sources/i)).toBeInTheDocument();
 
     // Requirement 4: Search filters the selector by source name
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'vTie-101' } });
+    fireEvent.change(searchInput, { target: { value: 'vTie 101' } });
 
-    expect(screen.getByTestId('upstream-option-SRC:VTIE-101')).toBeInTheDocument();
-    expect(screen.queryByTestId('upstream-option-SRC:VCAM-02')).not.toBeInTheDocument();
+    expect(screen.getByTestId('upstream-option-SRC:VTIE_101')).toBeInTheDocument();
+    expect(screen.queryByTestId('upstream-option-SRC:VCAM_02')).not.toBeInTheDocument();
   });
 
   it('Requirement 6 & 10: Operator can assign an immediate upstream source; preview does not mutate repository state', async () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Search and select vTie-101
+    // Search and select vTie 101
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'vTie-101' } });
-    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE-101'));
+    fireEvent.change(searchInput, { target: { value: 'vTie 101' } });
+    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE_101'));
 
     // Requirement 10: Preview updates inside modal WITHOUT mutating repository yet
     const previewChain = screen.getByTestId('preview-signal-flow-chain');
-    expect(previewChain).toHaveTextContent('vTie-101 → vCam-01');
+    expect(previewChain).toHaveTextContent('vTie 101 → vCam 01');
 
     // Raw repository remains null at this point
     const currentPersisted = await repo.getSnapshot();
-    const persistedCam = currentPersisted.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const persistedCam = currentPersisted.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     expect(persistedCam.upstreamSourceId).toBeNull();
 
     // Stage changes
@@ -143,18 +143,18 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
       expect(screen.queryByTestId('source-signal-flow-modal')).not.toBeInTheDocument();
     });
 
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
-    expect(within(upstreamCell).getByText('vTie-101')).toBeInTheDocument();
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
+    expect(within(upstreamCell).getByText('vTie 101')).toBeInTheDocument();
 
-    const signalFlowCell = screen.getByTestId('signal-flow-cell-SRC:VCAM-01');
-    expect(within(signalFlowCell).getByText('vTie-101 → vCam-01')).toBeInTheDocument();
+    const signalFlowCell = screen.getByTestId('signal-flow-cell-SRC:VCAM_01');
+    expect(within(signalFlowCell).getByText('vTie 101 → vCam 01')).toBeInTheDocument();
   });
 
   it('Requirement 7: Operator can replace an upstream Source', async () => {
-    // Start with vCam-01 having upstream vTie-101
+    // Start with vCam 01 having upstream vTie 101
     const snapshotWithUpstream: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const cam = snapshotWithUpstream.sources.find((s) => s.id === 'SRC:VCAM-01')!;
-    cam.upstreamSourceId = 'SRC:VTIE-101' as SourceId;
+    const cam = snapshotWithUpstream.sources.find((s) => s.id === 'SRC:VCAM_01')!;
+    cam.upstreamSourceId = 'SRC:VTIE_101' as SourceId;
     await repo.saveSnapshot(snapshotWithUpstream, {
       id: 'cs1',
       timestamp: new Date().toISOString(),
@@ -165,18 +165,18 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Replace with Swr-201
+    // Replace with Swr 201
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'Swr-201' } });
-    fireEvent.click(screen.getByTestId('upstream-option-SRC:SWR-201'));
+    fireEvent.change(searchInput, { target: { value: 'Swr 201' } });
+    fireEvent.click(screen.getByTestId('upstream-option-SRC:SWR_201'));
 
-    expect(screen.getByTestId('preview-signal-flow-chain')).toHaveTextContent('Swr-201 → vCam-01');
+    expect(screen.getByTestId('preview-signal-flow-chain')).toHaveTextContent('Swr 201 → vCam 01');
 
     fireEvent.click(screen.getByTestId('save-signal-flow-btn'));
 
@@ -184,14 +184,14 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
       expect(screen.queryByTestId('source-signal-flow-modal')).not.toBeInTheDocument();
     });
 
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
-    expect(within(upstreamCell).getByText('Swr-201')).toBeInTheDocument();
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
+    expect(within(upstreamCell).getByText('Swr 201')).toBeInTheDocument();
   });
 
   it('Requirement 8: Operator can clear an upstream Source', async () => {
     const snapshotWithUpstream: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const cam = snapshotWithUpstream.sources.find((s) => s.id === 'SRC:VCAM-01')!;
-    cam.upstreamSourceId = 'SRC:VTIE-101' as SourceId;
+    const cam = snapshotWithUpstream.sources.find((s) => s.id === 'SRC:VCAM_01')!;
+    cam.upstreamSourceId = 'SRC:VTIE_101' as SourceId;
     await repo.saveSnapshot(snapshotWithUpstream, {
       id: 'cs1',
       timestamp: new Date().toISOString(),
@@ -202,16 +202,16 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
     // Click Clear button
     fireEvent.click(screen.getByTestId('clear-upstream-source-btn'));
 
-    expect(screen.getByTestId('preview-signal-flow-chain')).toHaveTextContent('vCam-01 (Origin)');
+    expect(screen.getByTestId('preview-signal-flow-chain')).toHaveTextContent('vCam 01 (Origin)');
 
     fireEvent.click(screen.getByTestId('save-signal-flow-btn'));
 
@@ -219,7 +219,7 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
       expect(screen.queryByTestId('source-signal-flow-modal')).not.toBeInTheDocument();
     });
 
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
     expect(within(upstreamCell).getByText('Not assigned')).toBeInTheDocument();
   });
 
@@ -227,16 +227,16 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Select vTie-101
+    // Select vTie 101
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'vTie-101' } });
-    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE-101'));
+    fireEvent.change(searchInput, { target: { value: 'vTie 101' } });
+    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE_101'));
 
     // Cancel modal
     fireEvent.click(screen.getByTestId('cancel-signal-flow-btn'));
@@ -246,15 +246,15 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     });
 
     // Remained Not assigned
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
     expect(within(upstreamCell).getByText('Not assigned')).toBeInTheDocument();
   });
 
   it('Requirement 11: Valid multi-hop signal flow displays in origin-to-immediate order', async () => {
-    // Setup Swr-201 -> vTie-101 in storage
+    // Setup Swr 201 -> vTie 101 in storage
     const snapshot: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const tie = snapshot.sources.find((s) => s.id === 'SRC:VTIE-101')!;
-    tie.upstreamSourceId = 'SRC:SWR-201' as SourceId;
+    const tie = snapshot.sources.find((s) => s.id === 'SRC:VTIE_101')!;
+    tie.upstreamSourceId = 'SRC:SWR_201' as SourceId;
     await repo.saveSnapshot(snapshot, {
       id: 'cs1',
       timestamp: new Date().toISOString(),
@@ -265,28 +265,28 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Propose vTie-101 as upstream for vCam-01
+    // Propose vTie 101 as upstream for vCam 01
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'vTie-101' } });
-    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE-101'));
+    fireEvent.change(searchInput, { target: { value: 'vTie 101' } });
+    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE_101'));
 
-    // Must show origin-to-immediate order: Swr-201 -> vTie-101 -> vCam-01
+    // Must show origin-to-immediate order: Swr 201 -> vTie 101 -> vCam 01
     expect(screen.getByTestId('preview-signal-flow-chain')).toHaveTextContent(
-      'Swr-201 → vTie-101 → vCam-01'
+      'Swr 201 → vTie 101 → vCam 01'
     );
   });
 
   it('Requirement 12 & 13: Direct self-routing and indirect circular routing are rejected with inline error', async () => {
-    // Setup vTie-101 fed by vCam-01
+    // Setup vTie 101 fed by vCam 01
     const snapshot: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const tie = snapshot.sources.find((s) => s.id === 'SRC:VTIE-101')!;
-    tie.upstreamSourceId = 'SRC:VCAM-01' as SourceId;
+    const tie = snapshot.sources.find((s) => s.id === 'SRC:VTIE_101')!;
+    tie.upstreamSourceId = 'SRC:VCAM_01' as SourceId;
     await repo.saveSnapshot(snapshot, {
       id: 'cs1',
       timestamp: new Date().toISOString(),
@@ -297,21 +297,21 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
-    // Requirement 13: Attempt to feed vCam-01 from vTie-101 (creates cycle vCam-01 -> vTie-101 -> vCam-01)
+    // Requirement 13: Attempt to feed vCam 01 from vTie 101 (creates cycle vCam 01 -> vTie 101 -> vCam 01)
     const searchInput = screen.getByTestId('upstream-source-search-input');
-    fireEvent.change(searchInput, { target: { value: 'vTie-101' } });
-    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE-101'));
+    fireEvent.change(searchInput, { target: { value: 'vTie 101' } });
+    fireEvent.click(screen.getByTestId('upstream-option-SRC:VTIE_101'));
 
     // Inline error banner must appear with exact cycle path
     const errorBanner = screen.getByTestId('signal-flow-error-banner');
     expect(errorBanner).toHaveTextContent(
-      'Cannot save this relationship because it creates a circular signal flow: vCam-01 → vTie-101 → vCam-01.'
+      'Cannot save this relationship because it creates a circular signal flow: vCam 01 → vTie 101 → vCam 01.'
     );
 
     // Save button must be disabled
@@ -322,7 +322,7 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
   it('Requirement 14: Dangling upstream references display safely and can be corrected', async () => {
     // Construct snapshot with dangling upstream reference
     const snapshot: TrackerSnapshot = JSON.parse(JSON.stringify(INITIAL_SNAPSHOT));
-    const cam = snapshot.sources.find((s) => s.id === 'SRC:VCAM-01')!;
+    const cam = snapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
     cam.upstreamSourceId = 'SRC:NON_EXISTENT' as SourceId;
     await repo.saveSnapshot(snapshot, {
       id: 'cs1',
@@ -334,15 +334,15 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     renderApp(repo, '/directory');
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-row-SRC:VCAM-01')).toBeInTheDocument();
+      expect(screen.getByTestId('source-row-SRC:VCAM_01')).toBeInTheDocument();
     });
 
     // Directory table shows Missing Source badge without crashing
-    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM-01');
+    const upstreamCell = screen.getByTestId('upstream-cell-SRC:VCAM_01');
     expect(within(upstreamCell).getByText('Missing Source')).toBeInTheDocument();
 
     // Open routing details
-    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM-01'));
+    fireEvent.click(screen.getByTestId('edit-signal-flow-btn-SRC:VCAM_01'));
     await screen.findByTestId('source-signal-flow-modal');
 
     expect(screen.getByTestId('persisted-dangling-alert')).toHaveTextContent(
@@ -359,7 +359,7 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
 
     // Dangling issue resolved
     expect(
-      within(screen.getByTestId('upstream-cell-SRC:VCAM-01')).getByText('Not assigned')
+      within(screen.getByTestId('upstream-cell-SRC:VCAM_01')).getByText('Not assigned')
     ).toBeInTheDocument();
   });
 

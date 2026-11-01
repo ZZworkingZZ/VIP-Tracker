@@ -76,7 +76,22 @@ export function resolveSignalFlow(
   const sourceMap =
     sources instanceof Map ? sources : new Map<SourceId, Source>(sources.map((s) => [s.id, s]));
 
-  const rootSource = sourceMap.get(immediateSourceId);
+  const lookupSource = (id: SourceId): Source | undefined => {
+    const direct = sourceMap.get(id);
+    if (direct) return direct;
+    if (id.includes('_')) {
+      const hyphenId = id.replace(/_/g, '-') as SourceId;
+      const found = sourceMap.get(hyphenId);
+      if (found) return found;
+    } else if (id.includes('-')) {
+      const underscoreId = id.replace(/-/g, '_') as SourceId;
+      const found = sourceMap.get(underscoreId);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
+  const rootSource = lookupSource(immediateSourceId);
   if (!rootSource) {
     return {
       immediateSourceId,
@@ -167,7 +182,7 @@ export function resolveSignalFlow(
     }
 
     // 5. Look up next upstream source in directory
-    const nextSource = sourceMap.get(upstreamId);
+    const nextSource = lookupSource(upstreamId);
     if (!nextSource) {
       const hops = [...traversed].reverse();
       return {
@@ -258,7 +273,9 @@ export function formatCyclePath(
 const PROCESSING_DEVICE_TYPES = new Set<LawoDeviceType>([
   'UDX',
   'FS',
+  'Frame Sync',
   'Color Corrector',
+  'Caption',
   'Decap/Encap',
   'Decode/Encode',
   'Transcode',
