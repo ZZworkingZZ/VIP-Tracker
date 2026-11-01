@@ -3,7 +3,14 @@ import { useTrackerSnapshot } from '../hooks/useTracker';
 import { SOURCE_CATEGORIES, SourceCategory } from '../domain/sourceCategories';
 import { selectFilteredSources, getSourceAlias, formatSourceCompact } from '../domain/selectors';
 import { SourceId } from '../domain/identifiers';
-import { InventoryCategory } from '../domain/models';
+import { InventoryCategory, Source, SourceInventoryItem } from '../domain/models';
+import {
+  SEED_LAWO_SOURCES,
+  SEED_LAWO_PROCESSING_DEVICES,
+  SEED_LAWO_TIELINES,
+  SEED_EVERTZ_SOURCES,
+  SEED_EVERTZ_MV_INPUTS,
+} from '../data/seed/sourceInventory';
 import { SourceSignalFlowModal } from '../components/multiview/SourceSignalFlowModal';
 import { resolveSignalFlow, formatSignalFlowChain } from '../domain/signalFlow';
 
@@ -30,21 +37,62 @@ export const SourceDirectoryPage: React.FC = () => {
   const [routingModalSourceId, setRoutingModalSourceId] = useState<SourceId | null>(null);
   const [aliasEdits, setAliasEdits] = useState<Record<string, string>>({});
 
-  const sources = useMemo(() => snapshot?.sources ?? [], [snapshot]);
+  const inventorySources = useMemo(() => {
+    if (!snapshot || snapshot.sources.length === 0) return [];
+
+    switch (selectedInventory) {
+      case 'lawo-source':
+        return SEED_LAWO_SOURCES;
+      case 'lawo-processing':
+        return SEED_LAWO_PROCESSING_DEVICES;
+      case 'lawo-destination/tieline':
+        return SEED_LAWO_TIELINES;
+      case 'evertz-source':
+        return SEED_EVERTZ_SOURCES;
+      case 'evertz-mv-input':
+        return SEED_EVERTZ_MV_INPUTS;
+      case 'ALL':
+      default:
+        return snapshot.sources;
+    }
+  }, [selectedInventory, snapshot]);
+
+  const sources = useMemo<SourceInventoryItem[]>(() => {
+    if (inventorySources.length === 0) return [];
+
+    const aliasMap = new Map<string, string | null | undefined>();
+    const upstreamMap = new Map<string, SourceId | null>();
+    if (snapshot?.sources) {
+      for (const s of snapshot.sources) {
+        if (s.alias !== undefined) aliasMap.set(s.id, s.alias);
+        if (s.upstreamSourceId !== undefined) upstreamMap.set(s.id, s.upstreamSourceId);
+      }
+    }
+
+    return inventorySources.map((item) => {
+      const alias = aliasMap.get(item.id) ?? item.alias;
+      const upstreamSourceId = upstreamMap.get(item.id) ?? item.upstreamSourceId ?? null;
+      return {
+        ...item,
+        alias,
+        upstreamSourceId,
+      };
+    });
+  }, [inventorySources, snapshot?.sources]);
 
   const sourceMap = useMemo(
-    () => new Map<SourceId, import('../domain/models').Source>(sources.map((s) => [s.id, s])),
-    [sources]
+    () => new Map<SourceId, Source>((snapshot?.sources ?? []).map((s) => [s.id, s])),
+    [snapshot?.sources]
   );
 
   const filteredSources = useMemo(() => {
-    return selectFilteredSources(sources, selectedCategory, searchQuery, selectedInventory);
-  }, [sources, selectedCategory, searchQuery, selectedInventory]);
+    return selectFilteredSources(sources, selectedCategory, searchQuery, 'ALL');
+  }, [sources, selectedCategory, searchQuery]);
 
-  const selectedSource = useMemo(() => {
+  const selectedSource = useMemo<Source | null>(() => {
     if (!routingModalSourceId) return null;
-    return sources.find((s) => s.id === routingModalSourceId) ?? null;
-  }, [sources, routingModalSourceId]);
+    return (snapshot?.sources ?? []).find((s) => s.id === routingModalSourceId) ?? null;
+  }, [snapshot?.sources, routingModalSourceId]);
 
   const handleToggleEditMode = () => {
     if (isReadOnly) return;
@@ -151,6 +199,7 @@ export const SourceDirectoryPage: React.FC = () => {
             <option value="lawo-processing">Lawo Processing</option>
             <option value="lawo-destination/tieline">Lawo Destinations / Tielines</option>
             <option value="evertz-source">Evertz Sources</option>
+            <option value="evertz-mv-input">Evertz MV Inputs</option>
           </select>
         </div>
 
@@ -274,7 +323,7 @@ export const SourceDirectoryPage: React.FC = () => {
                 const upstream = source.upstreamSourceId
                   ? sourceMap.get(source.upstreamSourceId)
                   : null;
-                const flow = resolveSignalFlow(source.id, sourceMap);
+                const flow = resolveSignalFlow(source.id as SourceId, sourceMap);
                 const savedAlias = getSourceAlias(source);
                 const hasLocalAliasEdit = Object.prototype.hasOwnProperty.call(
                   aliasEdits,
@@ -286,7 +335,10 @@ export const SourceDirectoryPage: React.FC = () => {
                 const isAliasDirty = currentAliasInput.trim() !== (savedAlias ?? '');
 
                 return (
-                  <tr key={source.id} data-testid={`source-row-${source.id}`}>
+                  <tr
+                    key={`${source.inventoryCategory}-${source.id}`}
+                    data-testid={`source-row-${source.id}`}
+                  >
                     <td style={{ fontWeight: 600 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <span style={{ color: '#ffffff' }}>{source.name}</span>
@@ -334,7 +386,9 @@ export const SourceDirectoryPage: React.FC = () => {
                           aria-label={`Save alias for ${source.name}`}
                           title={`Save alias for ${source.name}`}
                           disabled={isReadOnly || isSaving}
-                          onClick={() => void handleSaveAlias(source.id, currentAliasInput)}
+                          onClick={() =>
+                            void handleSaveAlias(source.id as SourceId, currentAliasInput)
+                          }
                           style={{
                             padding: '3px 7px',
                             fontSize: '11px',
@@ -355,14 +409,31 @@ export const SourceDirectoryPage: React.FC = () => {
                       <span className="status-badge badge-assigned">{source.category}</span>
                     </td>
                     <td style={{ fontSize: '11px', color: '#cbd5e1' }}>
-                      {source.sourceType === 'virtual'
-                        ? 'Virtual Source'
-                        : source.sourceType === 'processing'
-                          ? 'Processing'
-                          : 'Direct VIP'}
+                      {source.deviceType ||
+                        (source.sourceType === 'virtual'
+                          ? 'Virtual Source'
+                          : source.sourceType === 'processing'
+                            ? 'Processing'
+                            : 'Direct VIP')}
                     </td>
                     <td data-testid={`upstream-cell-${source.id}`}>
-                      {!source.upstreamSourceId ? (
+                      {source.inventoryCategory === 'evertz-mv-input' ? (
+                        (() => {
+                          const dest = snapshot.destinations?.find(
+                            (d) => (d.id as string) === (source.id as string)
+                          );
+                          const assigned = dest?.assignedSourceId
+                            ? sourceMap.get(dest.assignedSourceId)
+                            : null;
+                          return assigned ? (
+                            <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '12px' }}>
+                              {formatSourceCompact(assigned)}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#858585', fontSize: '11px' }}>Not assigned</span>
+                          );
+                        })()
+                      ) : !source.upstreamSourceId ? (
                         <span style={{ color: '#858585', fontSize: '11px' }}>Not assigned</span>
                       ) : upstream ? (
                         <span style={{ color: '#38bdf8', fontWeight: 600, fontSize: '12px' }}>
@@ -378,7 +449,39 @@ export const SourceDirectoryPage: React.FC = () => {
                       )}
                     </td>
                     <td data-testid={`signal-flow-cell-${source.id}`}>
-                      {flow.hasCycle ? (
+                      {source.inventoryCategory === 'evertz-mv-input' ? (
+                        (() => {
+                          const dest = snapshot.destinations?.find(
+                            (d) => (d.id as string) === (source.id as string)
+                          );
+                          const assigned = dest?.assignedSourceId
+                            ? sourceMap.get(dest.assignedSourceId)
+                            : null;
+                          if (!assigned) {
+                            return (
+                              <span style={{ color: '#858585', fontSize: '11px' }}>
+                                Unrouted Input
+                              </span>
+                            );
+                          }
+                          const destFlow = resolveSignalFlow(assigned.id, sourceMap);
+                          return destFlow.hops.length > 1 ? (
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontSize: '11px',
+                                color: '#54d54a',
+                              }}
+                            >
+                              {formatSignalFlowChain(destFlow)} → {source.name}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#38bdf8', fontSize: '11px' }}>
+                              {assigned.name} → {source.name}
+                            </span>
+                          );
+                        })()
+                      ) : flow.hasCycle ? (
                         <span
                           className="status-badge badge-conflict"
                           title="Circular routing detected"
@@ -414,28 +517,32 @@ export const SourceDirectoryPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        data-testid={`edit-signal-flow-btn-${source.id}`}
-                        onClick={() => handleOpenRouting(source.id, true)}
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          backgroundColor: isEditMode ? '#2864a3' : '#262626',
-                          color: isEditMode ? '#ffffff' : '#cbd5e1',
-                          border: `1px solid ${isEditMode ? '#38bdf8' : '#444'}`,
-                          borderRadius: '2px',
-                          cursor: 'pointer',
-                        }}
-                        title={
-                          isEditMode
-                            ? `Edit signal flow for ${source.name}`
-                            : `View routing details for ${source.name}`
-                        }
-                      >
-                        {isEditMode ? 'Edit Flow' : 'Routing Details'}
-                      </button>
+                      {source.inventoryCategory === 'evertz-mv-input' ? (
+                        <span style={{ color: '#64748b', fontSize: '11px' }}>MV Input</span>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid={`edit-signal-flow-btn-${source.id}`}
+                          onClick={() => handleOpenRouting(source.id as SourceId, true)}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            backgroundColor: isEditMode ? '#2864a3' : '#262626',
+                            color: isEditMode ? '#ffffff' : '#cbd5e1',
+                            border: `1px solid ${isEditMode ? '#38bdf8' : '#444'}`,
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                          title={
+                            isEditMode
+                              ? `Edit signal flow for ${source.name}`
+                              : `View routing details for ${source.name}`
+                          }
+                        >
+                          {isEditMode ? 'Edit Flow' : 'Routing Details'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -450,7 +557,7 @@ export const SourceDirectoryPage: React.FC = () => {
         <SourceSignalFlowModal
           isOpen={Boolean(selectedSource)}
           source={selectedSource}
-          allSources={sources}
+          allSources={snapshot.sources}
           validationFindings={snapshot.validationFindings}
           isEditMode={isEditMode}
           onEnterEditMode={enterEditMode}

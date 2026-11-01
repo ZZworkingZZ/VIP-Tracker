@@ -165,7 +165,7 @@ def main():
                 raise ValueError(f"Duplicate entry found in {grp_label}: {item_name}")
             seen.add(item_name)
 
-    # Build SourceInventoryItem entries
+    # Build SourceInventoryItem entries for WorkbookSourceDirectory
     def make_inventory_item(name: str, item_type: str, category_group: str, is_dest: bool = False):
         cat = classify_source_category(name)
         item_id = create_dest_id(name) if is_dest else create_source_id(name)
@@ -179,100 +179,133 @@ def main():
             'rawType': item_type,
         }
 
+    # Build typed Source entries for application domain models
+    def make_source_item(name: str, item_type: str, category_group: str, is_dest: bool = False):
+        cat = classify_source_category(name)
+        item_id = create_dest_id(name) if is_dest else create_source_id(name)
+
+        if category_group == 'lawo-processing':
+            source_type = 'processing'
+            route_role = 'processing'
+            router = 'Lawo'
+            device_type = item_type
+        elif category_group == 'lawo-destination/tieline':
+            source_type = 'virtual'
+            route_role = 'tieline'
+            router = 'Both'
+            device_type = None
+        elif category_group == 'evertz-mv-input':
+            source_type = 'originating'
+            route_role = None
+            router = 'Evertz'
+            device_type = None
+        elif category_group == 'evertz-source':
+            is_tieline = name in tieline_lookup
+            source_type = 'virtual' if is_tieline else 'originating'
+            route_role = 'tieline' if is_tieline else 'evertz_source'
+            router = 'Both' if is_tieline else 'Evertz'
+            device_type = None
+        elif category_group == 'lawo-source':
+            is_proc = name in proc_lookup
+            source_type = 'processing' if is_proc else 'originating'
+            route_role = 'processing' if is_proc else 'lawo_source'
+            router = 'Lawo'
+            device_type = item_type
+        else:
+            source_type = 'originating'
+            route_role = None
+            router = None
+            device_type = None
+
+        vendor = infer_vendor(name, item_type)
+
+        return {
+            'id': item_id,
+            'name': name,
+            'normalizedName': name.strip().upper(),
+            'category': cat,
+            'active': True,
+            'upstreamSourceId': None,
+            'sourceType': source_type,
+            'deviceType': device_type,
+            'vendor': vendor,
+            'router': router,
+            'routeRole': route_role,
+            'inventoryCategory': category_group,
+            'metadata': {'rawType': item_type},
+        }
+
+    # Pre-lookup tables for classification
+    proc_lookup = {n: t for n, t in lawo_proc_raw}
+    tieline_lookup = {n: t for n, t in lawo_tielines_raw}
+
+    # 1. Authoritative SourceInventoryItem entries for WorkbookSourceDirectory
     lawo_sources_items = [make_inventory_item(n, t, 'lawo-source') for n, t in lawo_sources_raw]
     lawo_proc_items = [make_inventory_item(n, t, 'lawo-processing') for n, t in lawo_proc_raw]
     lawo_tielines_items = [make_inventory_item(n, t, 'lawo-destination/tieline') for n, t in lawo_tielines_raw]
     evertz_sources_items = [make_inventory_item(n, t, 'evertz-source') for n, t in evertz_sources_raw]
     mv_inputs_items = [make_inventory_item(n, t, 'evertz-mv-input', is_dest=True) for n, t in mv_inputs_raw]
 
-    # Build facility Source[] records
-    # 1. Processing devices (138)
-    proc_lookup = {n: t for n, t in lawo_proc_raw}
-    seed_processing_sources = []
-    for n, t in lawo_proc_raw:
-        seed_processing_sources.append({
-            'id': create_source_id(n),
-            'name': n,
-            'normalizedName': n.strip().upper(),
-            'category': classify_source_category(n),
-            'active': True,
-            'upstreamSourceId': None,
-            'sourceType': 'processing',
-            'deviceType': t,
-            'vendor': infer_vendor(n, t),
-            'router': 'Lawo',
-            'routeRole': 'processing',
-            'inventoryCategory': 'lawo-processing',
-            'inventoryCategories': ['lawo-source', 'lawo-processing'],
-        })
+    # 2. Five independent authoritative Excel inventories as Source[]
+    seed_lawo_sources = [make_source_item(n, t, 'lawo-source') for n, t in lawo_sources_raw]
+    seed_processing_sources = [make_source_item(n, t, 'lawo-processing') for n, t in lawo_proc_raw]
+    seed_tieline_sources = [make_source_item(n, t, 'lawo-destination/tieline') for n, t in lawo_tielines_raw]
+    seed_evertz_sources = [make_source_item(n, t, 'evertz-source') for n, t in evertz_sources_raw]
+    seed_mv_inputs_sources = [make_source_item(n, t, 'evertz-mv-input', is_dest=True) for n, t in mv_inputs_raw]
 
-    # 2. Originating Lawo sources (445 - 138 = 307)
-    seed_lawo_origin_sources = []
-    for n, t in lawo_sources_raw:
-        if n in proc_lookup:
-            continue
-        seed_lawo_origin_sources.append({
-            'id': create_source_id(n),
-            'name': n,
-            'normalizedName': n.strip().upper(),
-            'category': classify_source_category(n),
-            'active': True,
-            'upstreamSourceId': None,
-            'sourceType': 'originating',
-            'deviceType': t,
-            'vendor': infer_vendor(n, t),
-            'router': 'Lawo',
-            'routeRole': 'lawo_source',
-            'inventoryCategory': 'lawo-source',
+    # Authoritative combined list across all 5 discrete inventories (445 + 138 + 117 + 267 + 264 = 1231)
+    authoritative_inventory_sources = (
+        seed_lawo_sources +
+        seed_processing_sources +
+        seed_tieline_sources +
+        seed_evertz_sources +
+        seed_mv_inputs_sources
+    )
+
+    # Derived internal routing catalog (712 sources):
+    # 1. Originating Lawo sources (445 - 138 = 307)
+    seed_lawo_origin_sources = [
+        {
+            **item,
             'inventoryCategories': ['lawo-source'],
-        })
+        }
+        for item in seed_lawo_sources if item['name'] not in proc_lookup
+    ]
 
-    # 3. Tieline sources (117)
-    tieline_lookup = {n: t for n, t in lawo_tielines_raw}
-    seed_tieline_sources = []
-    for n, t in lawo_tielines_raw:
-        seed_tieline_sources.append({
-            'id': create_source_id(n),
-            'name': n,
-            'normalizedName': n.strip().upper(),
-            'category': classify_source_category(n),
-            'active': True,
-            'upstreamSourceId': None,
-            'sourceType': 'virtual',
-            'deviceType': None,
-            'vendor': None,
-            'router': 'Both',
-            'routeRole': 'tieline',
-            'inventoryCategory': 'lawo-destination/tieline',
+    # 2. Processing devices with routing category tags (138)
+    seed_processing_routing_sources = [
+        {
+            **item,
+            'inventoryCategories': ['lawo-source', 'lawo-processing'],
+        }
+        for item in seed_processing_sources
+    ]
+
+    # 3. Tieline sources with routing category tags (117)
+    seed_tieline_routing_sources = [
+        {
+            **item,
             'inventoryCategories': ['lawo-destination/tieline', 'evertz-source'],
-        })
+        }
+        for item in seed_tieline_sources
+    ]
 
     # 4. Direct Evertz sources (267 - 117 = 150)
-    seed_direct_evertz_sources = []
-    for n, t in evertz_sources_raw:
-        if n in tieline_lookup:
-            continue
-        seed_direct_evertz_sources.append({
-            'id': create_source_id(n),
-            'name': n,
-            'normalizedName': n.strip().upper(),
-            'category': classify_source_category(n),
-            'active': True,
-            'upstreamSourceId': None,
-            'sourceType': 'originating',
-            'deviceType': None,
-            'vendor': None,
-            'router': 'Evertz',
-            'routeRole': 'evertz_source',
-            'inventoryCategory': 'evertz-source',
+    seed_direct_evertz_sources = [
+        {
+            **item,
             'inventoryCategories': ['evertz-source'],
-        })
+        }
+        for item in seed_evertz_sources if item['name'] not in tieline_lookup
+    ]
 
-    # All Evertz Sources = 117 tielines + 150 direct = 267
-    seed_evertz_sources = seed_tieline_sources + seed_direct_evertz_sources
-
-    # Unified all sources = 307 + 138 + 117 + 150 = 712
-    seed_all_sources = seed_lawo_origin_sources + seed_processing_sources + seed_tieline_sources + seed_direct_evertz_sources
+    # Unified internal routing catalog = 307 + 138 + 117 + 150 = 712
+    seed_combined_routing_sources = (
+        seed_lawo_origin_sources +
+        seed_processing_routing_sources +
+        seed_tieline_routing_sources +
+        seed_direct_evertz_sources
+    )
 
     # Write sourceInventory.ts
     print(f"Writing generated source inventory to {output_ts_path}...")
@@ -286,18 +319,19 @@ def main():
  * DO NOT EDIT MANUALLY. Run 'npm run import:sources' to re-generate.
  */
 
-import {{ Source, WorkbookSourceDirectory }} from '../../domain/models';
+import {{ Source, SourceInventoryItem, WorkbookSourceDirectory }} from '../../domain/models';
 
 export const SOURCE_INVENTORY_METADATA = {{
   sourceWorkbook: 'data/VIP Tracker Source Directory.xlsx',
   sourceWorkbookHash: '{file_hash}',
   counts: {{
-    lawoSources: {len(lawo_sources_items)},
-    lawoProcessing: {len(lawo_proc_items)},
-    lawoTielines: {len(lawo_tielines_items)},
-    evertzSources: {len(evertz_sources_items)},
-    evertzMvInputs: {len(mv_inputs_items)},
-    unifiedSources: {len(seed_all_sources)},
+    lawoSources: {len(seed_lawo_sources)},
+    lawoProcessing: {len(seed_processing_sources)},
+    lawoTielines: {len(seed_tieline_sources)},
+    evertzSources: {len(seed_evertz_sources)},
+    evertzMvInputs: {len(seed_mv_inputs_sources)},
+    authoritativeTotal: {len(authoritative_inventory_sources)},
+    unifiedSources: {len(seed_combined_routing_sources)},
   }},
 }} as const;
 
@@ -309,25 +343,44 @@ export const WORKBOOK_SOURCE_INVENTORY: WorkbookSourceDirectory = {{
   evertzMvInputs: {json.dumps(mv_inputs_items, indent=2)},
 }};
 
-export const SEED_LAWO_SOURCES: Source[] = {json.dumps(seed_lawo_origin_sources, indent=2)};
+export const SEED_LAWO_SOURCES: Source[] = {json.dumps(seed_lawo_sources, indent=2)};
 
 export const SEED_LAWO_PROCESSING_DEVICES: Source[] = {json.dumps(seed_processing_sources, indent=2)};
 
+export const SEED_LAWO_TIELINES: Source[] = {json.dumps(seed_tieline_sources, indent=2)};
+
 export const SEED_EVERTZ_SOURCES: Source[] = {json.dumps(seed_evertz_sources, indent=2)};
 
-export const SEED_ALL_SOURCES: Source[] = {json.dumps(seed_all_sources, indent=2)};
+export const SEED_EVERTZ_MV_INPUTS: SourceInventoryItem[] = {json.dumps(seed_mv_inputs_sources, indent=2)};
+
+export const AUTHORITATIVE_INVENTORY_SOURCES: SourceInventoryItem[] = [
+  ...WORKBOOK_SOURCE_INVENTORY.lawoSources,
+  ...WORKBOOK_SOURCE_INVENTORY.lawoProcessing,
+  ...WORKBOOK_SOURCE_INVENTORY.lawoTielines,
+  ...WORKBOOK_SOURCE_INVENTORY.evertzSources,
+  ...WORKBOOK_SOURCE_INVENTORY.evertzMvInputs,
+];
+
+export const SEED_LAWO_ORIGIN_SOURCES: Source[] = {json.dumps(seed_lawo_origin_sources, indent=2)};
+
+export const SEED_DIRECT_EVERTZ_SOURCES: Source[] = {json.dumps(seed_direct_evertz_sources, indent=2)};
+
+export const SEED_COMBINED_ROUTING_CATALOG: Source[] = {json.dumps(seed_combined_routing_sources, indent=2)};
+
+export const SEED_ALL_SOURCES: Source[] = SEED_COMBINED_ROUTING_CATALOG;
 """
 
     with open(output_ts_path, 'w', encoding='utf-8') as f:
         f.write(ts_code)
 
     print(f"Successfully generated {output_ts_path}")
-    print(f"  Total Lawo Sources: {len(lawo_sources_items)}")
-    print(f"  Total Lawo Processing: {len(lawo_proc_items)}")
-    print(f"  Total Lawo Tielines: {len(lawo_tielines_items)}")
-    print(f"  Total Evertz Sources: {len(evertz_sources_items)}")
-    print(f"  Total Evertz MV Inputs: {len(mv_inputs_items)}")
-    print(f"  Total Unified Sources: {len(seed_all_sources)}")
+    print(f"  Total Lawo Sources: {len(seed_lawo_sources)}")
+    print(f"  Total Lawo Processing: {len(seed_processing_sources)}")
+    print(f"  Total Lawo Tielines: {len(seed_tieline_sources)}")
+    print(f"  Total Evertz Sources: {len(seed_evertz_sources)}")
+    print(f"  Total Evertz MV Inputs: {len(seed_mv_inputs_sources)}")
+    print(f"  Total Authoritative Inventory Sources: {len(authoritative_inventory_sources)}")
+    print(f"  Total Derived Combined Routing Catalog: {len(seed_combined_routing_sources)}")
 
 if __name__ == '__main__':
     main()

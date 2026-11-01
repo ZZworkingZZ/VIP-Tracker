@@ -136,11 +136,22 @@ export type InventoryCategory =
 export interface SourceInventoryItem {
   id: string;
   name: string;
-  displayName: string;
+  displayName?: string;
   category: SourceCategory;
-  type: string;
-  inventoryCategory: InventoryCategory;
-  rawType: string;
+  type?: string;
+  inventoryCategory?: InventoryCategory;
+  inventoryCategories?: InventoryCategory[];
+  rawType?: string;
+  active?: boolean;
+  alias?: string | null;
+  upstreamSourceId?: SourceId | null;
+  sourceType?: SourceType;
+  deviceType?: string | null;
+  vendor?: string | null;
+  router?: RouterSystem | null;
+  routeRole?: RouteRole | null;
+  normalizedName?: string;
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 export interface WorkbookSourceDirectory {

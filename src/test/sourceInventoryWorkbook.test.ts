@@ -1,11 +1,20 @@
+import React from 'react';
 import { describe, it, expect } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithProviders } from './helpers/renderWithProviders';
+import { SourceDirectoryPage } from '../pages/SourceDirectoryPage';
 import {
   WORKBOOK_SOURCE_INVENTORY,
   SOURCE_INVENTORY_METADATA,
   SEED_ALL_SOURCES,
+  SEED_COMBINED_ROUTING_CATALOG,
   SEED_LAWO_SOURCES,
+  SEED_LAWO_ORIGIN_SOURCES,
   SEED_LAWO_PROCESSING_DEVICES,
+  SEED_LAWO_TIELINES,
   SEED_EVERTZ_SOURCES,
+  SEED_EVERTZ_MV_INPUTS,
+  AUTHORITATIVE_INVENTORY_SOURCES,
 } from '../data/seed/sourceInventory';
 import { SEED_SOURCES } from '../data/seed/sources';
 import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
@@ -27,17 +36,25 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       expect(WORKBOOK_SOURCE_INVENTORY.evertzSources).toHaveLength(267);
       expect(WORKBOOK_SOURCE_INVENTORY.evertzMvInputs).toHaveLength(264);
 
-      // Verify authoritative derived seed collections
-      expect(SEED_ALL_SOURCES).toHaveLength(712);
-      expect(SEED_LAWO_SOURCES).toHaveLength(307);
+      // Verify authoritative independent seed collections
+      expect(SEED_LAWO_SOURCES).toHaveLength(445);
       expect(SEED_LAWO_PROCESSING_DEVICES).toHaveLength(138);
+      expect(SEED_LAWO_TIELINES).toHaveLength(117);
       expect(SEED_EVERTZ_SOURCES).toHaveLength(267);
+      expect(SEED_EVERTZ_MV_INPUTS).toHaveLength(264);
+      expect(AUTHORITATIVE_INVENTORY_SOURCES).toHaveLength(1231);
+
+      // Verify derived internal routing collections
+      expect(SEED_LAWO_ORIGIN_SOURCES).toHaveLength(307);
+      expect(SEED_ALL_SOURCES).toHaveLength(712);
+      expect(SEED_COMBINED_ROUTING_CATALOG).toHaveLength(712);
 
       expect(SOURCE_INVENTORY_METADATA.counts.lawoSources).toBe(445);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoProcessing).toBe(138);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoTielines).toBe(117);
       expect(SOURCE_INVENTORY_METADATA.counts.evertzSources).toBe(267);
       expect(SOURCE_INVENTORY_METADATA.counts.evertzMvInputs).toBe(264);
+      expect(SOURCE_INVENTORY_METADATA.counts.authoritativeTotal).toBe(1231);
       expect(SOURCE_INVENTORY_METADATA.counts.unifiedSources).toBe(712);
     });
 
@@ -52,8 +69,8 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
 
       for (const item of allItems) {
         expect(item.name.trim().length).toBeGreaterThan(0);
-        expect(item.displayName.trim().length).toBeGreaterThan(0);
-        expect(item.type.trim().length).toBeGreaterThan(0);
+        expect(item.displayName?.trim().length).toBeGreaterThan(0);
+        expect(item.type?.trim().length).toBeGreaterThan(0);
         expect(item.id.trim().length).toBeGreaterThan(0);
         expect(item.name).not.toMatch(/^(UNKNOWN|N\/A|TBD|Admin)$/i);
       }
@@ -215,30 +232,84 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
 
   describe('9. Source Directory Functionality', () => {
     it('supports category filtering, inventory group filtering, and search in Source Directory', () => {
-      // 1. All sources
-      const all = selectFilteredSources(SEED_SOURCES, 'ALL', '');
-      expect(all).toHaveLength(712);
+      // 1. All sources across the five authoritative inventories
+      const all = selectFilteredSources(AUTHORITATIVE_INVENTORY_SOURCES, 'ALL', '');
+      expect(all).toHaveLength(1231);
 
-      // 2. Filter by inventory group
-      const lawoSources = selectFilteredSources(SEED_SOURCES, 'ALL', '', 'lawo-source');
+      // 2. Filter by inventory group for all five authoritative inventories
+      const lawoSources = selectFilteredSources(
+        AUTHORITATIVE_INVENTORY_SOURCES,
+        'ALL',
+        '',
+        'lawo-source'
+      );
       expect(lawoSources).toHaveLength(445);
 
-      const processing = selectFilteredSources(SEED_SOURCES, 'ALL', '', 'lawo-processing');
+      const processing = selectFilteredSources(
+        AUTHORITATIVE_INVENTORY_SOURCES,
+        'ALL',
+        '',
+        'lawo-processing'
+      );
       expect(processing).toHaveLength(138);
 
-      const tielines = selectFilteredSources(SEED_SOURCES, 'ALL', '', 'lawo-destination/tieline');
+      const tielines = selectFilteredSources(
+        AUTHORITATIVE_INVENTORY_SOURCES,
+        'ALL',
+        '',
+        'lawo-destination/tieline'
+      );
       expect(tielines).toHaveLength(117);
 
-      const evertz = selectFilteredSources(SEED_SOURCES, 'ALL', '', 'evertz-source');
+      const evertz = selectFilteredSources(
+        AUTHORITATIVE_INVENTORY_SOURCES,
+        'ALL',
+        '',
+        'evertz-source'
+      );
       expect(evertz).toHaveLength(267);
 
+      const mvInputs = selectFilteredSources(
+        AUTHORITATIVE_INVENTORY_SOURCES,
+        'ALL',
+        '',
+        'evertz-mv-input'
+      );
+      expect(mvInputs).toHaveLength(264);
+
       // 3. Search query
-      const searchBsp = selectFilteredSources(SEED_SOURCES, 'ALL', 'BSP-B 101');
+      const searchBsp = selectFilteredSources(AUTHORITATIVE_INVENTORY_SOURCES, 'ALL', 'BSP-B 101');
       expect(searchBsp).toHaveLength(1);
       expect(searchBsp[0].name).toBe('BSP-B 101');
 
-      const searchUdx = selectFilteredSources(SEED_SOURCES, 'ALL', 'UDX');
+      const searchUdx = selectFilteredSources(AUTHORITATIVE_INVENTORY_SOURCES, 'ALL', 'UDX');
       expect(searchUdx.length).toBeGreaterThanOrEqual(32);
+    });
+
+    it('renders exact counts in SourceDirectoryPage for each of the five inventory dropdown selections', async () => {
+      renderWithProviders(React.createElement(SourceDirectoryPage, null));
+
+      const inventorySelect = await screen.findByTestId('inventory-filter-select');
+
+      // 1. Lawo Sources (445)
+      fireEvent.change(inventorySelect, { target: { value: 'lawo-source' } });
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(445);
+
+      // 2. Lawo Processing (138)
+      fireEvent.change(inventorySelect, { target: { value: 'lawo-processing' } });
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(138);
+
+      // 3. Lawo Destinations / Tielines (117)
+      fireEvent.change(inventorySelect, { target: { value: 'lawo-destination/tieline' } });
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(117);
+
+      // 4. Evertz Sources (267)
+      fireEvent.change(inventorySelect, { target: { value: 'evertz-source' } });
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(267);
+
+      // 5. Evertz MV Inputs (264)
+      fireEvent.change(inventorySelect, { target: { value: 'evertz-mv-input' } });
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(264);
     });
   });
 

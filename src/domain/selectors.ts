@@ -3,6 +3,7 @@ import {
   MultiviewOutput,
   Destination,
   Source,
+  SourceInventoryItem,
   OperationalAssignment,
   ValidationFinding,
   TrackerSnapshot,
@@ -272,12 +273,12 @@ export function selectGroupedProductions(snapshot: TrackerSnapshot): GroupedProd
  * Filters and sorts sources for the Source Directory.
  * Matches against technical source name, optional alias, device type, category, and inventory group.
  */
-export function selectFilteredSources(
-  sources: Source[],
+export function selectFilteredSources<T extends Source | SourceInventoryItem>(
+  sources: T[],
   categoryFilter: SourceCategory | 'ALL',
   searchQuery: string,
   inventoryFilter: InventoryCategory | 'ALL' = 'ALL'
-): Source[] {
+): T[] {
   const query = searchQuery.trim().toLowerCase();
 
   return sources
@@ -288,7 +289,9 @@ export function selectFilteredSources(
       if (inventoryFilter !== 'ALL') {
         const matchesInventory =
           source.inventoryCategory === inventoryFilter ||
-          (source.inventoryCategories && source.inventoryCategories.includes(inventoryFilter));
+          ('inventoryCategories' in source &&
+            Array.isArray(source.inventoryCategories) &&
+            source.inventoryCategories.includes(inventoryFilter));
         if (!matchesInventory) {
           return false;
         }
@@ -297,9 +300,13 @@ export function selectFilteredSources(
         const nameMatch = source.name.toLowerCase().includes(query);
         const alias = getSourceAlias(source);
         const aliasMatch = alias ? alias.toLowerCase().includes(query) : false;
-        const typeMatch = source.deviceType
-          ? source.deviceType.toLowerCase().includes(query)
-          : false;
+        const typeStr =
+          'deviceType' in source && typeof source.deviceType === 'string'
+            ? source.deviceType
+            : 'type' in source && typeof source.type === 'string'
+              ? source.type
+              : null;
+        const typeMatch = typeStr ? typeStr.toLowerCase().includes(query) : false;
         if (!nameMatch && !aliasMatch && !typeMatch) {
           return false;
         }
