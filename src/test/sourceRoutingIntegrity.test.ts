@@ -316,9 +316,9 @@ describe('Source Routing Reference Integrity & Legacy Migration', () => {
   it('8. unmatched legacy records are NOT deleted and remain intact in sources', () => {
     const unmatchedSources: Source[] = [
       {
-        id: 'SRC:TX_TWD_9901' as SourceId,
-        name: 'Tx TWD 9901',
-        normalizedName: 'TX TWD 9901',
+        id: 'SRC:TX_TWD_9937' as SourceId,
+        name: 'Tx TWD 9937',
+        normalizedName: 'TX TWD 9937',
         category: 'Transmission',
         active: true,
         upstreamSourceId: null,
@@ -331,7 +331,7 @@ describe('Source Routing Reference Integrity & Legacy Migration', () => {
         id: 'DEST:MV-01-01' as DestinationId,
         multiviewId: 'MV-01',
         destinationNumber: 1,
-        assignedSourceId: 'SRC:TX_TWD_9901' as SourceId,
+        assignedSourceId: 'SRC:TX_TWD_9937' as SourceId,
         assignmentName: null,
         locked: false,
         updatedAt: null,
@@ -346,13 +346,13 @@ describe('Source Routing Reference Integrity & Legacy Migration', () => {
     );
 
     expect(report.unmatchedRecords.length).toBe(1);
-    expect(report.unmatchedRecords[0].legacyId).toBe('SRC:TX_TWD_9901');
+    expect(report.unmatchedRecords[0].legacyId).toBe('SRC:TX_TWD_9937');
 
     const reconciled = reconcilePersistedSources(unmatchedSources, INITIAL_SNAPSHOT.sources, {
       destinations,
     });
-    expect(destinations[0].assignedSourceId).toBe('SRC:TX_TWD_9901');
-    expect(reconciled.some((s) => s.id === 'SRC:TX_TWD_9901')).toBe(true);
+    expect(destinations[0].assignedSourceId).toBe('SRC:TX_TWD_9937');
+    expect(reconciled.some((s) => s.id === 'SRC:TX_TWD_9937')).toBe(true);
   });
 
   it('9. existing canonical flows remain unchanged during migration', () => {

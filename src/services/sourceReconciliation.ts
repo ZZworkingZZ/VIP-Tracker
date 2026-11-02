@@ -41,6 +41,40 @@ export function normalizeSourceMatchKey(rawName: string): string {
 }
 
 /**
+ * Explicit legacy -> canonical rules for TWD records whose Tx/Rx prefix was swapped relative to the
+ * authoritative Source Directory workbook. The match is keyed on the 4-digit number (within the exact
+ * range) and the legacy prefix; it is NOT a global Tx/Rx swap and involves no fuzzy matching.
+ *   legacy "Tx TWD 9901".."9936" -> canonical "RX TWD 9901".."9936"
+ *   legacy "Rx TWD 8801".."8836" -> canonical "TX TWD 8801".."8836"
+ * A rule applies only when exactly one persisted legacy record and exactly one canonical record
+ * share the number; otherwise the legacy record is reported as ambiguous and is not auto-migrated.
+ */
+export const TWD_PREFIX_SWAP_RULES: ReadonlyArray<{
+  legacyPrefix: 'TX' | 'RX';
+  canonicalPrefix: 'TX' | 'RX';
+  min: number;
+  max: number;
+}> = [
+  { legacyPrefix: 'TX', canonicalPrefix: 'RX', min: 9901, max: 9936 },
+  { legacyPrefix: 'RX', canonicalPrefix: 'TX', min: 8801, max: 8836 },
+];
+
+/**
+ * Returns the canonical normalized match key for a legacy name covered by a TWD prefix-swap rule,
+ * or null when the name is not covered.
+ */
+export function getTwdPrefixSwapKey(legacyName: string): string | null {
+  const m = /^(TX|RX) TWD (\d{4})$/i.exec(legacyName.trim());
+  if (!m) return null;
+  const prefix = m[1].toUpperCase();
+  const num = Number(m[2]);
+  const rule = TWD_PREFIX_SWAP_RULES.find(
+    (r) => r.legacyPrefix === prefix && num >= r.min && num <= r.max
+  );
+  return rule ? normalizeSourceMatchKey(`${rule.canonicalPrefix} TWD ${m[2]}`) : null;
+}
+
+/**
  * Builds a strict, deterministic legacy-to-canonical migration plan.
  * Only exact 1-to-1 normalized matches against authoritative seed sources are classified as safe.
  */
@@ -89,10 +123,24 @@ export function buildLegacySourceMigrationPlan(
     const legacySource = persistedMap.get(legacyId);
     const legacyName = legacySource?.name ?? legacyId;
     const count = refCounts.get(legacyId) ?? 0;
-    const normKey = normalizeSourceMatchKey(legacyName);
+    const swapKey = getTwdPrefixSwapKey(legacyName);
+    const normKey = swapKey ?? normalizeSourceMatchKey(legacyName);
     const candidates = canonicalByNormalized.get(normKey) ?? [];
+    const swapLegacyPeers = swapKey
+      ? persistedSources.filter(
+          (p) => !seedMap.has(p.id) && getTwdPrefixSwapKey(p.name) === swapKey
+        ).length
+      : 1;
 
-    if (candidates.length === 1) {
+    if (swapKey && swapLegacyPeers > 1 && candidates.length > 0) {
+      ambiguousMappings.push({
+        legacyId,
+        legacyName,
+        candidates: candidates.map((c) => ({ id: c.id, name: c.name })),
+        referencesCount: count,
+        matchReason: `Multiple legacy records (${swapLegacyPeers}) map to TWD prefix-swap key ${normKey}`,
+      });
+    } else if (candidates.length === 1) {
       const canonical = candidates[0];
       safeMappings.push({
         legacyId,
@@ -100,7 +148,9 @@ export function buildLegacySourceMigrationPlan(
         canonicalId: canonical.id,
         canonicalName: canonical.name,
         referencesCount: count,
-        matchReason: `Unambiguous 1-to-1 normalized alphanumeric match (${normKey}) to canonical Source Directory record`,
+        matchReason: swapKey
+          ? `TWD prefix-swap rule: legacy ${legacyName} -> canonical ${canonical.name} (keyed on 4-digit number)`
+          : `Unambiguous 1-to-1 normalized alphanumeric match (${normKey}) to canonical Source Directory record`,
       });
       legacyToCanonicalMap.set(legacyId, canonical.id);
     } else if (candidates.length > 1) {
