@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Source, formatSourceCompact } from '../../domain/models';
 import { SourceId } from '../../domain/identifiers';
 import type { SourcePickerRole } from '../../domain/pickerTypes';
 import { SearchableSourcePicker } from './SearchableSourcePicker';
+import { computePopoverPosition, type PopoverPosition } from './popoverPosition';
 
 export interface SearchableSourceDropdownProps {
   readonly sources: readonly Source[];
@@ -39,6 +41,68 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<PopoverPosition | null>(null);
+
+  const minPopoverWidth = useMemo(() => {
+    if (typeof popoverWidth === 'number') return popoverWidth;
+    const n = parseInt(popoverWidth, 10);
+    return Number.isFinite(n) && popoverWidth.endsWith('px') ? n : 360;
+  }, [popoverWidth]);
+
+  // Approximate width needed for the longest source label (~7px/char + padding), capped by helper.
+  const desiredWidth = useMemo(() => {
+    let longest = 0;
+    for (const s of sources) longest = Math.max(longest, formatSourceCompact(s).length);
+    return Math.max(minPopoverWidth, longest * 7 + 120);
+  }, [sources, minPopoverWidth]);
+
+  const reposition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Trigger scrolled completely out of the viewport: close cleanly.
+    if (r.height > 0 && (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw)) {
+      setIsOpen(false);
+      return;
+    }
+    setPosition(
+      computePopoverPosition({
+        trigger: { top: r.top, bottom: r.bottom, left: r.left, width: r.width },
+        viewportWidth: vw,
+        viewportHeight: vh,
+        desiredWidth,
+      })
+    );
+  }, [desiredWidth]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setPosition(null);
+      return;
+    }
+    reposition();
+  }, [isOpen, reposition]);
+
+  // Reposition on resize and on any scroll (capture phase catches the overlay body's scroll)
+  useEffect(() => {
+    if (!isOpen) return;
+    const onScroll = (e: Event) => {
+      if (popoverRef.current && e.target instanceof Node && popoverRef.current.contains(e.target)) {
+        return;
+      }
+      reposition();
+    };
+    window.addEventListener('resize', reposition);
+    document.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      document.removeEventListener('scroll', onScroll, true);
+    };
+  }, [isOpen, reposition]);
 
   const selectedSource = sources.find((s) => s.id === selectedSourceId);
   const displayLabel = selectedSource
@@ -52,7 +116,11 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
     if (!isOpen) return;
 
     const handlePointerDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inside =
+        (containerRef.current && containerRef.current.contains(target)) ||
+        (popoverRef.current && popoverRef.current.contains(target));
+      if (!inside) {
         setIsOpen(false);
       }
     };
@@ -109,6 +177,7 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
 
       {/* Styled Dropdown Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
@@ -143,41 +212,50 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
         </span>
       </button>
 
-      {/* Popover Dropdown Panel */}
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            zIndex: 1400,
-            width: popoverWidth,
-            maxWidth: '90vw',
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #444444',
-            borderRadius: '4px',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08)',
-            padding: '8px',
-            boxSizing: 'border-box',
-          }}
-        >
-          <SearchableSourcePicker
-            sources={sources}
-            pickerRole={pickerRole}
-            selectedSourceId={selectedSourceId}
-            onSelectSource={(id) => {
-              onChange(id);
-              setIsOpen(false);
+      {/* Popover Dropdown Panel: portaled to body so overlay overflow can never clip it */}
+      {isOpen &&
+        position &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-modal="true"
+            data-testid="source-picker-popover"
+            style={{
+              position: 'fixed',
+              top: position.top,
+              bottom: position.bottom,
+              left: position.left,
+              zIndex: 1400,
+              width: position.width,
+              maxHeight: position.maxHeight,
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #444444',
+              borderRadius: '4px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+              padding: '8px',
+              boxSizing: 'border-box',
+              overflow: 'hidden',
             }}
-            unassignLabel={unassignLabel}
-            searchInputTestId={searchTestId}
-            onClose={() => setIsOpen(false)}
-            maxHeight="260px"
-          />
-        </div>
-      )}
+          >
+            <SearchableSourcePicker
+              sources={sources}
+              pickerRole={pickerRole}
+              selectedSourceId={selectedSourceId}
+              onSelectSource={(id) => {
+                onChange(id);
+                setIsOpen(false);
+              }}
+              unassignLabel={unassignLabel}
+              searchInputTestId={searchTestId}
+              onClose={() => setIsOpen(false)}
+              fillHeight
+            />
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

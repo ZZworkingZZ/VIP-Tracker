@@ -2793,7 +2793,7 @@ export const DestinationSourcesPage: React.FC = () => {
               borderRadius: '4px',
               maxWidth: '860px',
               width: '100%',
-              maxHeight: '90vh',
+              height: 'min(92vh, 960px)',
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(56, 189, 248, 0.25)',
@@ -2870,6 +2870,8 @@ export const DestinationSourcesPage: React.FC = () => {
             <div
               style={{
                 padding: '16px',
+                flex: 1,
+                minHeight: 0,
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',

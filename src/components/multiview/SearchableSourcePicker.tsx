@@ -19,6 +19,8 @@ export interface SearchableSourcePickerProps {
   readonly searchInputTestId?: string;
   readonly onClose?: () => void;
   readonly showUnassignedOption?: boolean;
+  /** Fill the parent's height: results list flexes and is the only scroll region. */
+  readonly fillHeight?: boolean;
 }
 
 export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
@@ -34,6 +36,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
   searchInputTestId = 'source-picker-search-input',
   onClose,
   showUnassignedOption = true,
+  fillHeight = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -168,7 +171,11 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      onClose?.();
+      if (onClose) {
+        // First Escape closes only the picker; do not let it reach ancestor Escape handlers.
+        e.stopPropagation();
+        onClose();
+      }
       return;
     }
 
@@ -203,11 +210,17 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        width: '100%',
+        ...(fillHeight ? { flex: 1, minHeight: 0 } : {}),
+      }}
       onKeyDown={handleKeyDown}
     >
       {/* Search Input */}
-      <div style={{ position: 'relative', width: '100%' }}>
+      <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
         <input
           ref={inputRef}
           type="search"
@@ -236,8 +249,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
           display: 'flex',
           flexWrap: 'wrap',
           gap: '4px',
-          maxHeight: '68px',
-          overflowY: 'auto',
+          flexShrink: 0,
           paddingBottom: '2px',
         }}
       >
@@ -294,7 +306,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
         data-testid="source-picker-list"
         style={{
           overflowY: 'auto',
-          maxHeight,
+          ...(fillHeight ? { flex: 1, minHeight: 0 } : { maxHeight }),
           border: '1px solid #282828',
           borderRadius: '2px',
           backgroundColor: '#121212',
