@@ -967,6 +967,7 @@ export const DestinationSourcesPage: React.FC = () => {
                 const dest = row.destination;
                 const destDisplay = formatDestinationDisplay(dest.id);
                 const destFlow = destSignalFlowsMap.get(dest.id);
+                const cardPipLabel = (pipId: string) => `${destDisplay} ${pipId}`;
                 const hasSource = Boolean(row.source);
                 const isDraggingThis = draggingDestId === dest.id;
                 const isSelectedTile = selectedDestId === dest.id;
@@ -1380,7 +1381,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               overflow: 'hidden',
                             }}
                             title={`Active PIPs: ${destFlow.pipUsages
-                              .map((u) => u.pipDisplayLabel)
+                              .map((u) => cardPipLabel(u.pipId))
                               .join(', ')}`}
                           >
                             {destFlow.pipUsages.length <= 2 ? (
@@ -1398,7 +1399,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                     maxWidth: '100%',
                                   }}
                                 >
-                                  {u.pipDisplayLabel.replace(/^(?:OUT:)?MV-\d{2}-/, 'Out ')}
+                                  {cardPipLabel(u.pipId)}
                                 </span>
                               ))
                             ) : (
@@ -1416,9 +1417,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               >
                                 {destFlow.pipUsages
                                   .slice(0, 2)
-                                  .map((u) =>
-                                    u.pipDisplayLabel.replace(/^(?:OUT:)?MV-\d{2}-/, 'Out ')
-                                  )
+                                  .map((u) => cardPipLabel(u.pipId))
                                   .join(', ')}
                                 {` (+${destFlow.pipUsages.length - 2})`}
                               </span>

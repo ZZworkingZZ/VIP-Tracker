@@ -743,7 +743,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(screen.getByTestId('dest-card-proc-DEST:MV-03-01-0')).toHaveTextContent('UDX-01');
     expect(screen.getByTestId('dest-card-source-DEST:MV-03-01')).toHaveTextContent('vCam 40');
     expect(screen.getByTestId('dest-card-dest-id-DEST:MV-03-01')).toHaveTextContent('MV-03-01');
-    expect(screen.getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent('Out 01 PIP-01');
+    expect(screen.getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent('MV-03-01 PIP-01');
 
     // Verify top-to-bottom signal flow order in DOM
     const cardText01 = destCard01.textContent!;
@@ -751,7 +751,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const idxProc = cardText01.indexOf('UDX-01');
     const idxSource = cardText01.indexOf('vCam 40');
     const idxMvInput = cardText01.indexOf('MV-03-01');
-    const idxPips = cardText01.indexOf('Out 01 PIP-01');
+    const idxPips = cardText01.indexOf('MV-03-01 PIP-01');
     expect(idxLawo).toBeGreaterThan(-1);
     expect(idxProc).toBeGreaterThan(idxLawo);
     expect(idxSource).toBeGreaterThan(idxProc);
@@ -1121,7 +1121,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       'MV-03-01'
     );
     expect(within(card01).getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent(
-      'Out 01 PIP-01'
+      'MV-03-01 PIP-01'
     );
 
     // Verify DOM render order: Lawo Source -> Processing -> Evertz Source -> MV Input -> PIPs
@@ -1130,14 +1130,14 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     const idxProc = text01.indexOf('UDX-01');
     const idxSource = text01.indexOf('vCam 40');
     const idxMvInput = text01.indexOf('MV-03-01');
-    const idxPips = text01.indexOf('Out 01 PIP-01');
+    const idxPips = text01.indexOf('MV-03-01 PIP-01');
     expect(idxLawo).toBeGreaterThan(-1);
     expect(idxProc).toBeGreaterThan(idxLawo);
     expect(idxSource).toBeGreaterThan(idxProc);
     expect(idxMvInput).toBeGreaterThan(idxSource);
     expect(idxPips).toBeGreaterThan(idxMvInput);
 
-    // 2. Simple path card (DEST:MV-03-02 has only vCam 41 -> MV-03-02 -> Out 01 PIP-02, no upstream Lawo source, no processing)
+    // 2. Simple path card (DEST:MV-03-02 has only vCam 41 -> MV-03-02 -> PIP-02 (hosted on OUT:MV-03-01), no upstream Lawo source, no processing)
     const card02 = screen.getByTestId('dest-card-DEST:MV-03-02');
     expect(
       within(card02).queryByTestId('dest-card-lawo-source-DEST:MV-03-02')
@@ -1151,12 +1151,17 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       'MV-03-02'
     );
     expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).toHaveTextContent(
-      'Out 01 PIP-02'
+      'MV-03-02 PIP-02'
+    );
+    // Regression: the MV portion of the PIP label comes from the card's destination (dest.id),
+    // not from the output that hosts the PIP (OUT:MV-03-01 hosts PIP-02 for DEST:MV-03-02).
+    expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).not.toHaveTextContent(
+      'MV-03-01 PIP-02'
     );
     const text02 = card02.textContent!;
     const idx02Source = text02.indexOf('vCam 41');
     const idx02MvInput = text02.indexOf('MV-03-02');
-    const idx02Pips = text02.indexOf('Out 01 PIP-02');
+    const idx02Pips = text02.indexOf('MV-03-02 PIP-02');
     expect(idx02Source).toBeLessThan(idx02MvInput);
     expect(idx02MvInput).toBeLessThan(idx02Pips);
 
