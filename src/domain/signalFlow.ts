@@ -25,6 +25,12 @@ import {
 import { LayoutDefinition, getLayoutDefinition, getLayoutPips } from './layoutDefinitions';
 import { normalizeOutputPipAssignments, assignPipInput } from './pipRouting';
 import { ChangeAttribution } from './attribution';
+import {
+  SEED_LAWO_SOURCES,
+  SEED_LAWO_PROCESSING_DEVICES,
+  SEED_LAWO_TIELINES,
+  SEED_EVERTZ_SOURCES,
+} from '../data/seed/sourceInventory';
 
 export const DEFAULT_MAX_SIGNAL_FLOW_DEPTH = 10;
 
@@ -448,6 +454,120 @@ export function getValidTielineOptions(sources: readonly Source[]): Source[] {
 export const getValidEvertzRoutableOptions = getValidTielineOptions;
 
 /**
+ * Authoritative combined Lawo Destinations / Tielines and Evertz Sources collection
+ * directly reflecting the workbook inventories (117 tielines + 267 Evertz sources = 267 unique sources).
+ */
+export const AUTHORITATIVE_TIELINE_AND_EVERTZ_SOURCES: Source[] = (() => {
+  const combinedMap = new Map<SourceId, Source>();
+  for (const s of SEED_LAWO_TIELINES) {
+    if (s.active !== false) combinedMap.set(s.id, s);
+  }
+  for (const s of SEED_EVERTZ_SOURCES) {
+    if (s.active !== false) combinedMap.set(s.id, s);
+  }
+  return Array.from(combinedMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+})();
+
+/**
+ * Returns the authoritative options for the Lawo Source dropdown directly from the Excel inventory.
+ * Contains all 445 items from SEED_LAWO_SOURCES, overlaying any custom user aliases from snapshot,
+ * and preserving any runtime user-created or mock sources present in snapshot.sources.
+ */
+export function getAuthoritativeLawoDropdownSources(
+  snapshotSources?: readonly Source[],
+  excludeSourceId?: SourceId | null
+): Source[] {
+  const aliasMap = new Map<SourceId, string>();
+  const customSources: Source[] = [];
+  const seedIds = new Set(SEED_LAWO_SOURCES.map((s) => s.id));
+
+  if (snapshotSources) {
+    for (const s of snapshotSources) {
+      if (s.alias) aliasMap.set(s.id, s.alias);
+      if (!seedIds.has(s.id) && s.routeRole === 'lawo_source') {
+        customSources.push(s);
+      }
+    }
+  }
+
+  const baseSources = SEED_LAWO_SOURCES.map((s) => {
+    const alias = aliasMap.get(s.id);
+    return alias !== undefined ? { ...s, alias } : s;
+  });
+
+  return [...baseSources, ...customSources]
+    .filter((s) => s.active !== false && s.id !== excludeSourceId)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Returns the authoritative options for the Lawo Processing dropdown directly from the Excel inventory.
+ * Contains all 138 items from SEED_LAWO_PROCESSING_DEVICES, overlaying any custom user aliases from snapshot,
+ * and preserving any runtime user-created or mock sources present in snapshot.sources.
+ */
+export function getAuthoritativeProcessingDropdownSources(
+  snapshotSources?: readonly Source[],
+  excludeIds: readonly SourceId[] = []
+): Source[] {
+  const excluded = new Set(excludeIds);
+  const aliasMap = new Map<SourceId, string>();
+  const customSources: Source[] = [];
+  const seedIds = new Set(SEED_LAWO_PROCESSING_DEVICES.map((s) => s.id));
+
+  if (snapshotSources) {
+    for (const s of snapshotSources) {
+      if (s.alias) aliasMap.set(s.id, s.alias);
+      if (!seedIds.has(s.id) && s.routeRole === 'processing') {
+        customSources.push(s);
+      }
+    }
+  }
+
+  const baseSources = SEED_LAWO_PROCESSING_DEVICES.map((s) => {
+    const alias = aliasMap.get(s.id);
+    return alias !== undefined ? { ...s, alias } : s;
+  });
+
+  return [...baseSources, ...customSources]
+    .filter((s) => s.active !== false && !excluded.has(s.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Returns the authoritative options for the Lawo Destination / Evertz Source dropdown directly
+ * from the combined workbook inventories (117 tielines + 267 Evertz sources = 267 unique sources).
+ * Overlays any custom user aliases from snapshot and preserves runtime user-created or mock sources.
+ */
+export function getAuthoritativeTielineDropdownSources(
+  snapshotSources?: readonly Source[]
+): Source[] {
+  const aliasMap = new Map<SourceId, string>();
+  const customSources: Source[] = [];
+  const seedIds = new Set(AUTHORITATIVE_TIELINE_AND_EVERTZ_SOURCES.map((s) => s.id));
+
+  if (snapshotSources) {
+    for (const s of snapshotSources) {
+      if (s.alias) aliasMap.set(s.id, s.alias);
+      if (
+        !seedIds.has(s.id) &&
+        (s.routeRole === 'tieline' || s.routeRole === 'evertz_source' || s.router === 'Evertz')
+      ) {
+        customSources.push(s);
+      }
+    }
+  }
+
+  const baseSources = AUTHORITATIVE_TIELINE_AND_EVERTZ_SOURCES.map((s) => {
+    const alias = aliasMap.get(s.id);
+    return alias !== undefined ? { ...s, alias } : s;
+  });
+
+  return [...baseSources, ...customSources]
+    .filter((s) => s.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * Returns valid Evertz MV Input options constrained strictly to the given VIP card (multiviewId).
  */
 export function getValidMvInputOptions(
@@ -458,6 +578,11 @@ export function getValidMvInputOptions(
     .filter((d) => d.multiviewId === multiviewId)
     .sort((a, b) => a.destinationNumber - b.destinationNumber);
 }
+
+/**
+ * Authoritative alias for Evertz MV Input dropdown options.
+ */
+export const getAuthoritativeMvInputDropdownOptions = getValidMvInputOptions;
 
 /**
  * Returns valid PIP IDs that exist in the current layout of an output.

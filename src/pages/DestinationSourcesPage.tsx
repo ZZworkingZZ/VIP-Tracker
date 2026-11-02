@@ -27,10 +27,10 @@ import {
   resolveAllPipSignalFlows,
   resolveDestinationSignalFlows,
   filterPipSignalFlows,
-  getValidLawoSourceOptions,
-  getValidProcessingStageOptions,
-  getValidTielineOptions,
   getValidMvInputOptions,
+  getAuthoritativeLawoDropdownSources,
+  getAuthoritativeProcessingDropdownSources,
+  getAuthoritativeTielineDropdownSources,
   getValidPipOptions,
   evaluateDuplicateLawoSourceWarning,
   applyPipMvInputStageChange,
@@ -193,17 +193,17 @@ export const DestinationSourcesPage: React.FC = () => {
 
   const validLawoSources = useMemo(() => {
     if (!snapshot) return [];
-    return getValidLawoSourceOptions(snapshot.sources);
+    return getAuthoritativeLawoDropdownSources(snapshot.sources);
   }, [snapshot]);
 
   const validProcessingSources = useMemo(() => {
     if (!snapshot) return [];
-    return getValidProcessingStageOptions(snapshot.sources);
+    return getAuthoritativeProcessingDropdownSources(snapshot.sources);
   }, [snapshot]);
 
   const validTielineSources = useMemo(() => {
     if (!snapshot) return [];
-    return getValidTielineOptions(snapshot.sources);
+    return getAuthoritativeTielineDropdownSources(snapshot.sources);
   }, [snapshot]);
 
   const hasDedicatedLawoDirectory = useMemo(() => {
@@ -1471,7 +1471,7 @@ export const DestinationSourcesPage: React.FC = () => {
                           <option value="">-- Direct (No Processing) --</option>
                           {validProcessingSources.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.name} ({inferLawoDeviceType(s) ?? 'Processing'})
+                              {formatSourceCompact(s)}
                             </option>
                           ))}
                         </select>
@@ -2114,7 +2114,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                   <option value="">-- Direct (No Proc) --</option>
                                   {validProcessingSources.map((s) => (
                                     <option key={s.id} value={s.id}>
-                                      {s.name} ({inferLawoDeviceType(s) ?? 'Processing'})
+                                      {formatSourceCompact(s)}
                                     </option>
                                   ))}
                                 </select>
