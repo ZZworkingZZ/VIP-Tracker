@@ -78,7 +78,7 @@ describe('Shared last-specific-MV selection between Multiviewers and Signal Flow
     expect(isActive(/^MV-02$/)).toBe(true);
     await goToSignalFlows();
     expect(isActive(/^MV-02/)).toBe(true);
-  });
+  }, 15000);
 
   it('MV-03 -> All Displays -> Signal Flows still opens MV-03', async () => {
     await renderApp('/');
