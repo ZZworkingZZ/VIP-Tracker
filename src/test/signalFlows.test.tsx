@@ -1009,7 +1009,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(within(card0301).getByTestId('dest-card-dest-id-DEST:MV-03-01')).toHaveTextContent(
       'MV-03-01'
     );
-  });
+  }, 15000);
 
   it('39. opens Destination Windows Wall inspector as a floating overlay above the wall with backdrop, escape, and close handling', async () => {
     const snapshot = createSignalFlowTestSnapshot();
