@@ -736,10 +736,28 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       ).not.toBeInTheDocument();
     });
 
-    // Tile now shows concise full path and inspector shows full chain
-    expect(screen.getByTestId('dest-card-path-DEST:MV-03-01')).toHaveTextContent(
-      'LiveU 101 → UDX-01 → vCam 40'
+    // Tile now shows upstream chain, immediate source, prominent MV Input, and PIPs in top-to-bottom order
+    expect(screen.getByTestId('dest-card-lawo-source-DEST:MV-03-01')).toHaveTextContent(
+      'LiveU 101'
     );
+    expect(screen.getByTestId('dest-card-proc-DEST:MV-03-01-0')).toHaveTextContent('UDX-01');
+    expect(screen.getByTestId('dest-card-source-DEST:MV-03-01')).toHaveTextContent('vCam 40');
+    expect(screen.getByTestId('dest-card-dest-id-DEST:MV-03-01')).toHaveTextContent('MV-03-01');
+    expect(screen.getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent('Out 01 PIP-01');
+
+    // Verify top-to-bottom signal flow order in DOM
+    const cardText01 = destCard01.textContent!;
+    const idxLawo = cardText01.indexOf('LiveU 101');
+    const idxProc = cardText01.indexOf('UDX-01');
+    const idxSource = cardText01.indexOf('vCam 40');
+    const idxMvInput = cardText01.indexOf('MV-03-01');
+    const idxPips = cardText01.indexOf('Out 01 PIP-01');
+    expect(idxLawo).toBeGreaterThan(-1);
+    expect(idxProc).toBeGreaterThan(idxLawo);
+    expect(idxSource).toBeGreaterThan(idxProc);
+    expect(idxMvInput).toBeGreaterThan(idxSource);
+    expect(idxPips).toBeGreaterThan(idxMvInput);
+
     expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
       'LiveU 101 → UDX-01 Input → UDX-01 Output → vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
     );
@@ -1048,5 +1066,118 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     // Escape closes overlay in All VIPs view
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+  }, 15000);
+
+  it('40. enforces Destination Windows Wall top-to-bottom visual hierarchy: Source -> Processing -> Evertz Source -> MV Input -> MV Output PIPs, omits missing stages cleanly, and preserves Flow inspector and warnings', async () => {
+    let snapshot = createSignalFlowTestSnapshot();
+    // Build a multi-stage flow on DEST:MV-03-01: LiveU 101 -> UDX-01 -> vCam 40 -> MV-03-01 -> OUT:MV-03-01 PIP-01
+    snapshot = applyPipLawoChainUpdate(
+      snapshot,
+      VCAM_40_ID,
+      'SRC:LAWO_LIVEU_101' as SourceId,
+      ['SRC:LAWO_UDX_01' as SourceId],
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+    // Route vCam 40 to DEST:MV-03-06 as well to create a same-card duplicate
+    snapshot = applyPipTielineStageChange(
+      snapshot,
+      'DEST:MV-03-06' as DestinationId,
+      VCAM_40_ID,
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=MV-03',
+    });
+
+    // 1. Complex path card (DEST:MV-03-01)
+    const card01 = await screen.findByTestId('dest-card-DEST:MV-03-01');
+    expect(within(card01).getByTestId('dest-card-lawo-source-DEST:MV-03-01')).toHaveTextContent(
+      'LiveU 101'
+    );
+    expect(within(card01).getByTestId('dest-card-proc-DEST:MV-03-01-0')).toHaveTextContent(
+      'UDX-01'
+    );
+    expect(within(card01).getByTestId('dest-card-source-DEST:MV-03-01')).toHaveTextContent(
+      'vCam 40'
+    );
+    expect(within(card01).getByTestId('dest-card-dest-id-DEST:MV-03-01')).toHaveTextContent(
+      'MV-03-01'
+    );
+    expect(within(card01).getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent(
+      'Out 01 PIP-01'
+    );
+
+    // Verify DOM render order: Lawo Source -> Processing -> Evertz Source -> MV Input -> PIPs
+    const text01 = card01.textContent!;
+    const idxLawo = text01.indexOf('LiveU 101');
+    const idxProc = text01.indexOf('UDX-01');
+    const idxSource = text01.indexOf('vCam 40');
+    const idxMvInput = text01.indexOf('MV-03-01');
+    const idxPips = text01.indexOf('Out 01 PIP-01');
+    expect(idxLawo).toBeGreaterThan(-1);
+    expect(idxProc).toBeGreaterThan(idxLawo);
+    expect(idxSource).toBeGreaterThan(idxProc);
+    expect(idxMvInput).toBeGreaterThan(idxSource);
+    expect(idxPips).toBeGreaterThan(idxMvInput);
+
+    // 2. Simple path card (DEST:MV-03-02 has only vCam 41 -> MV-03-02 -> Out 01 PIP-02, no upstream Lawo source, no processing)
+    const card02 = screen.getByTestId('dest-card-DEST:MV-03-02');
+    expect(
+      within(card02).queryByTestId('dest-card-lawo-source-DEST:MV-03-02')
+    ).not.toBeInTheDocument();
+    expect(within(card02).queryByTestId('dest-card-proc-DEST:MV-03-02-0')).not.toBeInTheDocument();
+    expect(within(card02).queryByTestId('dest-card-path-DEST:MV-03-02')).not.toBeInTheDocument();
+    expect(within(card02).getByTestId('dest-card-source-DEST:MV-03-02')).toHaveTextContent(
+      'vCam 41'
+    );
+    expect(within(card02).getByTestId('dest-card-dest-id-DEST:MV-03-02')).toHaveTextContent(
+      'MV-03-02'
+    );
+    expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).toHaveTextContent(
+      'Out 01 PIP-02'
+    );
+    const text02 = card02.textContent!;
+    const idx02Source = text02.indexOf('vCam 41');
+    const idx02MvInput = text02.indexOf('MV-03-02');
+    const idx02Pips = text02.indexOf('Out 01 PIP-02');
+    expect(idx02Source).toBeLessThan(idx02MvInput);
+    expect(idx02MvInput).toBeLessThan(idx02Pips);
+
+    // 3. Unassigned destination (DEST:MV-03-60 has no assigned source and no PIPs)
+    const card60 = screen.getByTestId('dest-card-DEST:MV-03-60');
+    expect(within(card60).getByText('Unassigned')).toBeInTheDocument();
+    expect(within(card60).getByTestId('dest-card-dest-id-DEST:MV-03-60')).toHaveTextContent(
+      'MV-03-60'
+    );
+    expect(within(card60).queryByTestId('dest-card-pips-DEST:MV-03-60')).not.toBeInTheDocument();
+    const text60 = card60.textContent!;
+    expect(text60.indexOf('Unassigned')).toBeLessThan(text60.indexOf('MV-03-60'));
+
+    // 4. Duplicate warning badge is preserved and visually separated
+    expect(within(card01).getByTestId('dest-dup-badge-DEST:MV-03-01')).toHaveTextContent(
+      '⚠ Dup (2×)'
+    );
+
+    // 5. Flow button click continues opening the floating inspector
+    const flowBtn = within(card01).getByTestId('dest-flow-btn-DEST:MV-03-01');
+    fireEvent.click(flowBtn);
+    const overlay = await screen.findByTestId('wall-flow-inspector-overlay');
+    expect(overlay).toBeInTheDocument();
+    expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
+      'LiveU 101 → UDX-01 Input → UDX-01 Output → vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
+    );
+    fireEvent.click(screen.getByTestId('close-wall-flow-inspector-btn'));
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+
+    // 6. All VIPs view aggregates 264 cards with intact routes
+    const allTab = screen.getByRole('tab', { name: /^All VIPs/i });
+    fireEvent.click(allTab);
+    expect(await screen.findByText(/Destination Windows Wall \(264 of 264\)/i)).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^dest-card-DEST:MV-/)).toHaveLength(264);
   }, 15000);
 });

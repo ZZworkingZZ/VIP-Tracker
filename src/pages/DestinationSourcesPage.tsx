@@ -950,6 +950,13 @@ export const DestinationSourcesPage: React.FC = () => {
                   ? getSourceCategoryColor(row.source.category)
                   : undefined;
                 const effectiveAlias = destFlow?.alias ?? getSourceAlias(row.source);
+                const showLawoSource = Boolean(
+                  destFlow?.lawoSource && (!row.source || destFlow.lawoSource.id !== row.source.id)
+                );
+                const showProcessing = Boolean(
+                  destFlow?.processingStages && destFlow.processingStages.length > 0
+                );
+                const hasDownstreamPips = Boolean(destFlow && destFlow.pipUsages.length > 0);
 
                 return (
                   <div
@@ -1002,11 +1009,11 @@ export const DestinationSourcesPage: React.FC = () => {
                                     ? '1px solid #363636'
                                     : '1px dashed #262626',
                       borderRadius: '2px',
-                      padding: '7px',
+                      padding: '5px 6px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      minHeight: '78px',
+                      minHeight: '82px',
                       opacity: isDraggingThis ? 0.6 : 1,
                       cursor: !isReadOnly ? (isDraggingThis ? 'grabbing' : 'grab') : 'pointer',
                       transition:
@@ -1020,75 +1027,42 @@ export const DestinationSourcesPage: React.FC = () => {
                       overflow: 'hidden',
                     }}
                   >
+                    {/* Top Status Strip: Drag Handle, Warning Badges, Category Dot */}
                     <div
                       style={{
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px',
-                        width: '100%',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '4px',
+                        minHeight: '13px',
+                        marginBottom: '2px',
                       }}
                     >
                       <div
                         style={{
                           display: 'flex',
-                          justifyContent: 'space-between',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
+                          minWidth: 0,
+                          overflow: 'hidden',
                         }}
                       >
-                        <span
-                          data-testid={`dest-card-dest-id-${dest.id}`}
-                          style={{
-                            fontSize: '10px',
-                            fontFamily: 'monospace',
-                            fontWeight: 700,
-                            color: isEditMode || isSelectedTile ? '#38bdf8' : '#64748b',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            minWidth: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {!isReadOnly && (
-                            <span
-                              aria-hidden="true"
-                              style={{
-                                color: '#475569',
-                                fontSize: '9px',
-                                letterSpacing: '-1px',
-                                flexShrink: 0,
-                              }}
-                            >
-                              ⋮⋮
-                            </span>
-                          )}
-                          {destDisplay}
-                        </span>
-                        {categoryColor && (
+                        {!isReadOnly && (
                           <span
+                            aria-hidden="true"
                             style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: categoryColor,
+                              color: '#475569',
+                              fontSize: '9px',
+                              letterSpacing: '-1px',
                               flexShrink: 0,
+                              cursor: isDraggingThis ? 'grabbing' : 'grab',
                             }}
-                          />
+                            title="Drag onto an output PIP below"
+                          >
+                            ⋮⋮
+                          </span>
                         )}
-                      </div>
-
-                      {hasDuplicates && destFlow && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                          }}
-                        >
+                        {hasDuplicates && destFlow && (
                           <span
                             data-testid={`dest-dup-badge-${dest.id}`}
                             title={destFlow.duplicateFlags.map((f) => f.description).join(' | ')}
@@ -1118,28 +1092,135 @@ export const DestinationSourcesPage: React.FC = () => {
                           >
                             ⚠ {formatCompactDuplicateBadge(destFlow.duplicateFlags[0])}
                           </span>
-                        </div>
+                        )}
+                      </div>
+                      {categoryColor && (
+                        <span
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: categoryColor,
+                            flexShrink: 0,
+                          }}
+                          title={row.source?.category}
+                        />
                       )}
                     </div>
 
-                    <div style={{ textAlign: 'center', margin: '4px 0' }}>
+                    {/* Signal Flow Path: Top -> Bottom */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        width: '100%',
+                        gap: '1px',
+                        margin: '1px 0',
+                      }}
+                    >
+                      {/* Upstream Stages (Lawo Source and/or Processing) */}
+                      {(showLawoSource || showProcessing) && (
+                        <div
+                          data-testid={`dest-card-path-${dest.id}`}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            width: '100%',
+                            gap: '1px',
+                          }}
+                        >
+                          {showLawoSource && (
+                            <>
+                              <span
+                                data-testid={`dest-card-lawo-source-${dest.id}`}
+                                style={{
+                                  fontFamily: 'monospace',
+                                  fontSize: '9px',
+                                  color: '#94a3b8',
+                                  fontWeight: 600,
+                                  textAlign: 'center',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: '100%',
+                                  lineHeight: 1.15,
+                                }}
+                                title={`Lawo Source: ${destFlow!.lawoSource!.name}`}
+                              >
+                                {destFlow!.lawoSource!.name}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                style={{ fontSize: '8px', color: '#475569', lineHeight: 1 }}
+                              >
+                                ↓
+                              </span>
+                            </>
+                          )}
+
+                          {showProcessing && (
+                            <>
+                              {destFlow!.processingStages.map((proc, idx) => (
+                                <React.Fragment key={proc.id}>
+                                  <span
+                                    data-testid={`dest-card-proc-${dest.id}-${idx}`}
+                                    style={{
+                                      fontFamily: 'monospace',
+                                      fontSize: '9px',
+                                      color: '#94a3b8',
+                                      fontWeight: 600,
+                                      textAlign: 'center',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '100%',
+                                      lineHeight: 1.15,
+                                    }}
+                                    title={`Processing: ${proc.name}`}
+                                  >
+                                    {proc.name}
+                                  </span>
+                                  <span
+                                    aria-hidden="true"
+                                    style={{ fontSize: '8px', color: '#475569', lineHeight: 1 }}
+                                  >
+                                    ↓
+                                  </span>
+                                </React.Fragment>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Lawo Dest / Evertz Source Stage */}
                       {row.source ? (
                         <div
+                          data-testid={`dest-card-source-${dest.id}`}
                           style={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '1px',
+                            maxWidth: '100%',
+                            minWidth: 0,
                           }}
                         >
                           <span
                             style={{
                               fontFamily: 'monospace',
-                              fontWeight: 800,
-                              fontSize: '11px',
-                              color: '#f8fafc',
-                              wordBreak: 'break-all',
+                              fontWeight: 600,
+                              fontSize: '10px',
+                              color: '#cbd5e1',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                              lineHeight: 1.2,
                             }}
+                            title={row.source.name}
                           >
                             {row.source.name}
                           </span>
@@ -1147,70 +1228,158 @@ export const DestinationSourcesPage: React.FC = () => {
                             <span
                               data-testid={`dest-card-alias-${dest.id}`}
                               style={{
-                                fontSize: '10px',
+                                fontSize: '9px',
                                 color: '#38bdf8',
                                 fontWeight: 600,
-                                wordBreak: 'break-word',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '100%',
+                                lineHeight: 1.1,
                               }}
+                              title={`Alias: ${effectiveAlias}`}
                             >
                               {effectiveAlias}
                             </span>
                           )}
-                          {destFlow?.concisePathSummary ? (
-                            <span
-                              data-testid={`dest-card-path-${dest.id}`}
-                              style={{
-                                fontSize: '9px',
-                                color: '#93c5fd',
-                                fontFamily: 'monospace',
-                                lineHeight: 1.2,
-                                wordBreak: 'break-word',
-                              }}
-                              title={`Signal Path: ${destFlow.fullPathSummary}`}
-                            >
-                              ↳ {destFlow.concisePathSummary}
-                            </span>
-                          ) : row.source.upstreamSourceId ? (
-                            <span
-                              data-testid={`dest-card-path-${dest.id}`}
-                              style={{
-                                fontSize: '9px',
-                                color: '#38bdf8',
-                                fontFamily: 'monospace',
-                              }}
-                              title="Upstream Source"
-                            >
-                              ↳{' '}
-                              {formatSourceCompact(
-                                snapshot.sources.find((s) => s.id === row.source?.upstreamSourceId)
-                              ) || 'Upstream'}
-                            </span>
-                          ) : null}
-                          {destFlow && destFlow.pipUsages.length > 0 && (
-                            <span
-                              data-testid={`dest-card-pips-${dest.id}`}
-                              style={{
-                                fontSize: '8px',
-                                color: '#a7f3d0',
-                                fontFamily: 'monospace',
-                                marginTop: '1px',
-                              }}
-                              title={`Active PIPs: ${destFlow.pipUsages.map((u) => u.pipDisplayLabel).join(', ')}`}
-                            >
-                              →{' '}
-                              {destFlow.pipUsages
-                                .map((u) => u.pipDisplayLabel.replace(/^MV-\d{2}-/, 'Out '))
-                                .join(', ')}
-                            </span>
-                          )}
                         </div>
                       ) : (
-                        <span style={{ fontSize: '10px', color: '#475569', fontStyle: 'italic' }}>
+                        <span
+                          data-testid={`dest-card-unassigned-${dest.id}`}
+                          style={{
+                            fontSize: '10px',
+                            color: '#475569',
+                            fontStyle: 'italic',
+                            lineHeight: 1.2,
+                          }}
+                        >
                           Unassigned
                         </span>
                       )}
+
+                      {/* Arrow Down into MV Input */}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          fontSize: '8px',
+                          color: '#475569',
+                          lineHeight: 1,
+                          margin: '1px 0',
+                        }}
+                      >
+                        ↓
+                      </span>
+
+                      {/* Primary Anchor: MV Input Identifier */}
+                      <div
+                        data-testid={`dest-card-dest-id-${dest.id}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '100%',
+                          padding: '2px 4px',
+                          backgroundColor: isSelectedTile
+                            ? 'rgba(56, 189, 248, 0.28)'
+                            : 'rgba(56, 189, 248, 0.12)',
+                          border: `1px solid ${
+                            isSelectedTile ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)'
+                          }`,
+                          borderRadius: '2px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'monospace',
+                            fontWeight: 800,
+                            fontSize: '12px',
+                            color: isSelectedTile ? '#ffffff' : '#38bdf8',
+                            letterSpacing: '0.4px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={`Multiviewer Input ${destDisplay}`}
+                        >
+                          {destDisplay}
+                        </span>
+                      </div>
+
+                      {/* Downstream MV Output PIP Assignments (if applicable) */}
+                      {hasDownstreamPips && destFlow && (
+                        <>
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              fontSize: '8px',
+                              color: '#475569',
+                              lineHeight: 1,
+                              margin: '1px 0',
+                            }}
+                          >
+                            ↓
+                          </span>
+                          <div
+                            data-testid={`dest-card-pips-${dest.id}`}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '1px',
+                              width: '100%',
+                              overflow: 'hidden',
+                            }}
+                            title={`Active PIPs: ${destFlow.pipUsages
+                              .map((u) => u.pipDisplayLabel)
+                              .join(', ')}`}
+                          >
+                            {destFlow.pipUsages.length <= 2 ? (
+                              destFlow.pipUsages.map((u, idx) => (
+                                <span
+                                  key={`${u.outputId}-${u.pipId}-${idx}`}
+                                  style={{
+                                    fontSize: '8px',
+                                    color: '#a7f3d0',
+                                    fontFamily: 'monospace',
+                                    lineHeight: 1.15,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: '100%',
+                                  }}
+                                >
+                                  {u.pipDisplayLabel.replace(/^(?:OUT:)?MV-\d{2}-/, 'Out ')}
+                                </span>
+                              ))
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: '8px',
+                                  color: '#a7f3d0',
+                                  fontFamily: 'monospace',
+                                  lineHeight: 1.15,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: '100%',
+                                }}
+                              >
+                                {destFlow.pipUsages
+                                  .slice(0, 2)
+                                  .map((u) =>
+                                    u.pipDisplayLabel.replace(/^(?:OUT:)?MV-\d{2}-/, 'Out ')
+                                  )
+                                  .join(', ')}
+                                {` (+${destFlow.pipUsages.length - 2})`}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
 
+                    {/* Footer: Physical Destination #, Covering Output, Actions */}
                     <div
                       style={{
                         display: 'flex',
@@ -1219,6 +1388,8 @@ export const DestinationSourcesPage: React.FC = () => {
                         fontSize: '9px',
                         color: '#64748b',
                         fontFamily: 'monospace',
+                        marginTop: 'auto',
+                        paddingTop: '3px',
                       }}
                     >
                       <span>
