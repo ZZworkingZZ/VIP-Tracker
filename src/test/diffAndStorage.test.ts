@@ -17,6 +17,12 @@ import {
   deserializeTrackerSnapshot,
 } from '../domain/serialization';
 import { TrackerSnapshot, MultiviewOutput, Destination, Source } from '../domain/models';
+import {
+  getValidLawoSourceOptions,
+  getValidProcessingStageOptions,
+  getValidTielineOptions,
+  getValidMvInputOptions,
+} from '../domain/signalFlow';
 
 describe('Diff Engine & ChangeSet Generation', () => {
   it('detects layout changes, production changes, and destination source changes accurately', () => {
@@ -670,5 +676,134 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     for (const s of INITIAL_SNAPSHOT.sources) {
       expect(s.upstreamSourceId).toBeNull();
     }
+  });
+
+  describe('Source Seed Version 4 Reconciliation & Selector Fidelity', () => {
+    it('seamlessly reconciles an existing client browser from prior seed versions without data loss', async () => {
+      const storage = new MemoryTrackerStorage();
+
+      // Legacy pre-v4 persisted fixture: missing processing sources and newer seed additions
+      const legacySourceWithAlias: Source = {
+        id: 'SRC:VCAM_01',
+        name: 'vCam 01',
+        normalizedName: 'VCAM 01',
+        category: 'Virtual Camera',
+        active: true,
+        alias: 'OPERATOR CUSTOM ALIAS 1',
+        upstreamSourceId: 'SRC:BSP-B_101', // Valid upstream connection to Lawo source
+        sourceType: 'originating', // Legacy type
+        // routeRole and router omitted
+      };
+
+      const legacySource2: Source = {
+        id: 'SRC:VTIE_101',
+        name: 'vTie 101',
+        normalizedName: 'VTIE 101',
+        category: 'Virtual Tie',
+        active: true,
+        upstreamSourceId: null,
+        sourceType: 'originating',
+      };
+
+      // Custom user-created source that is NOT in the seed catalog
+      const customUserSource: Source = {
+        id: 'SRC:STUDIO_CUSTOM_ENG',
+        name: 'Studio Custom ENG',
+        normalizedName: 'STUDIO CUSTOM ENG',
+        category: 'Other',
+        active: true,
+        alias: 'ENG REMOTE TRUCK',
+        upstreamSourceId: null,
+        sourceType: 'originating',
+        router: 'Evertz',
+        routeRole: 'evertz_source',
+        updatedBy: 'Test Operator',
+      };
+
+      // Customized layout on output
+      const customizedOutputs = INITIAL_SNAPSHOT.outputs.map((out) => {
+        if (out.id === 'OUT:MV-01-01') {
+          return {
+            ...out,
+            layoutName: '4 BOX',
+            status: 'Assigned' as const,
+            assignmentName: 'STUDIO A',
+          };
+        }
+        return out;
+      });
+
+      storage.save({
+        schemaVersion: TRACKER_SCHEMA_VERSION,
+        sourceSeedVersion: 3, // Simulating client loaded on previous seed version
+        outputs: customizedOutputs,
+        destinations: INITIAL_SNAPSHOT.destinations,
+        sources: [legacySourceWithAlias, legacySource2, customUserSource],
+        operationalAssignments: INITIAL_SNAPSHOT.operationalAssignments,
+        changeRecords: [],
+        savedAt: new Date().toISOString(),
+      });
+
+      // Load repository
+      const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
+      const snapshot = await repo.getSnapshot();
+
+      // 1. sourceSeedVersion is updated to 4
+      const updatedStorage = storage.load();
+      expect(updatedStorage?.sourceSeedVersion).toBe(4);
+      expect(CURRENT_SOURCE_SEED_VERSION).toBe(4);
+
+      // 2. Missing current seed sources are appended (712 seed + 1 custom user source = 713)
+      expect(snapshot.sources).toHaveLength(713);
+
+      // 3. Existing sources receive current authoritative classification metadata
+      const vCam1 = snapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
+      expect(vCam1).toBeDefined();
+      expect(vCam1.routeRole).toBe('tieline');
+      expect(vCam1.router).toBe('Both');
+      expect(vCam1.sourceType).toBe('virtual');
+
+      // 4. Saved alias is preserved
+      expect(vCam1.alias).toBe('OPERATOR CUSTOM ALIAS 1');
+
+      // 5. Valid upstream relationship is preserved
+      expect(vCam1.upstreamSourceId).toBe('SRC:BSP-B_101');
+
+      // 6. Operational assignments & customized layouts are preserved
+      const out1 = snapshot.outputs.find((o) => o.id === 'OUT:MV-01-01')!;
+      expect(out1.layoutName).toBe('4 BOX');
+      expect(out1.assignmentName).toBe('STUDIO A');
+      expect(out1.status).toBe('Assigned');
+
+      // 7. No duplicate source IDs exist
+      const sourceIds = snapshot.sources.map((s) => s.id);
+      expect(new Set(sourceIds).size).toBe(snapshot.sources.length);
+
+      // 8. Loading the reconciled result again does not change source count (idempotence)
+      const repoReloaded = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
+      const snapshotReloaded = await repoReloaded.getSnapshot();
+      expect(snapshotReloaded.sources).toHaveLength(713);
+
+      // 9. Lawo Processing selector returns all 138 workbook-backed processing choices
+      const processingOptions = getValidProcessingStageOptions(snapshot.sources);
+      expect(processingOptions).toHaveLength(138);
+      expect(processingOptions.every((s) => s.routeRole === 'processing')).toBe(true);
+
+      // 10. Lawo Source selector returns originating Lawo sources (307 routing options)
+      const lawoOptions = getValidLawoSourceOptions(snapshot.sources);
+      expect(lawoOptions).toHaveLength(307);
+      expect(lawoOptions.every((s) => s.routeRole === 'lawo_source')).toBe(true);
+
+      // 11. Tieline / Evertz selector behavior remains correct (267 options)
+      const tielineOptions = getValidTielineOptions(snapshot.sources);
+      // 267 seed tielines/Evertz + 1 custom user source that qualifies as routable
+      expect(tielineOptions.length).toBeGreaterThanOrEqual(267);
+
+      // 12. Evertz MV Input selector returns frame-specific MV inputs
+      const mv01Inputs = getValidMvInputOptions(snapshot.destinations, 'MV-01');
+      expect(mv01Inputs).toHaveLength(36);
+      const mv03Inputs = getValidMvInputOptions(snapshot.destinations, 'MV-03');
+      expect(mv03Inputs).toHaveLength(64);
+    });
   });
 });

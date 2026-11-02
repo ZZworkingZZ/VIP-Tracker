@@ -320,9 +320,9 @@ describe('Source Architecture Hardening — Pre-Lawo Import Audits & Invariants'
       const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
       const snap = await repo.getSnapshot();
 
-      expect(snap.sources).toHaveLength(1);
-      const bars = snap.sources[0];
-      expect(bars.id).toBe('SRC:BARS');
+      expect(snap.sources).toHaveLength(712);
+      const bars = snap.sources.find((s) => s.id === 'SRC:BARS')!;
+      expect(bars).toBeDefined();
       // Should have been safely upgraded from initialSnapshot seed metadata
       expect(bars.routeRole).toBe('evertz_source');
       expect(bars.router).toBe('Evertz');

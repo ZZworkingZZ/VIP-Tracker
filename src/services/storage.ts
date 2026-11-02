@@ -18,7 +18,7 @@ import { LayoutDefinition } from '../domain/layoutDefinitions';
 
 export const TRACKER_STORAGE_KEY = 'vip_tracker_data_v1';
 export const TRACKER_SCHEMA_VERSION = 2;
-export const CURRENT_SOURCE_SEED_VERSION = 3;
+export const CURRENT_SOURCE_SEED_VERSION = 4;
 
 export interface PersistedTrackerData {
   schemaVersion: number;

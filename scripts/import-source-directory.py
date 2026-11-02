@@ -374,6 +374,13 @@ export const SEED_ALL_SOURCES: Source[] = SEED_COMBINED_ROUTING_CATALOG;
         f.write(ts_code)
 
     print(f"Successfully generated {output_ts_path}")
+
+    # Format generated TypeScript file with Prettier to guarantee repository style conformance
+    import subprocess
+    prettier_cmd = ['npx.cmd' if os.name == 'nt' else 'npx', 'prettier', '--write', output_ts_path]
+    print(f"Formatting {output_ts_path} with Prettier...")
+    subprocess.run(prettier_cmd, check=True)
+
     print(f"  Total Lawo Sources: {len(seed_lawo_sources)}")
     print(f"  Total Lawo Processing: {len(seed_processing_sources)}")
     print(f"  Total Lawo Tielines: {len(seed_tieline_sources)}")
