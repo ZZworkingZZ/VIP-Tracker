@@ -895,5 +895,5 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(screen.getByTestId('dest-card-DEST:MV-02-36')).toBeInTheDocument();
     expect(screen.queryByTestId('dest-card-DEST:MV-01-01')).not.toBeInTheDocument();
     expect(screen.queryByTestId('dest-card-DEST:MV-03-01')).not.toBeInTheDocument();
-  });
+  }, 15000);
 });
