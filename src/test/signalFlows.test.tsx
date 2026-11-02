@@ -980,4 +980,73 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       'MV-03-01'
     );
   });
+
+  it('39. opens Destination Windows Wall inspector as a floating overlay above the wall with backdrop, escape, and close handling', async () => {
+    const snapshot = createSignalFlowTestSnapshot();
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=MV-03',
+    });
+
+    const wallContainer = await screen.findByTestId('destination-windows-wall-container');
+    const destCard01 = screen.getByTestId('dest-card-DEST:MV-03-01');
+
+    // 1. Before selection, floating overlay is not open
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+
+    // 2. Clicking a destination opens the floating inspector overlay
+    fireEvent.click(destCard01);
+    const overlay = await screen.findByTestId('wall-flow-inspector-overlay');
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveStyle({ position: 'fixed' });
+
+    // 3. The inspector is not rendered inline inside destination-windows-wall-container
+    expect(
+      within(wallContainer).queryByTestId('wall-flow-inspector-DEST:MV-03-01')
+    ).not.toBeInTheDocument();
+
+    // 4. The floating inspector contains the selected destination's signal flow information
+    const inspectorContent = screen.getByTestId('wall-flow-inspector-DEST:MV-03-01');
+    expect(screen.getByRole('heading', { name: /MV-03-01/i })).toBeInTheDocument();
+    expect(screen.getByTestId('wall-inspector-full-path-DEST:MV-03-01')).toHaveTextContent(
+      'vCam 40 → MV-03-01 Input → MV-03-01 PIP-01'
+    );
+
+    // 5. Clicking inside the inspector content does not close it (stopPropagation)
+    fireEvent.click(inspectorContent);
+    expect(screen.getByTestId('wall-flow-inspector-overlay')).toBeInTheDocument();
+
+    // 6. Close/X button closes the overlay
+    const closeBtn = screen.getByTestId('close-wall-flow-inspector-btn');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+
+    // 7. Clicking backdrop closes the overlay
+    fireEvent.click(destCard01);
+    const overlayReopened = await screen.findByTestId('wall-flow-inspector-overlay');
+    expect(overlayReopened).toBeInTheDocument();
+    fireEvent.click(overlayReopened);
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+
+    // 8. Pressing Escape closes the overlay
+    fireEvent.click(destCard01);
+    expect(await screen.findByTestId('wall-flow-inspector-overlay')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+
+    // 9. Selecting destination works in All VIPs view as well
+    const allVipTab = screen.getByRole('tab', { name: /^All VIPs/i });
+    fireEvent.click(allVipTab);
+    expect(await screen.findByText(/Destination Windows Wall \(264 of 264\)/i)).toBeInTheDocument();
+
+    const destCard0201 = screen.getByTestId('dest-card-DEST:MV-02-01');
+    fireEvent.click(destCard0201);
+    expect(await screen.findByTestId('wall-flow-inspector-overlay')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /MV-02-01/i })).toBeInTheDocument();
+
+    // Escape closes overlay in All VIPs view
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('wall-flow-inspector-overlay')).not.toBeInTheDocument();
+  }, 15000);
 });

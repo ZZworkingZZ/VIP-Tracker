@@ -161,6 +161,18 @@ export const DestinationSourcesPage: React.FC = () => {
     }
   }, [focusedFlowKey]);
 
+  // Escape key listener for Destination Windows Wall floating inspector overlay
+  useEffect(() => {
+    if (!selectedDestId || routingDestId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedDestId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDestId, routingDestId]);
+
   const routingDestination = useMemo(() => {
     if (!routingDestId || !snapshot) return null;
     return snapshot.destinations.find((d) => d.id === routingDestId) ?? null;
@@ -1309,412 +1321,6 @@ export const DestinationSourcesPage: React.FC = () => {
                 );
               })}
             </div>
-
-            {/* Progressive Disclosure: Selected Destination Signal Flow Inspector & Builder Drawer */}
-            {selectedDestFlow && (
-              <div
-                data-testid={`wall-flow-inspector-${selectedDestFlow.destinationId}`}
-                style={{
-                  marginTop: '12px',
-                  padding: '12px 14px',
-                  backgroundColor: '#141c26',
-                  border: '1px solid #38bdf8',
-                  borderRadius: '3px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                  }}
-                >
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'monospace',
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: '#38bdf8',
-                      }}
-                    >
-                      {selectedDestFlow.destinationDisplay} (#
-                      {selectedDestFlow.destinationNumber}) Signal Flow
-                    </span>
-                    <span
-                      data-testid={`wall-inspector-full-path-${selectedDestFlow.destinationId}`}
-                      style={{
-                        fontFamily: 'monospace',
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        backgroundColor: '#0f172a',
-                        border: '1px solid #334155',
-                        borderRadius: '2px',
-                        color: '#e2e8f0',
-                      }}
-                    >
-                      {selectedDestFlow.fullPathSummary}
-                      {selectedDestFlow.pipUsages.length > 0
-                        ? ` → ${selectedDestFlow.pipUsages.map((u) => u.pipDisplayLabel).join(', ')}`
-                        : ''}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="close-wall-flow-inspector-btn"
-                    onClick={() => setSelectedDestId(null)}
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      backgroundColor: '#1e293b',
-                      color: '#cbd5e1',
-                      border: '1px solid #475569',
-                      borderRadius: '2px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Close ×
-                  </button>
-                </div>
-
-                {/* Duplicate Routing Warnings / Relationships */}
-                {selectedDestFlow.hasDuplicates && (
-                  <div
-                    data-testid={`wall-inspector-duplicates-${selectedDestFlow.destinationId}`}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      padding: '6px 10px',
-                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                      border: '1px solid rgba(245, 158, 11, 0.4)',
-                      borderRadius: '2px',
-                    }}
-                  >
-                    {selectedDestFlow.duplicateFlags.map((flag, i) => (
-                      <div
-                        key={`${flag.kind}-${i}`}
-                        style={{
-                          fontSize: '11px',
-                          color: '#fbbf24',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <strong>⚠ {flag.label}:</strong>
-                        <span>{flag.description}</span>
-                        {flag.relatedDestinationIds.map((relId) => (
-                          <button
-                            key={relId}
-                            type="button"
-                            data-testid={`jump-related-dest-${relId}`}
-                            onClick={() => handleSelectWallDestination(relId)}
-                            style={{
-                              padding: '1px 5px',
-                              fontSize: '10px',
-                              fontFamily: 'monospace',
-                              backgroundColor: '#1e293b',
-                              color: '#38bdf8',
-                              border: '1px solid #38bdf8',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Inspect {formatDestinationDisplay(relId)}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Interactive Stage Builder Controls */}
-                {!isReadOnly && (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                      gap: '10px',
-                      alignItems: 'end',
-                    }}
-                  >
-                    {/* Stage 1: Lawo Source */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
-                        1. Lawo Source
-                      </label>
-                      <select
-                        aria-label={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
-                        data-testid={`wall-select-lawo-${selectedDestFlow.destinationId}`}
-                        disabled={!selectedDestFlow.immediateSourceId || isSaving}
-                        value={
-                          wallPendingLawoId !== undefined
-                            ? (wallPendingLawoId ?? '')
-                            : (selectedDestFlow.lawoSourceId ?? '')
-                        }
-                        onChange={(e) =>
-                          setWallPendingLawoId(e.target.value ? (e.target.value as SourceId) : null)
-                        }
-                        style={{
-                          padding: '4px 6px',
-                          fontSize: '11px',
-                          backgroundColor: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid #334155',
-                          borderRadius: '2px',
-                        }}
-                      >
-                        <option value="">-- Unassigned (Origin / Direct) --</option>
-                        {validLawoSources
-                          .filter((s) => s.id !== selectedDestFlow.immediateSourceId)
-                          .map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {formatSourceCompact(s)}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    {/* Stage 2: Lawo Processing */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
-                        2. Lawo Processing (Optional)
-                      </label>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <select
-                          aria-label={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
-                          data-testid={`wall-select-processing-${selectedDestFlow.destinationId}`}
-                          disabled={!selectedDestFlow.immediateSourceId || isSaving}
-                          value={
-                            wallPendingProcIds !== undefined
-                              ? (wallPendingProcIds[0] ?? '')
-                              : (selectedDestFlow.processingStages[0]?.id ?? '')
-                          }
-                          onChange={(e) =>
-                            setWallPendingProcIds(
-                              e.target.value ? [e.target.value as SourceId] : []
-                            )
-                          }
-                          style={{
-                            flex: 1,
-                            padding: '4px 6px',
-                            fontSize: '11px',
-                            backgroundColor: '#0f172a',
-                            color: '#f8fafc',
-                            border: '1px solid #334155',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          <option value="">-- Direct (No Processing) --</option>
-                          {validProcessingSources.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {formatSourceCompact(s)}
-                            </option>
-                          ))}
-                        </select>
-                        {(wallPendingLawoId !== undefined || wallPendingProcIds !== undefined) && (
-                          <button
-                            type="button"
-                            data-testid={`wall-confirm-lawo-chain-btn-${selectedDestFlow.destinationId}`}
-                            onClick={() => void handleConfirmWallLawoChain(selectedDestFlow)}
-                            disabled={isSaving}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              backgroundColor: '#2864a3',
-                              color: '#ffffff',
-                              border: '1px solid #38bdf8',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✓ Save Upstream
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Stage 3: Lawo Dest / Evertz Tieline / Evertz Source */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
-                        3. Lawo Dest / Evertz Source → {selectedDestFlow.destinationDisplay}
-                      </label>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <select
-                          aria-label={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
-                          data-testid={`wall-select-tieline-${selectedDestFlow.destinationId}`}
-                          disabled={isSaving}
-                          value={
-                            wallPendingTielineId !== undefined
-                              ? (wallPendingTielineId ?? '')
-                              : (selectedDestFlow.immediateSourceId ?? '')
-                          }
-                          onChange={(e) =>
-                            setWallPendingTielineId(
-                              e.target.value ? (e.target.value as SourceId) : null
-                            )
-                          }
-                          style={{
-                            flex: 1,
-                            padding: '4px 6px',
-                            fontSize: '11px',
-                            backgroundColor: '#0f172a',
-                            color: '#f8fafc',
-                            border: '1px solid #334155',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          <option value="">-- Unassigned --</option>
-                          {validTielineSources.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {formatSourceCompact(s)}
-                            </option>
-                          ))}
-                        </select>
-                        {wallPendingTielineId !== undefined && (
-                          <button
-                            type="button"
-                            data-testid={`wall-confirm-tieline-btn-${selectedDestFlow.destinationId}`}
-                            onClick={() => void handleConfirmWallTieline(selectedDestFlow)}
-                            disabled={isSaving}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              backgroundColor: '#2864a3',
-                              color: '#ffffff',
-                              border: '1px solid #38bdf8',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✓ Save Route
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          data-testid={`wall-open-route-modal-btn-${selectedDestFlow.destinationId}`}
-                          onClick={() => setRoutingDestId(selectedDestFlow.destinationId)}
-                          style={{
-                            padding: '4px 7px',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            backgroundColor: '#1e293b',
-                            color: '#38bdf8',
-                            border: '1px solid #38bdf8',
-                            borderRadius: '2px',
-                            cursor: 'pointer',
-                          }}
-                          title="Open searchable Evertz Source Routing Modal"
-                        >
-                          Catalog / Search…
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Stage 4: Assign MV Input to Active Output PIP */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
-                        4. Assign {selectedDestFlow.destinationDisplay} to Output PIP
-                      </label>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <select
-                          aria-label={`Target Output for ${selectedDestFlow.destinationDisplay}`}
-                          data-testid={`wall-select-output-${selectedDestFlow.destinationId}`}
-                          value={wallTargetOutputId}
-                          onChange={(e) => {
-                            const outId = e.target.value as OutputId | '';
-                            setWallTargetOutputId(outId);
-                            setWallTargetPipId('');
-                          }}
-                          style={{
-                            padding: '4px 6px',
-                            fontSize: '11px',
-                            backgroundColor: '#0f172a',
-                            color: '#f8fafc',
-                            border: '1px solid #334155',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          <option value="">-- Output --</option>
-                          {snapshot.outputs
-                            .filter(
-                              (o) =>
-                                o.multiviewId === selectedDestFlow.multiviewId &&
-                                o.status !== 'Available' &&
-                                Boolean(o.layoutName)
-                            )
-                            .map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {formatOutputDisplay(o.id)} ({o.layoutName})
-                              </option>
-                            ))}
-                        </select>
-                        <select
-                          aria-label={`Target PIP for ${selectedDestFlow.destinationDisplay}`}
-                          data-testid={`wall-select-pip-${selectedDestFlow.destinationId}`}
-                          disabled={!wallTargetOutputId}
-                          value={wallTargetPipId}
-                          onChange={(e) => setWallTargetPipId(e.target.value as PipId | '')}
-                          style={{
-                            padding: '4px 6px',
-                            fontSize: '11px',
-                            backgroundColor: '#0f172a',
-                            color: '#f8fafc',
-                            border: '1px solid #334155',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          <option value="">-- PIP --</option>
-                          {wallTargetOutputId &&
-                            (() => {
-                              const targetOut = mvOutputs.find((o) => o.id === wallTargetOutputId);
-                              if (!targetOut) return null;
-                              return getValidPipOptions(targetOut, snapshot.customLayouts).map(
-                                (pId) => (
-                                  <option key={pId} value={pId}>
-                                    {pId}
-                                  </option>
-                                )
-                              );
-                            })()}
-                        </select>
-                        {wallTargetOutputId && wallTargetPipId && (
-                          <button
-                            type="button"
-                            data-testid={`wall-confirm-pip-btn-${selectedDestFlow.destinationId}`}
-                            onClick={() => void handleConfirmWallAssignPip(selectedDestFlow)}
-                            disabled={isSaving}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              backgroundColor: '#2864a3',
-                              color: '#ffffff',
-                              border: '1px solid #38bdf8',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✓ Assign PIP
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Active Output Feeds (SECONDARY DETAILED LAYOUT VIEW BELOW WALL) */}
@@ -3016,6 +2622,456 @@ export const DestinationSourcesPage: React.FC = () => {
             </table>
           </div>
         </section>
+      )}
+
+      {/* Floating Overlay: Selected Destination Signal Flow Inspector & Interactive Builder */}
+      {selectedDestFlow && (
+        <div
+          className="output-modal-backdrop"
+          data-testid="wall-flow-inspector-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`wall-inspector-title-${selectedDestFlow.destinationId}`}
+          onClick={() => setSelectedDestId(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1200,
+            padding: '16px',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            className="output-modal-content"
+            data-testid={`wall-flow-inspector-${selectedDestFlow.destinationId}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#141c26',
+              border: '1px solid #38bdf8',
+              borderRadius: '4px',
+              maxWidth: '860px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(56, 189, 248, 0.25)',
+              overflow: 'hidden',
+              fontFamily: 'var(--ev-font)',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 16px',
+                borderBottom: '1px solid #1e293b',
+                backgroundColor: '#0f172a',
+                flexWrap: 'wrap',
+                gap: '8px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <h2
+                  id={`wall-inspector-title-${selectedDestFlow.destinationId}`}
+                  style={{
+                    margin: 0,
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    color: '#38bdf8',
+                  }}
+                >
+                  {selectedDestFlow.destinationDisplay} (#{selectedDestFlow.destinationNumber})
+                  Signal Flow
+                </h2>
+                <span
+                  data-testid={`wall-inspector-full-path-${selectedDestFlow.destinationId}`}
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '2px',
+                    color: '#e2e8f0',
+                  }}
+                >
+                  {selectedDestFlow.fullPathSummary}
+                  {selectedDestFlow.pipUsages.length > 0
+                    ? ` → ${selectedDestFlow.pipUsages.map((u) => u.pipDisplayLabel).join(', ')}`
+                    : ''}
+                </span>
+              </div>
+              <button
+                type="button"
+                data-testid="close-wall-flow-inspector-btn"
+                aria-label="Close inspector"
+                onClick={() => setSelectedDestId(null)}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  backgroundColor: '#1e293b',
+                  color: '#cbd5e1',
+                  border: '1px solid #475569',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                }}
+              >
+                Close ×
+              </button>
+            </div>
+
+            {/* Modal Body: Scrollable Content */}
+            <div
+              style={{
+                padding: '16px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}
+            >
+              {/* Duplicate Routing Warnings / Relationships */}
+              {selectedDestFlow.hasDuplicates && (
+                <div
+                  data-testid={`wall-inspector-duplicates-${selectedDestFlow.destinationId}`}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    padding: '8px 12px',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    borderRadius: '2px',
+                  }}
+                >
+                  {selectedDestFlow.duplicateFlags.map((flag, i) => (
+                    <div
+                      key={`${flag.kind}-${i}`}
+                      style={{
+                        fontSize: '11px',
+                        color: '#fbbf24',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <strong>⚠ {flag.label}:</strong>
+                      <span>{flag.description}</span>
+                      {flag.relatedDestinationIds.map((relId) => (
+                        <button
+                          key={relId}
+                          type="button"
+                          data-testid={`jump-related-dest-${relId}`}
+                          onClick={() => handleSelectWallDestination(relId)}
+                          style={{
+                            padding: '1px 5px',
+                            fontSize: '10px',
+                            fontFamily: 'monospace',
+                            backgroundColor: '#1e293b',
+                            color: '#38bdf8',
+                            border: '1px solid #38bdf8',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Inspect {formatDestinationDisplay(relId)}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Interactive Stage Builder Controls */}
+              {!isReadOnly && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                    gap: '12px',
+                    alignItems: 'end',
+                  }}
+                >
+                  {/* Stage 1: Lawo Source */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                      1. Lawo Source
+                    </label>
+                    <select
+                      aria-label={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
+                      data-testid={`wall-select-lawo-${selectedDestFlow.destinationId}`}
+                      disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                      value={
+                        wallPendingLawoId !== undefined
+                          ? (wallPendingLawoId ?? '')
+                          : (selectedDestFlow.lawoSourceId ?? '')
+                      }
+                      onChange={(e) =>
+                        setWallPendingLawoId(e.target.value ? (e.target.value as SourceId) : null)
+                      }
+                      style={{
+                        padding: '4px 6px',
+                        fontSize: '11px',
+                        backgroundColor: '#0f172a',
+                        color: '#f8fafc',
+                        border: '1px solid #334155',
+                        borderRadius: '2px',
+                      }}
+                    >
+                      <option value="">-- Unassigned (Origin / Direct) --</option>
+                      {validLawoSources
+                        .filter((s) => s.id !== selectedDestFlow.immediateSourceId)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {formatSourceCompact(s)}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Stage 2: Lawo Processing */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                      2. Lawo Processing (Optional)
+                    </label>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <select
+                        aria-label={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
+                        data-testid={`wall-select-processing-${selectedDestFlow.destinationId}`}
+                        disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                        value={
+                          wallPendingProcIds !== undefined
+                            ? (wallPendingProcIds[0] ?? '')
+                            : (selectedDestFlow.processingStages[0]?.id ?? '')
+                        }
+                        onChange={(e) =>
+                          setWallPendingProcIds(e.target.value ? [e.target.value as SourceId] : [])
+                        }
+                        style={{
+                          flex: 1,
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <option value="">-- Direct (No Processing) --</option>
+                        {validProcessingSources.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {formatSourceCompact(s)}
+                          </option>
+                        ))}
+                      </select>
+                      {(wallPendingLawoId !== undefined || wallPendingProcIds !== undefined) && (
+                        <button
+                          type="button"
+                          data-testid={`wall-confirm-lawo-chain-btn-${selectedDestFlow.destinationId}`}
+                          onClick={() => void handleConfirmWallLawoChain(selectedDestFlow)}
+                          disabled={isSaving}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: '#2864a3',
+                            color: '#ffffff',
+                            border: '1px solid #38bdf8',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✓ Save Upstream
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stage 3: Lawo Dest / Evertz Tieline / Evertz Source */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                      3. Lawo Dest / Evertz Source → {selectedDestFlow.destinationDisplay}
+                    </label>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <select
+                        aria-label={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
+                        data-testid={`wall-select-tieline-${selectedDestFlow.destinationId}`}
+                        disabled={isSaving}
+                        value={
+                          wallPendingTielineId !== undefined
+                            ? (wallPendingTielineId ?? '')
+                            : (selectedDestFlow.immediateSourceId ?? '')
+                        }
+                        onChange={(e) =>
+                          setWallPendingTielineId(
+                            e.target.value ? (e.target.value as SourceId) : null
+                          )
+                        }
+                        style={{
+                          flex: 1,
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <option value="">-- Unassigned --</option>
+                        {validTielineSources.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {formatSourceCompact(s)}
+                          </option>
+                        ))}
+                      </select>
+                      {wallPendingTielineId !== undefined && (
+                        <button
+                          type="button"
+                          data-testid={`wall-confirm-tieline-btn-${selectedDestFlow.destinationId}`}
+                          onClick={() => void handleConfirmWallTieline(selectedDestFlow)}
+                          disabled={isSaving}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: '#2864a3',
+                            color: '#ffffff',
+                            border: '1px solid #38bdf8',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✓ Save Route
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-testid={`wall-open-route-modal-btn-${selectedDestFlow.destinationId}`}
+                        onClick={() => setRoutingDestId(selectedDestFlow.destinationId)}
+                        style={{
+                          padding: '4px 7px',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          backgroundColor: '#1e293b',
+                          color: '#38bdf8',
+                          border: '1px solid #38bdf8',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                        }}
+                        title="Open searchable Evertz Source Routing Modal"
+                      >
+                        Catalog / Search…
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stage 4: Assign MV Input to Active Output PIP */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
+                      4. Assign {selectedDestFlow.destinationDisplay} to Output PIP
+                    </label>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <select
+                        aria-label={`Target Output for ${selectedDestFlow.destinationDisplay}`}
+                        data-testid={`wall-select-output-${selectedDestFlow.destinationId}`}
+                        value={wallTargetOutputId}
+                        onChange={(e) => {
+                          const outId = e.target.value as OutputId | '';
+                          setWallTargetOutputId(outId);
+                          setWallTargetPipId('');
+                        }}
+                        style={{
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <option value="">-- Output --</option>
+                        {snapshot.outputs
+                          .filter(
+                            (o) =>
+                              o.multiviewId === selectedDestFlow.multiviewId &&
+                              o.status !== 'Available' &&
+                              Boolean(o.layoutName)
+                          )
+                          .map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {formatOutputDisplay(o.id)} ({o.layoutName})
+                            </option>
+                          ))}
+                      </select>
+                      <select
+                        aria-label={`Target PIP for ${selectedDestFlow.destinationDisplay}`}
+                        data-testid={`wall-select-pip-${selectedDestFlow.destinationId}`}
+                        disabled={!wallTargetOutputId}
+                        value={wallTargetPipId}
+                        onChange={(e) => setWallTargetPipId(e.target.value as PipId | '')}
+                        style={{
+                          padding: '4px 6px',
+                          fontSize: '11px',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid #334155',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <option value="">-- PIP --</option>
+                        {wallTargetOutputId &&
+                          (() => {
+                            const targetOut = mvOutputs.find((o) => o.id === wallTargetOutputId);
+                            if (!targetOut) return null;
+                            return getValidPipOptions(targetOut, snapshot.customLayouts).map(
+                              (pId) => (
+                                <option key={pId} value={pId}>
+                                  {pId}
+                                </option>
+                              )
+                            );
+                          })()}
+                      </select>
+                      {wallTargetOutputId && wallTargetPipId && (
+                        <button
+                          type="button"
+                          data-testid={`wall-confirm-pip-btn-${selectedDestFlow.destinationId}`}
+                          onClick={() => void handleConfirmWallAssignPip(selectedDestFlow)}
+                          disabled={isSaving}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: '#2864a3',
+                            color: '#ffffff',
+                            border: '1px solid #38bdf8',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✓ Assign PIP
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Output Focused Drill-in Modal */}
