@@ -28,17 +28,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true, onOpenSet
           </NavLink>
 
           <NavLink
-            to="/layouts"
-            className={({ isActive }) => `ev-nav-item ${isActive ? 'active' : ''}`}
-            title="Evertz Layout Geometry Library & Output Assignments"
-          >
-            <span className="ev-nav-icon" aria-hidden="true">
-              ▦
-            </span>
-            <span className="ev-nav-label">Layouts</span>
-          </NavLink>
-
-          <NavLink
             to="/sources"
             className={({ isActive }) => `ev-nav-item ${isActive ? 'active' : ''}`}
             title="Lawo-to-Evertz VIP Signal Flows & PIP Routing"
@@ -47,6 +36,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isOpen = true, onOpenSet
               ⇄
             </span>
             <span className="ev-nav-label">Signal Flows</span>
+          </NavLink>
+
+          <NavLink
+            to="/layouts"
+            className={({ isActive }) => `ev-nav-item ${isActive ? 'active' : ''}`}
+            title="Evertz Layout Geometry Library & Output Assignments"
+          >
+            <span className="ev-nav-icon" aria-hidden="true">
+              ▦
+            </span>
+            <span className="ev-nav-label">Layouts</span>
           </NavLink>
 
           <NavLink
