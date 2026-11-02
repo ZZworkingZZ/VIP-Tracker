@@ -977,7 +977,6 @@ export const DestinationSourcesPage: React.FC = () => {
                 const dest = row.destination;
                 const destDisplay = formatDestinationDisplay(dest.id);
                 const destFlow = destSignalFlowsMap.get(dest.id);
-                const cardPipLabel = (pipId: string) => `${destDisplay} ${pipId}`;
                 const hasSource = Boolean(row.source);
                 const isDraggingThis = draggingDestId === dest.id;
                 const isSelectedTile = selectedDestId === dest.id;
@@ -1391,7 +1390,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               overflow: 'hidden',
                             }}
                             title={`Active PIPs: ${destFlow.pipUsages
-                              .map((u) => cardPipLabel(u.pipId))
+                              .map((u) => u.pipDisplayLabel)
                               .join(', ')}`}
                           >
                             {destFlow.pipUsages.length <= 2 ? (
@@ -1409,7 +1408,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                     maxWidth: '100%',
                                   }}
                                 >
-                                  {cardPipLabel(u.pipId)}
+                                  {u.pipDisplayLabel}
                                 </span>
                               ))
                             ) : (
@@ -1427,7 +1426,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               >
                                 {destFlow.pipUsages
                                   .slice(0, 2)
-                                  .map((u) => cardPipLabel(u.pipId))
+                                  .map((u) => u.pipDisplayLabel)
                                   .join(', ')}
                                 {` (+${destFlow.pipUsages.length - 2})`}
                               </span>

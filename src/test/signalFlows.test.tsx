@@ -1150,18 +1150,18 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(within(card02).getByTestId('dest-card-dest-id-DEST:MV-03-02')).toHaveTextContent(
       'MV-03-02'
     );
+    // Green label = the MV OUTPUT hosting the PIP (OUT:MV-03-01 hosts PIP-02 for DEST:MV-03-02),
+    // not the card's own destination (blue label, DEST:MV-03-02).
     expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).toHaveTextContent(
-      'MV-03-02 PIP-02'
-    );
-    // Regression: the MV portion of the PIP label comes from the card's destination (dest.id),
-    // not from the output that hosts the PIP (OUT:MV-03-01 hosts PIP-02 for DEST:MV-03-02).
-    expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).not.toHaveTextContent(
       'MV-03-01 PIP-02'
+    );
+    expect(within(card02).getByTestId('dest-card-pips-DEST:MV-03-02')).not.toHaveTextContent(
+      'MV-03-02 PIP-02'
     );
     const text02 = card02.textContent!;
     const idx02Source = text02.indexOf('vCam 41');
     const idx02MvInput = text02.indexOf('MV-03-02');
-    const idx02Pips = text02.indexOf('MV-03-02 PIP-02');
+    const idx02Pips = text02.indexOf('MV-03-01 PIP-02');
     expect(idx02Source).toBeLessThan(idx02MvInput);
     expect(idx02MvInput).toBeLessThan(idx02Pips);
 
@@ -1209,4 +1209,75 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(await screen.findByText(/Destination Windows Wall \(264 of 264\)/i)).toBeInTheDocument();
     expect(screen.getAllByTestId(/^dest-card-DEST:MV-/)).toHaveLength(264);
   }, 15000);
+
+  describe('41. wall-card green PIP labels identify the MV output, not the card destination', () => {
+    const DEST_05 = 'DEST:MV-03-05' as DestinationId;
+
+    /** Routes DEST:MV-03-05 onto the given (output, pip) pairs; the card's own id stays MV-03-05. */
+    function snapshotWithDest05Usages(usages: [string, string][]) {
+      const snapshot = createSignalFlowTestSnapshot();
+      return {
+        ...snapshot,
+        outputs: snapshot.outputs.map((o) => {
+          const hit = usages.find(([outputId]) => outputId === o.id);
+          return hit
+            ? {
+                ...o,
+                pipAssignments: {
+                  ...(o.pipAssignments ?? {}),
+                  [hit[1]]: DEST_05,
+                } as Record<PipId, DestinationId | null>,
+              }
+            : o;
+        }),
+      };
+    }
+
+    async function renderWall(snapshot: TrackerSnapshot) {
+      renderWithProviders(<DestinationSourcesPage />, {
+        repository: new LocalTrackerRepository(snapshot),
+        route: '/sources?mvId=MV-03',
+      });
+      const card = await screen.findByTestId(`dest-card-${DEST_05}`);
+      return { card, pips: within(card).getByTestId(`dest-card-pips-${DEST_05}`) };
+    }
+
+    it('shows each usage with its own output MV and PIP (two usages)', async () => {
+      const { card, pips } = await renderWall(
+        snapshotWithDest05Usages([
+          ['OUT:MV-03-01', 'PIP-03'],
+          ['OUT:MV-03-02', 'PIP-01'],
+        ])
+      );
+      // Blue label is the card's own destination
+      expect(within(card).getByTestId(`dest-card-dest-id-${DEST_05}`)).toHaveTextContent(
+        'MV-03-05'
+      );
+      // Green lines are output-based, one per usage
+      expect(pips).toHaveTextContent('MV-03-01 PIP-03');
+      expect(pips).toHaveTextContent('MV-03-02 PIP-01');
+      expect(pips).not.toHaveTextContent('MV-03-05 PIP-');
+      expect(pips).toHaveAttribute('title', 'Active PIPs: MV-03-01 PIP-03, MV-03-02 PIP-01');
+      // Removed elements stay removed; Flow button remains
+      expect(within(card).queryByTitle('Inspect covering output layout')).not.toBeInTheDocument();
+      expect(card.textContent).not.toMatch(/#\d/);
+      expect(within(card).getByTestId(`dest-flow-btn-${DEST_05}`)).toBeInTheDocument();
+    });
+
+    it('uses output-based labels in the "+N" overflow summary (three usages)', async () => {
+      const { pips } = await renderWall(
+        snapshotWithDest05Usages([
+          ['OUT:MV-03-01', 'PIP-03'],
+          ['OUT:MV-03-02', 'PIP-01'],
+          ['OUT:MV-03-03', 'PIP-01'],
+        ])
+      );
+      expect(pips).toHaveTextContent('MV-03-01 PIP-03, MV-03-02 PIP-01 (+1)');
+      expect(pips).not.toHaveTextContent('MV-03-05 PIP-');
+      expect(pips).toHaveAttribute(
+        'title',
+        'Active PIPs: MV-03-01 PIP-03, MV-03-02 PIP-01, MV-03-03 PIP-01'
+      );
+    });
+  });
 });
