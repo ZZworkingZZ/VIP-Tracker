@@ -1437,7 +1437,7 @@ export const DestinationSourcesPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Footer: Physical Destination #, Covering Output, Actions */}
+                    {/* Footer: Physical Destination #, Actions */}
                     <div
                       style={{
                         display: 'flex',
@@ -1459,18 +1459,6 @@ export const DestinationSourcesPage: React.FC = () => {
                         ) : null}
                       </span>
                       <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                        {!isEditMode && row.coveringOutput && (
-                          <span
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOutput(row.coveringOutput);
-                            }}
-                            style={{ color: '#fbbf24', fontWeight: 600, cursor: 'pointer' }}
-                            title="Inspect covering output layout"
-                          >
-                            {formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')}
-                          </span>
-                        )}
                         <button
                           type="button"
                           data-testid={`dest-flow-btn-${dest.id}`}

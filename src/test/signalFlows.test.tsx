@@ -1165,6 +1165,15 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(idx02Source).toBeLessThan(idx02MvInput);
     expect(idx02MvInput).toBeLessThan(idx02Pips);
 
+    // The yellow covering-output label (title "Inspect covering output layout") is removed from
+    // wall cards; PIP labels and the Flow button remain.
+    expect(within(card01).queryByTitle('Inspect covering output layout')).not.toBeInTheDocument();
+    expect(within(card02).queryByTitle('Inspect covering output layout')).not.toBeInTheDocument();
+    expect(within(card01).getByTestId('dest-card-pips-DEST:MV-03-01')).toHaveTextContent(
+      'MV-03-01 PIP-01'
+    );
+    expect(within(card02).getByTestId('dest-flow-btn-DEST:MV-03-02')).toBeInTheDocument();
+
     // 3. Unassigned destination (DEST:MV-03-60 has no assigned source and no PIPs)
     const card60 = screen.getByTestId('dest-card-DEST:MV-03-60');
     expect(within(card60).getByText('Unassigned')).toBeInTheDocument();
