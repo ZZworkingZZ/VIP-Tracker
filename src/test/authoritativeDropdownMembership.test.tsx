@@ -33,12 +33,12 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
   for (const s of SEED_EVERTZ_SOURCES) combinedTielineEvertzMap.set(s.name, s.name);
   const excelCombinedTielineEvertzNames = Array.from(combinedTielineEvertzMap.values());
 
-  describe('1. Exact Name Comparison for Lawo Sources Dropdown (445 entries)', () => {
+  describe('1. Exact Name Comparison for Lawo Sources Dropdown (712 entries)', () => {
     it('matches exact name-set between Excel inventory and dropdown options without 307-origin subset reduction', () => {
       const dropdownSources = getAuthoritativeLawoDropdownSources(INITIAL_SNAPSHOT.sources);
       const dropdownNames = dropdownSources.map((s) => s.name);
 
-      expect(dropdownNames).toHaveLength(445);
+      expect(dropdownNames).toHaveLength(712);
       expect(dropdownNames.slice().sort()).toEqual(excelLawoNames.slice().sort());
 
       const excelSet = new Set(excelLawoNames);
@@ -144,7 +144,7 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
   });
 
   describe('5. UI Dropdown Verification in DestinationSourcesPage', () => {
-    it('renders exact 445 Lawo source options in the Signal Flow row dropdown', async () => {
+    it('renders exact 711 Lawo source options (712 minus the row tieline) in the Signal Flow row dropdown', async () => {
       const vCam40Id = createSourceId('vCam 40');
       const testSnapshot = {
         ...INITIAL_SNAPSHOT,
@@ -167,8 +167,10 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
         .filter((opt) => opt.value !== '')
         .map((opt) => opt.text);
 
-      expect(options).toHaveLength(445);
-      expect(options.slice().sort()).toEqual(excelLawoNames.slice().sort());
+      // The row's own tieline (vCam 40) is never offered as its own upstream Lawo source.
+      const expectedNames = excelLawoNames.filter((n) => n !== 'vCam 40');
+      expect(options).toHaveLength(711);
+      expect(options.slice().sort()).toEqual(expectedNames.slice().sort());
     });
 
     it('renders exact 267 Tieline / Evertz source options in the Signal Flow row dropdown', async () => {

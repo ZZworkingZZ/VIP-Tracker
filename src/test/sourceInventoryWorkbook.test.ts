@@ -30,32 +30,61 @@ import { selectFilteredSources } from '../domain/selectors';
 describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)', () => {
   describe('1 & 2. Workbook Inventories Parsing & Non-fabrication', () => {
     it('parses exact counts for each independent inventory list from the workbook', () => {
-      expect(WORKBOOK_SOURCE_INVENTORY.lawoSources).toHaveLength(445);
+      expect(WORKBOOK_SOURCE_INVENTORY.lawoSources).toHaveLength(712);
       expect(WORKBOOK_SOURCE_INVENTORY.lawoProcessing).toHaveLength(138);
       expect(WORKBOOK_SOURCE_INVENTORY.lawoTielines).toHaveLength(117);
       expect(WORKBOOK_SOURCE_INVENTORY.evertzSources).toHaveLength(267);
       expect(WORKBOOK_SOURCE_INVENTORY.evertzMvInputs).toHaveLength(264);
 
       // Verify authoritative independent seed collections
-      expect(SEED_LAWO_SOURCES).toHaveLength(445);
+      expect(SEED_LAWO_SOURCES).toHaveLength(712);
       expect(SEED_LAWO_PROCESSING_DEVICES).toHaveLength(138);
       expect(SEED_LAWO_TIELINES).toHaveLength(117);
       expect(SEED_EVERTZ_SOURCES).toHaveLength(267);
       expect(SEED_EVERTZ_MV_INPUTS).toHaveLength(264);
-      expect(AUTHORITATIVE_INVENTORY_SOURCES).toHaveLength(1231);
+      expect(AUTHORITATIVE_INVENTORY_SOURCES).toHaveLength(1498);
 
       // Verify derived internal routing collections
       expect(SEED_LAWO_ORIGIN_SOURCES).toHaveLength(307);
       expect(SEED_ALL_SOURCES).toHaveLength(712);
       expect(SEED_COMBINED_ROUTING_CATALOG).toHaveLength(712);
 
-      expect(SOURCE_INVENTORY_METADATA.counts.lawoSources).toBe(445);
+      expect(SOURCE_INVENTORY_METADATA.counts.lawoSources).toBe(712);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoProcessing).toBe(138);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoTielines).toBe(117);
       expect(SOURCE_INVENTORY_METADATA.counts.evertzSources).toBe(267);
       expect(SOURCE_INVENTORY_METADATA.counts.evertzMvInputs).toBe(264);
-      expect(SOURCE_INVENTORY_METADATA.counts.authoritativeTotal).toBe(1231);
+      expect(SOURCE_INVENTORY_METADATA.counts.authoritativeTotal).toBe(1498);
       expect(SOURCE_INVENTORY_METADATA.counts.unifiedSources).toBe(712);
+    });
+
+    it('lists every Evertz Source in the Lawo Sources inventory with its sheet Type, without duplicating routing IDs', () => {
+      const lawoByName = new Map(WORKBOOK_SOURCE_INVENTORY.lawoSources.map((s) => [s.name, s]));
+      const evertz = WORKBOOK_SOURCE_INVENTORY.evertzSources;
+      expect(evertz).toHaveLength(267);
+      for (const e of evertz) {
+        expect(lawoByName.get(e.name)?.type, e.name).toBe(e.type);
+      }
+
+      const spot: Array<[string, string]> = [
+        ['vCam 601', 'vCam'],
+        ['vTie 137', 'vTie'],
+        ['Caption Enc 03', 'Caption'],
+        ['J2K Clip 1C', 'Playback'],
+        ['JXS Replay 3B', 'Playback'],
+        ['MV 05-08', 'VIP Output'],
+        ['RX TWD 9936', 'JXS'],
+        ['Swr 216', 'Swr'],
+        ['TX TWD 8836', 'JXS'],
+        ['Bars', 'QC'],
+      ];
+      for (const [name, type] of spot) {
+        expect(lawoByName.get(name)?.type, name).toBe(type);
+        expect(SEED_LAWO_SOURCES.find((s) => s.name === name)?.metadata?.rawType, name).toBe(type);
+      }
+
+      const ids = SEED_COMBINED_ROUTING_CATALOG.map((s) => s.id);
+      expect(new Set(ids).size).toBe(ids.length);
     });
 
     it('ensures no blank rows or empty cells created bogus inventory entries', () => {
@@ -234,7 +263,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
     it('supports category filtering, inventory group filtering, and search in Source Directory', () => {
       // 1. All sources across the five authoritative inventories
       const all = selectFilteredSources(AUTHORITATIVE_INVENTORY_SOURCES, 'ALL', '');
-      expect(all).toHaveLength(1231);
+      expect(all).toHaveLength(1498);
 
       // 2. Filter by inventory group for all five authoritative inventories
       const lawoSources = selectFilteredSources(
@@ -243,7 +272,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
         '',
         'lawo-source'
       );
-      expect(lawoSources).toHaveLength(445);
+      expect(lawoSources).toHaveLength(712);
 
       const processing = selectFilteredSources(
         AUTHORITATIVE_INVENTORY_SOURCES,
@@ -291,9 +320,9 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
 
       const inventorySelect = await screen.findByTestId('inventory-filter-select');
 
-      // 1. Lawo Sources (445)
+      // 1. Lawo Sources (712)
       fireEvent.change(inventorySelect, { target: { value: 'lawo-source' } });
-      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(445);
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(712);
 
       // 2. Lawo Processing (138)
       fireEvent.change(inventorySelect, { target: { value: 'lawo-processing' } });

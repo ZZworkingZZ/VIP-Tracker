@@ -20,7 +20,7 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
 
   // Requirement 1
   it('1. category chips appear with correct counts for each of the three lists', () => {
-    // List 1: Lawo Sources (~445)
+    // List 1: Lawo Sources (~712)
     const { unmount: unmount1 } = render(
       <SearchableSourcePicker
         sources={lawoSources}
@@ -28,11 +28,11 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
         onSelectSource={vi.fn()}
       />
     );
-    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (445)');
-    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (420)');
-    expect(screen.getByTestId('category-chip-switcher')).toHaveTextContent('Switcher (21)');
+    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (712)');
+    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (456)');
+    expect(screen.getByTestId('category-chip-switcher')).toHaveTextContent('Switcher (37)');
     expect(screen.getByTestId('category-chip-virtual-camera')).toHaveTextContent(
-      'Virtual Camera (4)'
+      'Virtual Camera (60)'
     );
     unmount1();
 

@@ -263,13 +263,17 @@ def main():
     )
 
     # Derived internal routing catalog (712 sources):
-    # 1. Originating Lawo sources (445 - 138 = 307)
+    # 1. Originating Lawo sources: Lawo Sources minus processing devices minus names that are also
+    #    Evertz Sources (those stay in the routing catalog via their existing Evertz/tieline entries,
+    #    so IDs and route roles are never duplicated or re-keyed).
+    evertz_lookup = {n for n, _ in evertz_sources_raw}
     seed_lawo_origin_sources = [
         {
             **item,
             'inventoryCategories': ['lawo-source'],
         }
-        for item in seed_lawo_sources if item['name'] not in proc_lookup
+        for item in seed_lawo_sources
+        if item['name'] not in proc_lookup and item['name'] not in evertz_lookup
     ]
 
     # 2. Processing devices with routing category tags (138)

@@ -86,10 +86,12 @@ export const LAWO_DEVICE_TYPES = [
   'GFX',
   'Haivision',
   'IPTV',
+  'JXS',
   'LiveToAir',
   'LiveU',
   'Mon',
   'Multiview',
+  'Playback',
   'Prompter',
   'QC',
   'QuickLink',
@@ -97,7 +99,12 @@ export const LAWO_DEVICE_TYPES = [
   'Tablet',
   'Transcode',
   'UDX',
+  'vCam',
+  'vIngest',
   'vMix',
+  'vPgm',
+  'vTie',
+  'VIP Output',
 ] as const;
 
 export type LawoDeviceType = (typeof LAWO_DEVICE_TYPES)[number];
