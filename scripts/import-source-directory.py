@@ -46,6 +46,8 @@ def classify_source_category(raw_name: str) -> str:
         return 'Switcher'
     if re.search(r'^TX\b|^TRANS\b|^SAT\b|^FIBER\b', upper):
         return 'Transmission'
+    if re.search(r'^RX\b', upper):
+        return 'Reception'
     if re.search(r'^VCAM\b|^CAM\b|^ROBO\b', upper):
         return 'Virtual Camera'
     if re.search(r'^VING\b|^VINGEST\b|^INGEST\b', upper):

@@ -11,9 +11,16 @@ import { SearchableSourcePicker } from '../components/multiview/SearchableSource
 import { matchesSourceQuery, normalizeSourceSearch } from '../domain/sourceSearch';
 import { Source } from '../domain/models';
 import { createSourceId, SourceId } from '../domain/identifiers';
-import { SourceCategory } from '../domain/sourceCategories';
+import { SourceCategory, classifySourceCategory } from '../domain/sourceCategories';
 
 describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
+  it('classifies RX TWD sources as Reception, mirroring TX TWD as Transmission', () => {
+    expect(classifySourceCategory('RX TWD 9936')).toBe('Reception');
+    expect(classifySourceCategory('TX TWD 8836')).toBe('Transmission');
+    const seedRx = INITIAL_SNAPSHOT.sources.find((s) => s.name === 'RX TWD 9936');
+    expect(seedRx?.category).toBe('Reception');
+  });
+
   const lawoSources = getAuthoritativeLawoDropdownSources(INITIAL_SNAPSHOT.sources);
   const procSources = getAuthoritativeProcessingDropdownSources(INITIAL_SNAPSHOT.sources);
   const tielineSources = getAuthoritativeTielineDropdownSources(INITIAL_SNAPSHOT.sources);
@@ -29,7 +36,8 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
       />
     );
     expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (712)');
-    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (456)');
+    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (420)');
+    expect(screen.getByTestId('category-chip-reception')).toHaveTextContent('Reception (36)');
     expect(screen.getByTestId('category-chip-switcher')).toHaveTextContent('Switcher (37)');
     expect(screen.getByTestId('category-chip-virtual-camera')).toHaveTextContent(
       'Virtual Camera (60)'
@@ -61,7 +69,9 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
       'Virtual Camera (56)'
     );
     expect(screen.getByTestId('category-chip-virtual-tie')).toHaveTextContent('Virtual Tie (37)');
-    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (36)');
+    // RX TWD 9901-9936 now classify as Reception; no Other entries remain in this list.
+    expect(screen.queryByTestId('category-chip-other')).toBeNull();
+    expect(screen.getByTestId('category-chip-reception')).toHaveTextContent('Reception (36)');
     expect(screen.getByTestId('category-chip-transmission')).toHaveTextContent('Transmission (36)');
     expect(screen.getByTestId('category-chip-multiview')).toHaveTextContent('Multiview (32)');
     expect(screen.getByTestId('category-chip-switcher')).toHaveTextContent('Switcher (16)');

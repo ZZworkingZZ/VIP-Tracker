@@ -15,6 +15,7 @@ export const SOURCE_CATEGORIES = [
   'Multiview',
   'Switcher',
   'Transmission',
+  'Reception',
   'Virtual Camera',
   'Virtual Ingest',
   'Virtual Program',
@@ -58,6 +59,9 @@ export function classifySourceCategory(rawName: string): SourceCategory {
   if (/^TX\b|^TRANS\b|^SAT\b|^FIBER\b/.test(upper)) {
     return 'Transmission';
   }
+  if (/^RX\b/.test(upper)) {
+    return 'Reception';
+  }
   if (/^VCAM\b|^CAM\b|^ROBO\b/.test(upper)) {
     return 'Virtual Camera';
   }
@@ -88,6 +92,8 @@ export function getSourceCategoryColor(category: SourceCategory): string {
       return '#fbbf24'; // amber
     case 'Transmission':
       return '#a78bfa'; // purple
+    case 'Reception':
+      return '#c4b5fd'; // lighter purple (sibling of Transmission)
     case 'Virtual Program':
       return '#f87171'; // red/coral
     case 'Test':
