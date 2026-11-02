@@ -51,13 +51,6 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
     return Number.isFinite(n) && popoverWidth.endsWith('px') ? n : 360;
   }, [popoverWidth]);
 
-  // Approximate width needed for the longest source label (~7px/char + padding), capped by helper.
-  const desiredWidth = useMemo(() => {
-    let longest = 0;
-    for (const s of sources) longest = Math.max(longest, formatSourceCompact(s).length);
-    return Math.max(minPopoverWidth, longest * 7 + 120);
-  }, [sources, minPopoverWidth]);
-
   const reposition = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return;
@@ -69,6 +62,11 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
       setIsOpen(false);
       return;
     }
+    // Approximate width needed for the longest source label (~7px/char + padding); computed only
+    // while open so closed dropdowns pay no cost.
+    let longest = 0;
+    for (const s of sources) longest = Math.max(longest, formatSourceCompact(s).length);
+    const desiredWidth = Math.max(minPopoverWidth, longest * 7 + 120);
     setPosition(
       computePopoverPosition({
         trigger: { top: r.top, bottom: r.bottom, left: r.left, width: r.width },
@@ -77,7 +75,7 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
         desiredWidth,
       })
     );
-  }, [desiredWidth]);
+  }, [sources, minPopoverWidth]);
 
   useLayoutEffect(() => {
     if (!isOpen) {
