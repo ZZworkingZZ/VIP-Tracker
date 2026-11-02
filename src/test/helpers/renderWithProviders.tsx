@@ -3,6 +3,7 @@ import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import { MemoryRouter, MemoryRouterProps } from 'react-router-dom';
 import { vi, MockInstance } from 'vitest';
 import { TrackerRepositoryProvider } from '../../app/TrackerRepositoryContext';
+import { MvSelectionProvider } from '../../app/MvSelectionContext';
 import { LocalTrackerRepository } from '../../services/LocalTrackerRepository';
 import { TrackerRepository } from '../../services/TrackerRepository';
 import { MemoryOperatorStorage } from '../../services/operatorStorage';
@@ -73,7 +74,9 @@ export function renderWithProviders(
 
   const result = render(
     <TrackerRepositoryProvider repository={repository} operatorStorage={operatorStorage}>
-      <MemoryRouter initialEntries={entries}>{ui}</MemoryRouter>
+      <MvSelectionProvider>
+        <MemoryRouter initialEntries={entries}>{ui}</MemoryRouter>
+      </MvSelectionProvider>
     </TrackerRepositoryProvider>,
     renderOptions
   );

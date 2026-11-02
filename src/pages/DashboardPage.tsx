@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTrackerSnapshot } from '../hooks/useTracker';
 import { selectDashboardTotals, selectMultiviewSummaries } from '../domain/selectors';
-import { formatOutputDisplay, OutputId, PipId } from '../domain/identifiers';
+import { formatOutputDisplay, isMultiviewId, OutputId, PipId } from '../domain/identifiers';
+import { useLastSpecificMv } from '../hooks/useMvSelection';
 import { MultiviewOutput } from '../domain/models';
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
@@ -26,10 +27,11 @@ export const DashboardPage: React.FC = () => {
   const initialPipParam = searchParams.get('pipId') as PipId | null;
 
   const [viewMode, setViewMode] = useState<'display' | 'table'>('display');
+  const { lastSpecificMv, setLastSpecificMv } = useLastSpecificMv();
   const [selectedMvFilter, setSelectedMvFilter] = useState<string>(
     initialMvParam && ['ALL', 'MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(initialMvParam)
       ? initialMvParam
-      : 'ALL'
+      : (lastSpecificMv ?? 'ALL')
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOutput, setSelectedOutput] = useState<MultiviewOutput | null>(null);
@@ -41,6 +43,7 @@ export const DashboardPage: React.FC = () => {
       ['ALL', 'MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(initialMvParam)
     ) {
       setSelectedMvFilter(initialMvParam);
+      if (isMultiviewId(initialMvParam)) setLastSpecificMv(initialMvParam);
     }
     if (initialOutputParam && snapshot) {
       const targetOut = snapshot.outputs.find((o) => o.id === initialOutputParam) ?? null;
@@ -51,7 +54,7 @@ export const DashboardPage: React.FC = () => {
     if (initialPipParam) {
       setFocusedPipId(initialPipParam);
     }
-  }, [initialMvParam, initialOutputParam, initialPipParam, snapshot]);
+  }, [initialMvParam, initialOutputParam, initialPipParam, snapshot, setLastSpecificMv]);
 
   const handleViewSignalFlow = (outputId: OutputId, pipId: PipId) => {
     const out = snapshot?.outputs.find((o) => o.id === outputId);
@@ -202,7 +205,10 @@ export const DashboardPage: React.FC = () => {
               role="tab"
               aria-selected={selectedMvFilter === mvId}
               className={`mv-tab-btn ${selectedMvFilter === mvId ? 'active' : ''}`}
-              onClick={() => setSelectedMvFilter(mvId)}
+              onClick={() => {
+                setSelectedMvFilter(mvId);
+                if (isMultiviewId(mvId)) setLastSpecificMv(mvId);
+              }}
             >
               {mvId === 'ALL' ? 'All Displays' : mvId}
             </button>

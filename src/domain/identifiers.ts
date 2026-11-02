@@ -5,6 +5,13 @@
 
 export type MultiviewId = 'MV-01' | 'MV-02' | 'MV-03' | 'MV-04' | 'MV-05';
 
+const MULTIVIEW_IDS: readonly string[] = ['MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'];
+
+/** Type guard: true only for a specific multiview id (never 'ALL'). */
+export function isMultiviewId(value: unknown): value is MultiviewId {
+  return typeof value === 'string' && MULTIVIEW_IDS.includes(value);
+}
+
 export type OutputId = `OUT:${MultiviewId}-${string}`;
 export type DestinationId = `DEST:${MultiviewId}-${string}`;
 export type SourceId = `SRC:${string}`;

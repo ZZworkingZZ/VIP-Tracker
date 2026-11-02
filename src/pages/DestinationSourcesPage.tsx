@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTrackerSnapshot } from '../hooks/useTracker';
+import { useLastSpecificMv } from '../hooks/useMvSelection';
 import {
   MultiviewId,
   DestinationId,
@@ -107,10 +108,18 @@ export const DestinationSourcesPage: React.FC = () => {
   const focusedFlowKey = focusOutputId && focusPipId ? `${focusOutputId}:${focusPipId}` : null;
 
   const [viewMode, setViewMode] = useState<'flows' | 'display' | 'table'>('flows');
+  const { lastSpecificMv, setLastSpecificMv } = useLastSpecificMv();
   const [selectedMvFilter, setSelectedMvFilter] = useState<MultiviewId | 'ALL'>(
-    validInitialMvFilter ?? 'MV-01'
+    validInitialMvFilter ?? lastSpecificMv ?? 'MV-01'
   );
-  const [selectedMv, setSelectedMv] = useState<MultiviewId>(validInitialMv ?? 'MV-01');
+  const [selectedMv, setSelectedMv] = useState<MultiviewId>(
+    validInitialMv ?? lastSpecificMv ?? 'MV-01'
+  );
+
+  // A valid explicit deep-link MV becomes the remembered MV (never written during render).
+  useEffect(() => {
+    if (validInitialMv) setLastSpecificMv(validInitialMv);
+  }, [validInitialMv, setLastSpecificMv]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [routeStatusFilter, setRouteStatusFilter] = useState<'ALL' | 'ROUTED' | 'UNROUTED'>('ALL');
   const [sourceTypeFilter, setSourceTypeFilter] = useState<string>('ALL');
@@ -787,6 +796,7 @@ export const DestinationSourcesPage: React.FC = () => {
                 onClick={() => {
                   setSelectedMv(mv.id);
                   setSelectedMvFilter(mv.id);
+                  setLastSpecificMv(mv.id);
                 }}
               >
                 <strong>{mv.id}</strong> ({mv.inputCapacity} Inputs)
