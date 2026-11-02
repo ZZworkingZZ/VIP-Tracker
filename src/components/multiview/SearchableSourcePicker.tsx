@@ -3,9 +3,12 @@ import { Source, formatSourceCompact } from '../../domain/models';
 import { SourceId } from '../../domain/identifiers';
 import { SOURCE_CATEGORIES } from '../../domain/sourceCategories';
 import { matchesSourceQuery } from '../../domain/sourceSearch';
+import { getPickerType, getPickerTypeOrder, type SourcePickerRole } from '../../domain/pickerTypes';
 
 export interface SearchableSourcePickerProps {
   readonly sources: readonly Source[];
+  /** When set, chips/groups use the workbook Type for this list role instead of Source.category. */
+  readonly pickerRole?: SourcePickerRole;
   readonly selectedSourceId: string | null;
   readonly onSelectSource: (sourceId: SourceId | null) => void;
   readonly onDoubleClickSource?: (sourceId: SourceId | null) => void;
@@ -20,6 +23,7 @@ export interface SearchableSourcePickerProps {
 
 export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
   sources,
+  pickerRole,
   selectedSourceId,
   onSelectSource,
   onDoubleClickSource,
@@ -46,20 +50,34 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
     }
   }, [autoFocus]);
 
+  const categoryOf = useMemo(
+    () =>
+      (s: Source): string => {
+        if (pickerRole) return getPickerType(pickerRole, s.id);
+        return s.category && s.category.trim() ? s.category.trim() : 'Uncategorized';
+      },
+    [pickerRole]
+  );
+
   // Derive available categories and their counts dynamically from canonical sources
   const { categories, categoryCounts } = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const s of sources) {
-      const cat = s.category && s.category.trim() ? s.category.trim() : 'Uncategorized';
+      const cat = categoryOf(s);
       counts[cat] = (counts[cat] || 0) + 1;
     }
 
-    const knownOrder = new Map(SOURCE_CATEGORIES.map((c, i) => [c as string, i]));
+    const knownOrder = new Map(
+      (pickerRole ? getPickerTypeOrder(pickerRole) : SOURCE_CATEGORIES).map((c, i) => [
+        c as string,
+        i,
+      ])
+    );
     const sortedCats = Object.keys(counts).sort((a, b) => {
       if (a === 'Uncategorized') return 1;
       if (b === 'Uncategorized') return -1;
-      if (a === 'Other') return 1;
-      if (b === 'Other') return -1;
+      if (!pickerRole && a === 'Other') return 1;
+      if (!pickerRole && b === 'Other') return -1;
       const orderA = knownOrder.get(a);
       const orderB = knownOrder.get(b);
       if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
@@ -69,16 +87,16 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
     });
 
     return { categories: sortedCats, categoryCounts: counts };
-  }, [sources]);
+  }, [sources, pickerRole, categoryOf]);
 
   // Filter sources by category and query
   const filteredSources = useMemo(() => {
     return sources.filter((s) => {
-      const cat = s.category && s.category.trim() ? s.category.trim() : 'Uncategorized';
+      const cat = categoryOf(s);
       if (selectedCategory !== 'ALL' && cat !== selectedCategory) return false;
       return matchesSourceQuery(s, searchQuery);
     });
-  }, [sources, selectedCategory, searchQuery]);
+  }, [sources, selectedCategory, searchQuery, categoryOf]);
 
   // Grouped sections when "ALL" is selected
   const groupedSections = useMemo(() => {
@@ -88,7 +106,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
 
     const catMap = new Map<string, Source[]>();
     for (const s of filteredSources) {
-      const cat = s.category && s.category.trim() ? s.category.trim() : 'Uncategorized';
+      const cat = categoryOf(s);
       if (!catMap.has(cat)) {
         catMap.set(cat, []);
       }
@@ -103,7 +121,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
       }
     }
     return groups;
-  }, [selectedCategory, filteredSources, categories]);
+  }, [selectedCategory, filteredSources, categories, categoryOf]);
 
   // Flattened visible items for keyboard navigation: unassigned option (if present) followed by sources
   const visibleNavItems = useMemo<Array<Source | null>>(() => {
@@ -370,10 +388,7 @@ export const SearchableSourcePicker: React.FC<SearchableSourcePickerProps> = ({
                 const navIndex = currentNavIndex++;
                 const isSelected = selectedSourceId === source.id;
                 const isHighlighted = highlightedIndex === navIndex;
-                const cat =
-                  source.category && source.category.trim()
-                    ? source.category.trim()
-                    : 'Uncategorized';
+                const cat = categoryOf(source);
 
                 return (
                   <div

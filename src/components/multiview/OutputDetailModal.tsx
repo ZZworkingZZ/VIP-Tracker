@@ -1610,6 +1610,7 @@ export const OutputDetailModal: React.FC<OutputDetailModalProps> = ({
       {routingWindow && (
         <SourceRoutingSelectorModal
           isOpen={Boolean(routingWindow)}
+          pickerRole="tieline"
           windowIndex={routingWindow.windowIndex}
           destinationNumber={routingWindow.destinationNumber}
           destinationId={routingWindow.destinationId}

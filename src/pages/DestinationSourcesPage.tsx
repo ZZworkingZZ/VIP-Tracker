@@ -1791,6 +1791,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <SearchableSourceDropdown
                                     ariaLabel={`Lawo Source for ${flow.pipDisplayLabel}`}
+                                    pickerRole="lawoSource"
                                     dataTestId={`select-lawo-source-${flow.flowKey}`}
                                     searchTestId={`search-lawo-source-${flow.flowKey}`}
                                     sources={filteredLawoOptions}
@@ -1900,6 +1901,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <SearchableSourceDropdown
                                   ariaLabel={`Processing Stage for ${flow.pipDisplayLabel}`}
+                                  pickerRole="lawoProcessing"
                                   dataTestId={`select-processing-${flow.flowKey}`}
                                   sources={validProcessingSources}
                                   selectedSourceId={
@@ -2036,6 +2038,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <SearchableSourceDropdown
                                     ariaLabel={`Tieline for ${flow.pipDisplayLabel}`}
+                                    pickerRole="tieline"
                                     dataTestId={`select-tieline-${flow.flowKey}`}
                                     searchTestId={`search-tieline-${flow.flowKey}`}
                                     sources={filteredTielineOptions}
@@ -2943,6 +2946,7 @@ export const DestinationSourcesPage: React.FC = () => {
                     </label>
                     <SearchableSourceDropdown
                       ariaLabel={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
+                      pickerRole="lawoSource"
                       dataTestId={`wall-select-lawo-${selectedDestFlow.destinationId}`}
                       sources={validLawoSources.filter(
                         (s) => s.id !== selectedDestFlow.immediateSourceId
@@ -2967,6 +2971,7 @@ export const DestinationSourcesPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <SearchableSourceDropdown
                         ariaLabel={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
+                        pickerRole="lawoProcessing"
                         dataTestId={`wall-select-processing-${selectedDestFlow.destinationId}`}
                         sources={validProcessingSources}
                         selectedSourceId={
@@ -3010,6 +3015,7 @@ export const DestinationSourcesPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                       <SearchableSourceDropdown
                         ariaLabel={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
+                        pickerRole="tieline"
                         dataTestId={`wall-select-tieline-${selectedDestFlow.destinationId}`}
                         sources={validTielineSources}
                         selectedSourceId={
@@ -3174,6 +3180,7 @@ export const DestinationSourcesPage: React.FC = () => {
       {/* Direct Destination Routing Selector Modal */}
       {routingDestination && (
         <SourceRoutingSelectorModal
+          pickerRole="tieline"
           isOpen={Boolean(routingDestination)}
           destinationNumber={routingDestination.destinationNumber}
           destinationId={routingDestination.id}

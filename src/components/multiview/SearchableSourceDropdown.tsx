@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Source, formatSourceCompact } from '../../domain/models';
 import { SourceId } from '../../domain/identifiers';
+import type { SourcePickerRole } from '../../domain/pickerTypes';
 import { SearchableSourcePicker } from './SearchableSourcePicker';
 
 export interface SearchableSourceDropdownProps {
   readonly sources: readonly Source[];
+  readonly pickerRole?: SourcePickerRole;
   readonly selectedSourceId: SourceId | null;
   readonly onChange: (sourceId: SourceId | null) => void;
   readonly placeholder?: string;
@@ -21,6 +23,7 @@ export interface SearchableSourceDropdownProps {
 
 export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> = ({
   sources,
+  pickerRole,
   selectedSourceId,
   onChange,
   placeholder = '-- Select Source --',
@@ -162,6 +165,7 @@ export const SearchableSourceDropdown: React.FC<SearchableSourceDropdownProps> =
         >
           <SearchableSourcePicker
             sources={sources}
+            pickerRole={pickerRole}
             selectedSourceId={selectedSourceId}
             onSelectSource={(id) => {
               onChange(id);

@@ -307,6 +307,39 @@ def main():
         seed_direct_evertz_sources
     )
 
+    # Picker type lookups: the sheet's own Type values (trimmed, original casing), keyed by canonical
+    # source ID per list role. Separate from Source.category. Blank -> None (picker shows "Uncategorized").
+    # The 'tieline' role uses the Evertz Source Type column because the Tieline Type column covers only
+    # the 117 tielines, while that picker lists all 267 Evertz sources (approved exception).
+    def build_picker_types(raw_list):
+        lookup = {}
+        order = []
+        for n, t in raw_list:
+            ty = (t or '').strip() or None
+            lookup[create_source_id(n)] = ty
+            if ty is not None and ty not in order:
+                order.append(ty)
+        return lookup, order
+
+    picker_types = {
+        'lawoSource': build_picker_types(lawo_sources_raw),
+        'lawoProcessing': build_picker_types(lawo_proc_raw),
+        'tieline': build_picker_types(evertz_sources_raw),
+    }
+    picker_type_lookup = {k: v[0] for k, v in picker_types.items()}
+    picker_type_order = {k: v[1] for k, v in picker_types.items()}
+
+    # Report cross-list type conflicts (same source name, different Type across lists)
+    names_types = {}
+    for label, raw in [('Lawo Sources', lawo_sources_raw), ('Lawo Processing', lawo_proc_raw),
+                       ('Tieline', lawo_tielines_raw), ('Evertz Sources', evertz_sources_raw)]:
+        for n, t in raw:
+            names_types.setdefault(n, {})[label] = (t or '').strip()
+    conflicts = {n: v for n, v in names_types.items() if len(set(v.values())) > 1}
+    print(f"  Cross-list picker type conflicts: {len(conflicts)}")
+    for n, v in list(conflicts.items())[:50]:
+        print(f"    {n}: {v}")
+
     # Write sourceInventory.ts
     print(f"Writing generated source inventory to {output_ts_path}...")
     ts_code = f"""/**
@@ -368,6 +401,14 @@ export const SEED_DIRECT_EVERTZ_SOURCES: Source[] = {json.dumps(seed_direct_ever
 export const SEED_COMBINED_ROUTING_CATALOG: Source[] = {json.dumps(seed_combined_routing_sources, indent=2)};
 
 export const SEED_ALL_SOURCES: Source[] = SEED_COMBINED_ROUTING_CATALOG;
+
+export type SourcePickerRole = 'lawoSource' | 'lawoProcessing' | 'tieline';
+
+/** Sheet Type value per canonical source ID and picker role (null = blank in sheet). */
+export const SOURCE_PICKER_TYPES: Record<SourcePickerRole, Record<string, string | null>> = {json.dumps(picker_type_lookup, indent=2)};
+
+/** Sheet Type values per picker role in order of first appearance in the sheet. */
+export const SOURCE_PICKER_TYPE_ORDER: Record<SourcePickerRole, readonly string[]> = {json.dumps(picker_type_order, indent=2)};
 """
 
     with open(output_ts_path, 'w', encoding='utf-8') as f:

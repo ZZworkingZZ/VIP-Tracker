@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Source } from '../../domain/models';
 import { SourceId, createSourceId } from '../../domain/identifiers';
 import { SOURCE_CATEGORIES, SourceCategory, inferSourceType } from '../../domain/sourceCategories';
+import type { SourcePickerRole } from '../../domain/pickerTypes';
 import { SearchableSourcePicker } from './SearchableSourcePicker';
 
 export interface SourceRoutingSelectorModalProps {
   readonly isOpen: boolean;
+  readonly pickerRole?: SourcePickerRole;
   readonly destinationNumber: number;
   readonly destinationId?: string;
   readonly windowIndex?: number;
@@ -18,6 +20,7 @@ export interface SourceRoutingSelectorModalProps {
 
 export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProps> = ({
   isOpen,
+  pickerRole,
   destinationNumber,
   destinationId,
   windowIndex,
@@ -337,6 +340,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
         >
           <SearchableSourcePicker
             sources={sources}
+            pickerRole={pickerRole}
             selectedSourceId={selectedSourceId}
             onSelectSource={setSelectedSourceId}
             onDoubleClickSource={(id) => {
