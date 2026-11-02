@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Source, getSourceAlias, formatSourceCompact } from '../../domain/models';
+import React, { useState, useEffect } from 'react';
+import { Source } from '../../domain/models';
 import { SourceId, createSourceId } from '../../domain/identifiers';
 import { SOURCE_CATEGORIES, SourceCategory, inferSourceType } from '../../domain/sourceCategories';
-import { isTielineDirectorySource } from '../../domain/signalFlow';
+import { SearchableSourcePicker } from './SearchableSourcePicker';
 
 export interface SourceRoutingSelectorModalProps {
   readonly isOpen: boolean;
@@ -28,16 +28,12 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
   onClose,
 }) => {
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(currentSourceId);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<SourceCategory | 'ALL'>('ALL');
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [newSourceName, setNewSourceName] = useState<string>('');
   const [newSourceCategory, setNewSourceCategory] = useState<SourceCategory>('Virtual Camera');
 
   useEffect(() => {
     setSelectedSourceId(currentSourceId);
-    setSearchQuery('');
-    setCategoryFilter('ALL');
     setIsAddingNew(false);
   }, [isOpen, currentSourceId]);
 
@@ -56,25 +52,6 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isAddingNew, onClose]);
-
-  const evertzRoutableSources = useMemo(
-    () => sources.filter((s) => isTielineDirectorySource(s)),
-    [sources]
-  );
-
-  const filteredSources = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return evertzRoutableSources.filter((s) => {
-      if (categoryFilter !== 'ALL' && s.category !== categoryFilter) return false;
-      if (q) {
-        const nameMatch = s.name.toLowerCase().includes(q);
-        const alias = getSourceAlias(s);
-        const aliasMatch = alias ? alias.toLowerCase().includes(q) : false;
-        if (!nameMatch && !aliasMatch) return false;
-      }
-      return true;
-    });
-  }, [evertzRoutableSources, categoryFilter, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -122,7 +99,7 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
           type="button"
           onClick={() => {
             setIsAddingNew(true);
-            setNewSourceName(searchQuery);
+            setNewSourceName('');
           }}
           data-testid="show-add-source-form-btn"
           style={{
@@ -347,179 +324,42 @@ export const SourceRoutingSelectorModal: React.FC<SourceRoutingSelectorModalProp
           </button>
         </div>
 
-        {/* Filter and Search Bar */}
+        {/* Modal Body with SearchableSourcePicker */}
         <div
           style={{
-            padding: '10px 16px',
-            backgroundColor: '#181818',
-            borderBottom: '1px solid #282828',
+            padding: '12px 16px',
+            overflowY: 'auto',
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="search"
-              placeholder="Filter sources (e.g. CAM, FS, NYP, LINE)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="source-search-input"
-              style={{
-                flex: 1,
-                padding: '6px 10px',
-                fontSize: '12px',
-                backgroundColor: '#101010',
-                border: '1px solid #444444',
-                borderRadius: '2px',
-                color: '#ffffff',
-                fontFamily: 'var(--ev-font)',
-              }}
-              autoFocus
-            />
+          <SearchableSourcePicker
+            sources={sources}
+            selectedSourceId={selectedSourceId}
+            onSelectSource={setSelectedSourceId}
+            onDoubleClickSource={(id) => {
+              setSelectedSourceId(id);
+              onApplySource(id);
+              onClose();
+            }}
+            searchInputTestId="source-search-input"
+            unassignLabel="— Unrouted / Blank (Clear source feed from this window)"
+            searchPlaceholder="Filter sources (e.g. CAM, FS, NYP, LINE, vcam31)..."
+            maxHeight="360px"
+            onClose={onClose}
+          />
 
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as SourceCategory | 'ALL')}
-              style={{
-                padding: '6px 8px',
-                fontSize: '12px',
-                backgroundColor: '#262626',
-                border: '1px solid #444444',
-                borderRadius: '2px',
-                color: '#e2e8f0',
-              }}
-            >
-              <option value="ALL">All Categories</option>
-              {SOURCE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Sources List / Direct Routing Surface */}
-        <div style={{ padding: '8px 16px', overflowY: 'auto', flex: 1 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {/* Unrouted / Clear Option */}
-            <div
-              onClick={() => setSelectedSourceId(null)}
-              data-testid="source-option-unrouted"
-              style={{
-                padding: '8px 12px',
-                backgroundColor: selectedSourceId === null ? '#203a55' : '#141414',
-                border: `1px solid ${selectedSourceId === null ? '#38bdf8' : '#282828'}`,
-                borderRadius: '2px',
-                cursor: 'pointer',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: selectedSourceId === null ? '#38bdf8' : '#858585',
-                  }}
-                >
-                  — Unrouted / Blank
-                </span>
-                <span style={{ fontSize: '10px', color: '#666666', marginLeft: '8px' }}>
-                  Clear source feed from this window
-                </span>
-              </div>
-              {selectedSourceId === null && (
-                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 700 }}>
-                  Selected
-                </span>
-              )}
-            </div>
-
-            {/* Cataloged Sources */}
-            {filteredSources.map((source) => {
-              const isSelected = selectedSourceId === source.id;
-              return (
-                <div
-                  key={source.id}
-                  onClick={() => setSelectedSourceId(source.id)}
-                  onDoubleClick={() => {
-                    setSelectedSourceId(source.id);
-                    onApplySource(source.id);
-                    onClose();
-                  }}
-                  data-testid={`source-option-${source.id}`}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: isSelected ? '#203a55' : '#141414',
-                    border: `1px solid ${isSelected ? '#38bdf8' : '#282828'}`,
-                    borderRadius: '2px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>
-                      {formatSourceCompact(source)}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        padding: '1px 5px',
-                        borderRadius: '2px',
-                        backgroundColor: 'rgba(40, 100, 163, 0.3)',
-                        color: '#60a5fa',
-                      }}
-                    >
-                      {source.category}
-                    </span>
-                  </div>
-
-                  {isSelected && (
-                    <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 700 }}>
-                      Selected
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-
-            {filteredSources.length === 0 ? (
-              <div
-                style={{
-                  padding: '24px 16px',
-                  textAlign: 'center',
-                  backgroundColor: '#141414',
-                  borderRadius: '2px',
-                  border: '1px dashed #333333',
-                  marginTop: '8px',
-                }}
-              >
-                <p style={{ fontSize: '12px', color: '#858585', margin: '0 0 10px 0' }}>
-                  {sources.length === 0
-                    ? 'No sources currently cataloged in the master Source Directory.'
-                    : `No cataloged sources match "${searchQuery}".`}
-                </p>
-                {renderAddSourceSection()}
-              </div>
-            ) : (
-              <div
-                style={{
-                  marginTop: '12px',
-                  paddingTop: '8px',
-                  borderTop: '1px solid #282828',
-                  textAlign: 'center',
-                }}
-              >
-                {renderAddSourceSection()}
-              </div>
-            )}
+          <div
+            style={{
+              marginTop: '4px',
+              paddingTop: '8px',
+              borderTop: '1px solid #282828',
+              textAlign: 'center',
+            }}
+          >
+            {renderAddSourceSection()}
           </div>
         </div>
 

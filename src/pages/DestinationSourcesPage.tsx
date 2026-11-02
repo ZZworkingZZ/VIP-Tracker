@@ -15,6 +15,7 @@ import { selectDestinationsForMultiview, formatLastChanged } from '../domain/sel
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { SourceRoutingSelectorModal } from '../components/multiview/SourceRoutingSelectorModal';
+import { SearchableSourceDropdown } from '../components/multiview/SearchableSourceDropdown';
 import {
   MultiviewOutput,
   LAWO_DEVICE_TYPES,
@@ -1788,19 +1789,21 @@ export const DestinationSourcesPage: React.FC = () => {
                                   />
                                 )}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <select
-                                    aria-label={`Lawo Source for ${flow.pipDisplayLabel}`}
-                                    data-testid={`select-lawo-source-${flow.flowKey}`}
-                                    value={
+                                  <SearchableSourceDropdown
+                                    ariaLabel={`Lawo Source for ${flow.pipDisplayLabel}`}
+                                    dataTestId={`select-lawo-source-${flow.flowKey}`}
+                                    searchTestId={`search-lawo-source-${flow.flowKey}`}
+                                    sources={filteredLawoOptions}
+                                    selectedSourceId={
                                       isEditingLawo
-                                        ? (pendingLawo.lawoSourceId ?? '')
-                                        : (flow.lawoSourceId ?? '')
+                                        ? (pendingLawo.lawoSourceId ?? null)
+                                        : (flow.lawoSourceId ?? null)
                                     }
                                     disabled={isSaving}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                        ? (e.target.value as SourceId)
-                                        : null;
+                                    unassignLabel="-- BLANK --"
+                                    borderColor={isEditingLawo ? '#38bdf8' : '#383838'}
+                                    maxWidth="145px"
+                                    onChange={(val) => {
                                       setPendingLawoEdits((prev) => ({
                                         ...prev,
                                         [flow.flowKey]: {
@@ -1809,23 +1812,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                         },
                                       }));
                                     }}
-                                    style={{
-                                      padding: '2px 4px',
-                                      fontSize: '11px',
-                                      backgroundColor: '#141414',
-                                      color: '#f8fafc',
-                                      border: `1px solid ${isEditingLawo ? '#38bdf8' : '#383838'}`,
-                                      borderRadius: '2px',
-                                      maxWidth: '145px',
-                                    }}
-                                  >
-                                    <option value="">-- BLANK --</option>
-                                    {filteredLawoOptions.map((s) => (
-                                      <option key={s.id} value={s.id}>
-                                        {formatSourceCompact(s)}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  />
 
                                   {isEditingLawo && (
                                     <>
@@ -1911,41 +1898,28 @@ export const DestinationSourcesPage: React.FC = () => {
 
                             {!isReadOnly && !flow.isLocked && flow.tielineId && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <select
-                                  aria-label={`Processing Stage for ${flow.pipDisplayLabel}`}
-                                  data-testid={`select-processing-${flow.flowKey}`}
-                                  value={
+                                <SearchableSourceDropdown
+                                  ariaLabel={`Processing Stage for ${flow.pipDisplayLabel}`}
+                                  dataTestId={`select-processing-${flow.flowKey}`}
+                                  sources={validProcessingSources}
+                                  selectedSourceId={
                                     isEditingProc
-                                      ? (pendingProc.processingStageIds?.[0] ?? '')
-                                      : (flow.processingStages[0]?.id ?? '')
+                                      ? (pendingProc.processingStageIds?.[0] ?? null)
+                                      : (flow.processingStages[0]?.id ?? null)
                                   }
                                   disabled={isSaving}
-                                  onChange={(e) => {
-                                    const val = e.target.value ? [e.target.value as SourceId] : [];
+                                  unassignLabel="-- Direct (No Proc) --"
+                                  borderColor={isEditingProc ? '#38bdf8' : '#383838'}
+                                  maxWidth="130px"
+                                  onChange={(val) => {
                                     setPendingProcessingEdits((prev) => ({
                                       ...prev,
                                       [flow.flowKey]: {
-                                        processingStageIds: val,
+                                        processingStageIds: val ? [val] : [],
                                       },
                                     }));
                                   }}
-                                  style={{
-                                    padding: '2px 4px',
-                                    fontSize: '10px',
-                                    backgroundColor: '#141414',
-                                    color: '#cbd5e1',
-                                    border: `1px solid ${isEditingProc ? '#38bdf8' : '#383838'}`,
-                                    borderRadius: '2px',
-                                    maxWidth: '130px',
-                                  }}
-                                >
-                                  <option value="">-- Direct (No Proc) --</option>
-                                  {validProcessingSources.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                      {formatSourceCompact(s)}
-                                    </option>
-                                  ))}
-                                </select>
+                                />
 
                                 {isEditingProc && (
                                   <>
@@ -2060,19 +2034,21 @@ export const DestinationSourcesPage: React.FC = () => {
                                   />
                                 )}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <select
-                                    aria-label={`Tieline for ${flow.pipDisplayLabel}`}
-                                    data-testid={`select-tieline-${flow.flowKey}`}
-                                    value={
+                                  <SearchableSourceDropdown
+                                    ariaLabel={`Tieline for ${flow.pipDisplayLabel}`}
+                                    dataTestId={`select-tieline-${flow.flowKey}`}
+                                    searchTestId={`search-tieline-${flow.flowKey}`}
+                                    sources={filteredTielineOptions}
+                                    selectedSourceId={
                                       isEditingTieline
-                                        ? (pendingTieline.tielineId ?? '')
-                                        : (flow.tielineId ?? '')
+                                        ? (pendingTieline.tielineId ?? null)
+                                        : (flow.tielineId ?? null)
                                     }
                                     disabled={isSaving}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                        ? (e.target.value as SourceId)
-                                        : null;
+                                    unassignLabel="-- BLANK --"
+                                    borderColor={isEditingTieline ? '#38bdf8' : '#383838'}
+                                    maxWidth="140px"
+                                    onChange={(val) => {
                                       setPendingTielineEdits((prev) => ({
                                         ...prev,
                                         [flow.flowKey]: {
@@ -2081,23 +2057,7 @@ export const DestinationSourcesPage: React.FC = () => {
                                         },
                                       }));
                                     }}
-                                    style={{
-                                      padding: '2px 4px',
-                                      fontSize: '11px',
-                                      backgroundColor: '#141414',
-                                      color: '#f8fafc',
-                                      border: `1px solid ${isEditingTieline ? '#38bdf8' : '#383838'}`,
-                                      borderRadius: '2px',
-                                      maxWidth: '140px',
-                                    }}
-                                  >
-                                    <option value="">-- BLANK --</option>
-                                    {filteredTielineOptions.map((s) => (
-                                      <option key={s.id} value={s.id}>
-                                        {formatSourceCompact(s)}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  />
 
                                   {isEditingTieline && (
                                     <>
@@ -2981,36 +2941,22 @@ export const DestinationSourcesPage: React.FC = () => {
                     <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>
                       1. Lawo Source
                     </label>
-                    <select
-                      aria-label={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
-                      data-testid={`wall-select-lawo-${selectedDestFlow.destinationId}`}
-                      disabled={!selectedDestFlow.immediateSourceId || isSaving}
-                      value={
+                    <SearchableSourceDropdown
+                      ariaLabel={`Wall Lawo Source for ${selectedDestFlow.destinationDisplay}`}
+                      dataTestId={`wall-select-lawo-${selectedDestFlow.destinationId}`}
+                      sources={validLawoSources.filter(
+                        (s) => s.id !== selectedDestFlow.immediateSourceId
+                      )}
+                      selectedSourceId={
                         wallPendingLawoId !== undefined
-                          ? (wallPendingLawoId ?? '')
-                          : (selectedDestFlow.lawoSourceId ?? '')
+                          ? wallPendingLawoId
+                          : (selectedDestFlow.lawoSourceId ?? null)
                       }
-                      onChange={(e) =>
-                        setWallPendingLawoId(e.target.value ? (e.target.value as SourceId) : null)
-                      }
-                      style={{
-                        padding: '4px 6px',
-                        fontSize: '11px',
-                        backgroundColor: '#0f172a',
-                        color: '#f8fafc',
-                        border: '1px solid #334155',
-                        borderRadius: '2px',
-                      }}
-                    >
-                      <option value="">-- Unassigned (Origin / Direct) --</option>
-                      {validLawoSources
-                        .filter((s) => s.id !== selectedDestFlow.immediateSourceId)
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {formatSourceCompact(s)}
-                          </option>
-                        ))}
-                    </select>
+                      disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                      unassignLabel="-- Unassigned (Origin / Direct) --"
+                      maxWidth="100%"
+                      onChange={(val) => setWallPendingLawoId(val)}
+                    />
                   </div>
 
                   {/* Stage 2: Lawo Processing */}
@@ -3019,35 +2965,20 @@ export const DestinationSourcesPage: React.FC = () => {
                       2. Lawo Processing (Optional)
                     </label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <select
-                        aria-label={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
-                        data-testid={`wall-select-processing-${selectedDestFlow.destinationId}`}
-                        disabled={!selectedDestFlow.immediateSourceId || isSaving}
-                        value={
+                      <SearchableSourceDropdown
+                        ariaLabel={`Wall Processing Stage for ${selectedDestFlow.destinationDisplay}`}
+                        dataTestId={`wall-select-processing-${selectedDestFlow.destinationId}`}
+                        sources={validProcessingSources}
+                        selectedSourceId={
                           wallPendingProcIds !== undefined
-                            ? (wallPendingProcIds[0] ?? '')
-                            : (selectedDestFlow.processingStages[0]?.id ?? '')
+                            ? (wallPendingProcIds[0] ?? null)
+                            : (selectedDestFlow.processingStages[0]?.id ?? null)
                         }
-                        onChange={(e) =>
-                          setWallPendingProcIds(e.target.value ? [e.target.value as SourceId] : [])
-                        }
-                        style={{
-                          flex: 1,
-                          padding: '4px 6px',
-                          fontSize: '11px',
-                          backgroundColor: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid #334155',
-                          borderRadius: '2px',
-                        }}
-                      >
-                        <option value="">-- Direct (No Processing) --</option>
-                        {validProcessingSources.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {formatSourceCompact(s)}
-                          </option>
-                        ))}
-                      </select>
+                        disabled={!selectedDestFlow.immediateSourceId || isSaving}
+                        unassignLabel="-- Direct (No Processing) --"
+                        maxWidth="100%"
+                        onChange={(val) => setWallPendingProcIds(val ? [val] : [])}
+                      />
                       {(wallPendingLawoId !== undefined || wallPendingProcIds !== undefined) && (
                         <button
                           type="button"
@@ -3077,37 +3008,20 @@ export const DestinationSourcesPage: React.FC = () => {
                       3. Lawo Dest / Evertz Source → {selectedDestFlow.destinationDisplay}
                     </label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <select
-                        aria-label={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
-                        data-testid={`wall-select-tieline-${selectedDestFlow.destinationId}`}
-                        disabled={isSaving}
-                        value={
+                      <SearchableSourceDropdown
+                        ariaLabel={`Wall Evertz Source for ${selectedDestFlow.destinationDisplay}`}
+                        dataTestId={`wall-select-tieline-${selectedDestFlow.destinationId}`}
+                        sources={validTielineSources}
+                        selectedSourceId={
                           wallPendingTielineId !== undefined
-                            ? (wallPendingTielineId ?? '')
-                            : (selectedDestFlow.immediateSourceId ?? '')
+                            ? wallPendingTielineId
+                            : (selectedDestFlow.immediateSourceId ?? null)
                         }
-                        onChange={(e) =>
-                          setWallPendingTielineId(
-                            e.target.value ? (e.target.value as SourceId) : null
-                          )
-                        }
-                        style={{
-                          flex: 1,
-                          padding: '4px 6px',
-                          fontSize: '11px',
-                          backgroundColor: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid #334155',
-                          borderRadius: '2px',
-                        }}
-                      >
-                        <option value="">-- Unassigned --</option>
-                        {validTielineSources.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {formatSourceCompact(s)}
-                          </option>
-                        ))}
-                      </select>
+                        disabled={isSaving}
+                        unassignLabel="-- Unassigned --"
+                        maxWidth="100%"
+                        onChange={(val) => setWallPendingTielineId(val)}
+                      />
                       {wallPendingTielineId !== undefined && (
                         <button
                           type="button"
