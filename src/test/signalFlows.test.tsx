@@ -1173,6 +1173,9 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
       'MV-03-01 PIP-01'
     );
     expect(within(card02).getByTestId('dest-flow-btn-DEST:MV-03-02')).toBeInTheDocument();
+    // The "#N" physical destination number is no longer rendered on wall cards.
+    expect(card01.textContent).not.toMatch(/#\d/);
+    expect(card02.textContent).not.toMatch(/#\d/);
 
     // 3. Unassigned destination (DEST:MV-03-60 has no assigned source and no PIPs)
     const card60 = screen.getByTestId('dest-card-DEST:MV-03-60');

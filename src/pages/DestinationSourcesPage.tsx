@@ -1437,7 +1437,7 @@ export const DestinationSourcesPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Footer: Physical Destination #, Actions */}
+                    {/* Footer: Actions */}
                     <div
                       style={{
                         display: 'flex',
@@ -1451,7 +1451,6 @@ export const DestinationSourcesPage: React.FC = () => {
                       }}
                     >
                       <span>
-                        #{dest.destinationNumber}
                         {isEditMode && row.coveringOutput ? (
                           <span style={{ color: '#fbbf24', marginLeft: '3px' }}>
                             ({formatOutputDisplay(row.coveringOutput.id).replace('OUT:', '')})
