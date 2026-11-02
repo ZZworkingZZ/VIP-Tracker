@@ -1285,6 +1285,38 @@ export interface DuplicateRoutingFlag {
   relatedTielineNames: string[];
 }
 
+/**
+ * Formats duplicate/shared routing flag labels compactly for Destination Windows Wall tiles.
+ * Preserves count information (e.g. "(2 Inputs)", "(2×)", "(2 Ties)") while shortening
+ * verbose prefix labels so badges fit cleanly within destination tiles at all widths.
+ *
+ * Examples:
+ * - "Shared Source (2 Inputs)" -> "Shared (2 Inputs)"
+ * - "Dup on MV-03 (2×)" -> "Dup (2×)"
+ * - "Dup Tieline (2 Ties)" -> "Dup (2 Ties)"
+ * - "Shared Upstream (2 Inputs)" -> "Shared (2 Inputs)"
+ */
+export function formatCompactDuplicateBadge(flag: { kind?: string; label: string }): string {
+  if (flag.kind === 'same_mv_card_source') {
+    return flag.label.replace(/^Dup on MV-\d+\s*/i, 'Dup ');
+  }
+  if (flag.kind === 'cross_mv_source') {
+    return flag.label.replace(/^Shared Source\s*/i, 'Shared ');
+  }
+  if (flag.kind === 'lawo_multi_tieline') {
+    return flag.label.replace(/^Dup Tieline\s*/i, 'Dup ');
+  }
+  if (flag.kind === 'shared_upstream_origin') {
+    return flag.label.replace(/^Shared Upstream\s*/i, 'Shared ');
+  }
+  return flag.label
+    .replace(/^Shared Source\s*/i, 'Shared ')
+    .replace(/^Shared Upstream\s*/i, 'Shared ')
+    .replace(/^Dup on MV-\d+\s*/i, 'Dup ')
+    .replace(/^Dup Tieline\s*/i, 'Dup ')
+    .replace(/^Duplicate\s*/i, 'Dup ');
+}
+
 export interface DestinationPipUsage {
   outputId: OutputId;
   outputDisplayLabel: string;

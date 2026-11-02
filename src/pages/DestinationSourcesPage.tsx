@@ -41,9 +41,10 @@ import {
   ResolvedDestinationSignalFlow,
   inferLawoDeviceType,
   inferLawoVendor,
+  formatCompactDuplicateBadge,
 } from '../domain/signalFlow';
 
-export const STATE_LABELS = {
+const STATE_LABELS = {
   AVAILABLE: 'Available',
   IN_USE: 'In Use',
   CONFLICT: 'Conflict',
@@ -1003,39 +1004,79 @@ export const DestinationSourcesPage: React.FC = () => {
                         : isEditMode
                           ? '0 2px 6px rgba(56, 189, 248, 0.15)'
                           : '0 2px 4px rgba(0, 0, 0, 0.4)',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
                     }}
                   >
                     <div
                       style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '4px',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        width: '100%',
                       }}
                     >
-                      <span
+                      <div
                         style={{
-                          fontSize: '10px',
-                          fontFamily: 'monospace',
-                          fontWeight: 700,
-                          color: isEditMode || isSelectedTile ? '#38bdf8' : '#64748b',
                           display: 'flex',
+                          justifyContent: 'space-between',
                           alignItems: 'center',
                           gap: '4px',
                         }}
                       >
-                        {!isReadOnly && (
+                        <span
+                          data-testid={`dest-card-dest-id-${dest.id}`}
+                          style={{
+                            fontSize: '10px',
+                            fontFamily: 'monospace',
+                            fontWeight: 700,
+                            color: isEditMode || isSelectedTile ? '#38bdf8' : '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {!isReadOnly && (
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                color: '#475569',
+                                fontSize: '9px',
+                                letterSpacing: '-1px',
+                                flexShrink: 0,
+                              }}
+                            >
+                              ⋮⋮
+                            </span>
+                          )}
+                          {destDisplay}
+                        </span>
+                        {categoryColor && (
                           <span
-                            aria-hidden="true"
-                            style={{ color: '#475569', fontSize: '9px', letterSpacing: '-1px' }}
-                          >
-                            ⋮⋮
-                          </span>
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: categoryColor,
+                              flexShrink: 0,
+                            }}
+                          />
                         )}
-                        {destDisplay}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {hasDuplicates && destFlow && (
+                      </div>
+
+                      {hasDuplicates && destFlow && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                          }}
+                        >
                           <span
                             data-testid={`dest-dup-badge-${dest.id}`}
                             title={destFlow.duplicateFlags.map((f) => f.description).join(' | ')}
@@ -1055,22 +1096,18 @@ export const DestinationSourcesPage: React.FC = () => {
                               }`,
                               fontFamily: 'monospace',
                               whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              boxSizing: 'border-box',
+                              lineHeight: 1.2,
+                              display: 'inline-block',
                             }}
                           >
-                            ⚠ {destFlow.duplicateFlags[0].label}
+                            ⚠ {formatCompactDuplicateBadge(destFlow.duplicateFlags[0])}
                           </span>
-                        )}
-                        {categoryColor && (
-                          <span
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: categoryColor,
-                            }}
-                          />
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ textAlign: 'center', margin: '4px 0' }}>

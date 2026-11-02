@@ -20,6 +20,7 @@ import {
   resolveAllPipSignalFlows,
   resolveSinglePipSignalFlow,
   resolveDestinationSignalFlows,
+  formatCompactDuplicateBadge,
   getValidLawoSourceOptions,
   getValidProcessingStageOptions,
   getValidTielineOptions,
@@ -835,8 +836,11 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     });
 
     expect(await screen.findByTestId('dest-dup-badge-DEST:MV-03-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-01')).toHaveTextContent('⚠ Dup (2×)');
     expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-02')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-02')).toHaveTextContent('⚠ Dup (2 Ties)');
     expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-06')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-06')).toHaveTextContent('⚠ Dup (2×)');
 
     const dupFilterBtn = screen.getByTestId('wall-duplicate-filter-btn');
     fireEvent.click(dupFilterBtn);
@@ -896,4 +900,84 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(screen.queryByTestId('dest-card-DEST:MV-01-01')).not.toBeInTheDocument();
     expect(screen.queryByTestId('dest-card-DEST:MV-03-01')).not.toBeInTheDocument();
   }, 15000);
+
+  it('38. renders compact warning badges ("Shared", "Dup") with counts preserved and non-colliding destination identifiers', async () => {
+    // 1. Verify formatCompactDuplicateBadge helper logic directly
+    expect(
+      formatCompactDuplicateBadge({
+        kind: 'cross_mv_source',
+        label: 'Shared Source (2 Inputs)',
+      })
+    ).toBe('Shared (2 Inputs)');
+
+    expect(
+      formatCompactDuplicateBadge({
+        kind: 'cross_mv_source',
+        label: 'Shared Source (5 Inputs)',
+      })
+    ).toBe('Shared (5 Inputs)');
+
+    expect(
+      formatCompactDuplicateBadge({
+        kind: 'same_mv_card_source',
+        label: 'Dup on MV-03 (2×)',
+      })
+    ).toBe('Dup (2×)');
+
+    expect(
+      formatCompactDuplicateBadge({
+        kind: 'lawo_multi_tieline',
+        label: 'Dup Tieline (2 Ties)',
+      })
+    ).toBe('Dup (2 Ties)');
+
+    expect(
+      formatCompactDuplicateBadge({
+        kind: 'shared_upstream_origin',
+        label: 'Shared Upstream (2 Inputs)',
+      })
+    ).toBe('Shared (2 Inputs)');
+
+    // 2. Render Destination Windows Wall in All VIPs view
+    let snapshot = createSignalFlowTestSnapshot();
+    snapshot = applyPipTielineStageChange(
+      snapshot,
+      'DEST:MV-03-06' as DestinationId,
+      VCAM_40_ID,
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+    snapshot = applyPipTielineStageChange(
+      snapshot,
+      'DEST:MV-02-01' as DestinationId,
+      VCAM_40_ID,
+      { id: 'op_zach_z', displayName: 'Zach Zweibel' },
+      '2026-10-30T12:00:00.000Z'
+    );
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=ALL',
+    });
+
+    // In All VIPs view, DEST:MV-02-01 renders a cross-MV shared badge
+    const badge0201 = await screen.findByTestId('dest-dup-badge-DEST:MV-02-01');
+    expect(badge0201).toBeInTheDocument();
+    expect(badge0201).toHaveTextContent('⚠ Shared (3 Inputs)');
+
+    // Destination card for DEST:MV-02-01 must display destination identifier without collision
+    const card0201 = screen.getByTestId('dest-card-DEST:MV-02-01');
+    expect(within(card0201).getByTestId('dest-card-dest-id-DEST:MV-02-01')).toHaveTextContent(
+      'MV-02-01'
+    );
+
+    // In All VIPs view, DEST:MV-03-01 renders same-card dup badge
+    const badge0301 = screen.getByTestId('dest-dup-badge-DEST:MV-03-01');
+    expect(badge0301).toBeInTheDocument();
+    expect(badge0301).toHaveTextContent('⚠ Dup (2×)');
+    const card0301 = screen.getByTestId('dest-card-DEST:MV-03-01');
+    expect(within(card0301).getByTestId('dest-card-dest-id-DEST:MV-03-01')).toHaveTextContent(
+      'MV-03-01'
+    );
+  });
 });
