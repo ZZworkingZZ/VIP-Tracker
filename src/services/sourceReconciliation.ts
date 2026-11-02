@@ -1,10 +1,155 @@
-import { Destination, Source } from '../domain/models';
+import { Destination, Source, TrackerSnapshot } from '../domain/models';
 import { SourceId } from '../domain/identifiers';
+import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
+
+export interface MigrationReportItem {
+  legacyId: SourceId;
+  legacyName: string;
+  canonicalId: SourceId;
+  canonicalName: string;
+  referencesCount: number;
+  matchReason: string;
+}
+
+export interface AmbiguousMappingItem {
+  legacyId: SourceId;
+  legacyName: string;
+  candidates: Array<{ id: SourceId; name: string }>;
+  referencesCount: number;
+  matchReason: string;
+}
+
+export interface UnmatchedLegacyItem {
+  legacyId: SourceId;
+  legacyName: string;
+  referencesCount: number;
+}
+
+export interface LegacySourceMigrationReport {
+  safeMappings: MigrationReportItem[];
+  ambiguousMappings: AmbiguousMappingItem[];
+  unmatchedRecords: UnmatchedLegacyItem[];
+  totalReferencedLegacyRecords: number;
+  migratedReferencesCount: number;
+}
+
+/**
+ * Generates a normalized alphanumeric matching key for domain source names.
+ */
+export function normalizeSourceMatchKey(rawName: string): string {
+  return rawName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Builds a strict, deterministic legacy-to-canonical migration plan.
+ * Only exact 1-to-1 normalized matches against authoritative seed sources are classified as safe.
+ */
+export function buildLegacySourceMigrationPlan(
+  persistedSources: readonly Source[],
+  seedSources: readonly Source[],
+  destinations: readonly Destination[] = []
+): {
+  legacyToCanonicalMap: Map<SourceId, SourceId>;
+  report: LegacySourceMigrationReport;
+} {
+  const seedMap = new Map<SourceId, Source>(seedSources.map((s) => [s.id, s]));
+  const persistedMap = new Map<SourceId, Source>(persistedSources.map((s) => [s.id, s]));
+
+  // Index canonical seed sources by normalized alphanumeric key
+  const canonicalByNormalized = new Map<string, Source[]>();
+  for (const s of seedSources) {
+    const key = normalizeSourceMatchKey(s.name);
+    const list = canonicalByNormalized.get(key) ?? [];
+    list.push(s);
+    canonicalByNormalized.set(key, list);
+  }
+
+  // Count references to every source in destinations and upstream sources
+  const refCounts = new Map<SourceId, number>();
+  for (const d of destinations) {
+    if (d.assignedSourceId) {
+      refCounts.set(d.assignedSourceId, (refCounts.get(d.assignedSourceId) ?? 0) + 1);
+    }
+  }
+  for (const s of persistedSources) {
+    if (s.upstreamSourceId) {
+      refCounts.set(s.upstreamSourceId, (refCounts.get(s.upstreamSourceId) ?? 0) + 1);
+    }
+  }
+
+  // Identify referenced legacy sources not present in the canonical seed catalog
+  const legacyReferencedIds = Array.from(refCounts.keys()).filter((id) => !seedMap.has(id));
+
+  const safeMappings: MigrationReportItem[] = [];
+  const ambiguousMappings: AmbiguousMappingItem[] = [];
+  const unmatchedRecords: UnmatchedLegacyItem[] = [];
+  const legacyToCanonicalMap = new Map<SourceId, SourceId>();
+
+  for (const legacyId of legacyReferencedIds) {
+    const legacySource = persistedMap.get(legacyId);
+    const legacyName = legacySource?.name ?? legacyId;
+    const count = refCounts.get(legacyId) ?? 0;
+    const normKey = normalizeSourceMatchKey(legacyName);
+    const candidates = canonicalByNormalized.get(normKey) ?? [];
+
+    if (candidates.length === 1) {
+      const canonical = candidates[0];
+      safeMappings.push({
+        legacyId,
+        legacyName,
+        canonicalId: canonical.id,
+        canonicalName: canonical.name,
+        referencesCount: count,
+        matchReason: `Unambiguous 1-to-1 normalized alphanumeric match (${normKey}) to canonical Source Directory record`,
+      });
+      legacyToCanonicalMap.set(legacyId, canonical.id);
+    } else if (candidates.length > 1) {
+      ambiguousMappings.push({
+        legacyId,
+        legacyName,
+        candidates: candidates.map((c) => ({ id: c.id, name: c.name })),
+        referencesCount: count,
+        matchReason: `Multiple canonical candidates (${candidates.length}) for normalized key ${normKey}`,
+      });
+    } else {
+      unmatchedRecords.push({
+        legacyId,
+        legacyName,
+        referencesCount: count,
+      });
+    }
+  }
+
+  let migratedReferencesCount = 0;
+  for (const d of destinations) {
+    if (d.assignedSourceId && legacyToCanonicalMap.has(d.assignedSourceId)) {
+      migratedReferencesCount++;
+    }
+  }
+  for (const s of persistedSources) {
+    if (s.upstreamSourceId && legacyToCanonicalMap.has(s.upstreamSourceId)) {
+      migratedReferencesCount++;
+    }
+  }
+
+  return {
+    legacyToCanonicalMap,
+    report: {
+      safeMappings,
+      ambiguousMappings,
+      unmatchedRecords,
+      totalReferencedLegacyRecords: legacyReferencedIds.length,
+      migratedReferencesCount,
+    },
+  };
+}
 
 /**
  * Reconciles persisted sources against the authoritative seed catalog on seed version bump
  * or when loading / saving snapshots in shared GitHub storage.
- * Stable source IDs are used as the primary match key.
+ *
+ * Automatically migrates unambiguous legacy source references in destinations and sources
+ * to their corresponding canonical Source Directory identifiers while preserving routing state.
  *
  * For every source in seedSources:
  * - If a matching persisted source exists: retains user-editable / operational fields
@@ -21,13 +166,34 @@ export function reconcilePersistedSources(
   persistedSources: readonly Source[],
   seedSources: readonly Source[],
   options?: {
-    destinations?: readonly Destination[];
+    destinations?: Destination[];
   }
 ): Source[] {
   const seedMap = new Map<SourceId, Source>(seedSources.map((s) => [s.id, s]));
   const persistedMap = new Map<SourceId, Source>(persistedSources.map((s) => [s.id, s]));
 
-  // 1. Gather all source IDs referenced by destinations or by upstream relationships in persisted state
+  // 1. Build and apply safe legacy-to-canonical migration plan if destinations are provided
+  const { legacyToCanonicalMap } = buildLegacySourceMigrationPlan(
+    persistedSources,
+    seedSources,
+    options?.destinations ?? []
+  );
+
+  if (options?.destinations && legacyToCanonicalMap.size > 0) {
+    for (const d of options.destinations) {
+      if (d.assignedSourceId && legacyToCanonicalMap.has(d.assignedSourceId)) {
+        d.assignedSourceId = legacyToCanonicalMap.get(d.assignedSourceId)!;
+      }
+    }
+  }
+
+  // 2. Map canonical IDs back to legacy IDs to transfer user operational edits if any
+  const canonicalToLegacyMap = new Map<SourceId, SourceId>();
+  for (const [legacyId, canonicalId] of legacyToCanonicalMap.entries()) {
+    canonicalToLegacyMap.set(canonicalId, legacyId);
+  }
+
+  // 3. Gather all source IDs referenced by destinations or by upstream relationships in persisted state
   const referencedSourceIds = new Set<SourceId>();
   if (options?.destinations) {
     for (const d of options.destinations) {
@@ -35,23 +201,32 @@ export function reconcilePersistedSources(
     }
   }
   for (const s of persistedSources) {
-    if (s.upstreamSourceId) referencedSourceIds.add(s.upstreamSourceId);
+    const upstream =
+      s.upstreamSourceId && legacyToCanonicalMap.has(s.upstreamSourceId)
+        ? legacyToCanonicalMap.get(s.upstreamSourceId)!
+        : s.upstreamSourceId;
+    if (upstream) referencedSourceIds.add(upstream);
   }
 
-  // 2. Process all seed sources in initial snapshot order
+  // 4. Process all seed sources in initial snapshot order
   const result: Source[] = seedSources.map((seed) => {
-    const existing = persistedMap.get(seed.id);
+    const legacyId = canonicalToLegacyMap.get(seed.id);
+    const existing =
+      persistedMap.get(seed.id) ?? (legacyId ? persistedMap.get(legacyId) : undefined);
     if (!existing) {
       return { ...seed };
     }
+    const migratedUpstream =
+      existing.upstreamSourceId && legacyToCanonicalMap.has(existing.upstreamSourceId)
+        ? legacyToCanonicalMap.get(existing.upstreamSourceId)!
+        : (existing.upstreamSourceId ?? null);
+
     return {
       ...seed,
       alias: existing.alias !== undefined ? existing.alias : (seed.alias ?? null),
       active: existing.active !== undefined ? existing.active : seed.active,
       upstreamSourceId:
-        existing.upstreamSourceId !== undefined
-          ? existing.upstreamSourceId
-          : (seed.upstreamSourceId ?? null),
+        migratedUpstream !== undefined ? migratedUpstream : (seed.upstreamSourceId ?? null),
       inputLabel:
         existing.inputLabel !== undefined ? existing.inputLabel : (seed.inputLabel ?? null),
       outputLabel:
@@ -63,7 +238,7 @@ export function reconcilePersistedSources(
     };
   });
 
-  // 3. Retain any user-created or required legacy sources not present in the seed catalog
+  // 5. Retain any user-created or required legacy sources not present in the seed catalog
   const isUserOrRequired = (s: Source): boolean => {
     if (referencedSourceIds.has(s.id)) return true;
     if (s.alias != null && s.alias.trim() !== '') return true;
@@ -75,10 +250,51 @@ export function reconcilePersistedSources(
   };
 
   for (const s of persistedSources) {
+    // Drop legacy records that were safely migrated to canonical seed sources
+    if (legacyToCanonicalMap.has(s.id)) {
+      continue;
+    }
     if (!seedMap.has(s.id) && isUserOrRequired(s)) {
-      result.push({ ...s });
+      const migratedUpstream =
+        s.upstreamSourceId && legacyToCanonicalMap.has(s.upstreamSourceId)
+          ? legacyToCanonicalMap.get(s.upstreamSourceId)!
+          : s.upstreamSourceId;
+      result.push({
+        ...s,
+        upstreamSourceId: migratedUpstream,
+      });
     }
   }
 
   return result;
+}
+
+/**
+ * Migrates all safe legacy source references across destinations and upstream sources
+ * within a full TrackerSnapshot, returning the updated snapshot and audit report.
+ */
+export function migrateLegacySourceReferences(
+  snapshot: TrackerSnapshot,
+  seedSources: readonly Source[] = INITIAL_SNAPSHOT.sources
+): {
+  snapshot: TrackerSnapshot;
+  report: LegacySourceMigrationReport;
+} {
+  const cloned: TrackerSnapshot = JSON.parse(JSON.stringify(snapshot));
+  const { report } = buildLegacySourceMigrationPlan(
+    cloned.sources,
+    seedSources,
+    cloned.destinations
+  );
+
+  const reconciledSources = reconcilePersistedSources(cloned.sources, seedSources, {
+    destinations: cloned.destinations,
+  });
+
+  cloned.sources = reconciledSources;
+
+  return {
+    snapshot: cloned,
+    report,
+  };
 }

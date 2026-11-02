@@ -31,9 +31,13 @@ import {
   getLayoutDefinition,
 } from '../domain/layoutDefinitions';
 import { normalizeOutputPipAssignments } from '../domain/pipRouting';
-import { reconcilePersistedSources } from './sourceReconciliation';
+import {
+  reconcilePersistedSources,
+  migrateLegacySourceReferences,
+  buildLegacySourceMigrationPlan,
+} from './sourceReconciliation';
 
-export { reconcilePersistedSources };
+export { reconcilePersistedSources, migrateLegacySourceReferences, buildLegacySourceMigrationPlan };
 
 /**
  * Local repository serving the typed baseline seed snapshot with browser persistence support.
