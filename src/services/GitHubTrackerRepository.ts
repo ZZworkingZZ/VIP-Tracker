@@ -32,9 +32,13 @@ import {
   GitHubFilePayload,
 } from './githubClient';
 import { GitHubTrackerRepositoryError } from './githubErrors';
+import { INITIAL_SNAPSHOT } from '../data/seed/snapshot';
+import { reconcilePersistedSources } from './sourceReconciliation';
 
 export interface GitHubTrackerRepositoryOptions extends GitHubClientOptions {
   isReadOnly?: boolean;
+  initialSnapshot?: TrackerSnapshot;
+  reconcileSourcesWithSeed?: boolean;
 }
 
 export interface GitHubSnapshotLoadResult {
@@ -51,6 +55,8 @@ export interface GitHubSnapshotLoadResult {
 export class GitHubTrackerRepository implements TrackerRepository {
   readonly isReadOnly: boolean;
   private client: GitHubClient;
+  private initialSnapshot: TrackerSnapshot;
+  private reconcileSourcesWithSeed?: boolean;
   private cachedSnapshot: TrackerSnapshot | null = null;
   private lastLoadedSha: string | null = null;
   private revisionGeneration = 0;
@@ -58,6 +64,29 @@ export class GitHubTrackerRepository implements TrackerRepository {
   constructor(options: GitHubTrackerRepositoryOptions = {}) {
     this.client = new GitHubClient(options);
     this.isReadOnly = options.isReadOnly ?? false;
+    this.initialSnapshot = options.initialSnapshot ?? INITIAL_SNAPSHOT;
+    this.reconcileSourcesWithSeed = options.reconcileSourcesWithSeed;
+  }
+
+  private shouldReconcileSources(data: Record<string, unknown>): boolean {
+    if (this.reconcileSourcesWithSeed === false) return false;
+    if (this.reconcileSourcesWithSeed === true) return true;
+
+    const meta = data.metadata as Record<string, unknown> | undefined;
+    if (meta) {
+      const wb = typeof meta.sourceWorkbook === 'string' ? meta.sourceWorkbook : '';
+      if (wb.includes('Evertz VIP Source Tracker') || wb.includes('VIP Tracker Source Directory')) {
+        return true;
+      }
+      // If a custom or synthetic test workbook is specified (e.g. 'test.xlsx'), do not reconcile against production seed
+      if (wb && !wb.includes('VIP')) {
+        return false;
+      }
+    }
+
+    if (this.config.repo === 'VIP-Tracker-Data') return true;
+
+    return false;
   }
 
   get config(): GitHubRepositoryConfig {
@@ -128,13 +157,25 @@ export class GitHubTrackerRepository implements TrackerRepository {
    * Applies an externally received snapshot and updates lastLoadedSha and cachedSnapshot.
    */
   applyLoadedSnapshot(snapshot: TrackerSnapshot, sha: string): void {
+    const shouldReconcile = this.shouldReconcileSources(
+      snapshot as unknown as Record<string, unknown>
+    );
+    const reconciledSources = shouldReconcile
+      ? reconcilePersistedSources(snapshot.sources, this.initialSnapshot.sources, {
+          destinations: snapshot.destinations,
+        })
+      : snapshot.sources;
+    const reconciledSnapshot: TrackerSnapshot = {
+      ...snapshot,
+      sources: reconciledSources,
+    };
     this.revisionGeneration++;
     this.cachedSnapshot = {
-      ...snapshot,
-      history: mergeHistoryEntries(this.cachedSnapshot?.history, snapshot.history),
+      ...reconciledSnapshot,
+      history: mergeHistoryEntries(this.cachedSnapshot?.history, reconciledSnapshot.history),
     };
     this.lastLoadedSha = sha;
-    const customLayouts = snapshot.customLayouts ?? [];
+    const customLayouts = reconciledSnapshot.customLayouts ?? [];
     setCustomLayoutRegistry(customLayouts);
   }
 
@@ -307,10 +348,17 @@ export class GitHubTrackerRepository implements TrackerRepository {
     checkUniqueIds(data.sources as unknown[], 'sources');
     checkUniqueIds(data.operationalAssignments as unknown[], 'operationalAssignments');
 
-    // 4. Reference resolution: non-null assignedSourceId must resolve to a known source
-    const sources = data.sources as Source[];
-    const sourceIdSet = new Set<string>(sources.map((s) => s.id));
+    // 4. Optionally reconcile persisted sources against canonical seed inventory
+    const rawSources = data.sources as Source[];
     const destinations = data.destinations as Destination[];
+    const sources = this.shouldReconcileSources(data)
+      ? reconcilePersistedSources(rawSources, this.initialSnapshot.sources, {
+          destinations,
+        })
+      : rawSources;
+
+    // 5. Reference resolution: non-null assignedSourceId must resolve to a known source
+    const sourceIdSet = new Set<string>(sources.map((s) => s.id));
 
     for (const dest of destinations) {
       if (dest.assignedSourceId !== null && dest.assignedSourceId !== undefined) {
@@ -626,6 +674,12 @@ export class GitHubTrackerRepository implements TrackerRepository {
 
     if (!changeSet || changeSet.changes.length === 0) {
       cloned.history = mergeHistoryEntries(this.cachedSnapshot?.history, cloned.history);
+    }
+
+    if (this.shouldReconcileSources(cloned as unknown as Record<string, unknown>)) {
+      cloned.sources = reconcilePersistedSources(cloned.sources, this.initialSnapshot.sources, {
+        destinations: cloned.destinations,
+      });
     }
 
     cloned.validationFindings = validateSnapshot(
