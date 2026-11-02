@@ -251,13 +251,22 @@ export const DestinationSourcesPage: React.FC = () => {
     return resolveDestinationSignalFlows(snapshot, selectedMvFilter);
   }, [snapshot, selectedMvFilter]);
 
-  const duplicateDestinationsCount = useMemo(() => {
-    let count = 0;
+  // Duplicate = same source on multiple inputs of the SAME card (every affected input is flagged,
+  // so this counts inputs). Shared = same source also routed on OTHER cards (informational).
+  const { duplicateInputsCount, sharedRoutesCount } = useMemo(() => {
+    let dup = 0;
+    let shared = 0;
     for (const df of destSignalFlowsMap.values()) {
-      if (df.hasDuplicates) count++;
+      if (df.hasSameCardDuplicate) dup++;
+      if (df.hasSharedRoute) shared++;
     }
-    return count;
+    return { duplicateInputsCount: dup, sharedRoutesCount: shared };
   }, [destSignalFlowsMap]);
+
+  // Never leave the wall stuck filtered with the Duplicate button hidden.
+  useEffect(() => {
+    if (duplicateOnlyFilter && duplicateInputsCount === 0) setDuplicateOnlyFilter(false);
+  }, [duplicateOnlyFilter, duplicateInputsCount]);
 
   const selectedDestFlow = useMemo(() => {
     if (!selectedDestId) return null;
@@ -290,7 +299,7 @@ export const DestinationSourcesPage: React.FC = () => {
       const isAssigned = Boolean(row.destination.assignedSourceId);
       if (statusFilter === 'ASSIGNED' && !isAssigned) return false;
       if (statusFilter === 'UNASSIGNED' && isAssigned) return false;
-      if (duplicateOnlyFilter && !destFlow?.hasDuplicates) return false;
+      if (duplicateOnlyFilter && !destFlow?.hasSameCardDuplicate) return false;
 
       return true;
     });
@@ -898,29 +907,45 @@ export const DestinationSourcesPage: React.FC = () => {
                     : currentMv.inputCapacity}
                   )
                 </h2>
-                {duplicateDestinationsCount > 0 && (
+                {duplicateInputsCount > 0 && (
                   <button
                     type="button"
                     data-testid="wall-duplicate-filter-btn"
                     onClick={() => setDuplicateOnlyFilter((prev) => !prev)}
                     style={{
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      fontWeight: 700,
+                      padding: '3px 10px',
+                      fontSize: '12px',
+                      fontWeight: 800,
                       backgroundColor: duplicateOnlyFilter
-                        ? 'rgba(245, 158, 11, 0.25)'
-                        : 'rgba(245, 158, 11, 0.12)',
-                      color: '#fbbf24',
-                      border: `1px solid ${duplicateOnlyFilter ? '#f59e0b' : 'rgba(245, 158, 11, 0.4)'}`,
+                        ? 'rgba(239, 68, 68, 0.35)'
+                        : 'rgba(239, 68, 68, 0.18)',
+                      color: '#fecaca',
+                      border: `1px solid ${duplicateOnlyFilter ? '#ef4444' : 'rgba(239, 68, 68, 0.6)'}`,
                       borderRadius: '2px',
                       cursor: 'pointer',
                     }}
-                    title="Filter to destinations with duplicate or shared routing"
+                    title="Same source routed to multiple inputs on the same card. Click to filter."
                   >
-                    ⚠ {duplicateDestinationsCount} Duplicate / Shared Route
-                    {duplicateDestinationsCount === 1 ? '' : 's'}
+                    ⚠ {duplicateInputsCount} Duplicate Input{duplicateInputsCount === 1 ? '' : 's'}
                     {duplicateOnlyFilter ? ' (Filtered)' : ''}
                   </button>
+                )}
+                {sharedRoutesCount > 0 && (
+                  <span
+                    data-testid="wall-shared-indicator"
+                    title="Source also routed on other cards (informational)"
+                    style={{
+                      padding: '2px 6px',
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      color: '#7dd3fc',
+                      backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      borderRadius: '2px',
+                    }}
+                  >
+                    ⓘ {sharedRoutesCount} Shared Route{sharedRoutesCount === 1 ? '' : 's'}
+                  </span>
                 )}
               </div>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
@@ -947,6 +972,16 @@ export const DestinationSourcesPage: React.FC = () => {
                 const isSelectedTile = selectedDestId === dest.id;
                 const hasDuplicates = Boolean(destFlow?.hasDuplicates);
                 const hasSameCardDup = Boolean(destFlow?.hasSameCardDuplicate);
+                const hasShared = Boolean(destFlow?.hasSharedRoute);
+                const sharedContext = destFlow?.sharedRouteContext ?? [];
+                const sharedTitle =
+                  sharedContext.length > 0
+                    ? `Also routed on: ${sharedContext.join(', ')}`
+                    : 'Also routed elsewhere';
+                // Shared-only/tieline flags show a badge but never change border or background.
+                const badgeFlow =
+                  destFlow?.duplicateFlags.find((f) => f.kind === 'same_mv_card_source') ??
+                  destFlow?.duplicateFlags.find((f) => f.kind === 'lawo_multi_tieline');
                 const categoryColor = row.source?.category
                   ? getSourceCategoryColor(row.source.category)
                   : undefined;
@@ -963,6 +998,7 @@ export const DestinationSourcesPage: React.FC = () => {
                   <div
                     key={dest.id}
                     data-testid={`dest-card-${dest.id}`}
+                    className={hasSameCardDup ? 'dest-card--duplicate' : undefined}
                     data-draggable={!isReadOnly ? 'true' : 'false'}
                     data-selected={isSelectedTile ? 'true' : 'false'}
                     data-has-duplicate={hasDuplicates ? 'true' : 'false'}
@@ -1000,15 +1036,11 @@ export const DestinationSourcesPage: React.FC = () => {
                           ? '1px solid #38bdf8'
                           : isDraggingThis
                             ? '1px solid #38bdf8'
-                            : hasSameCardDup
-                              ? '1px solid #f59e0b'
-                              : isEditMode
-                                ? '1px solid #38bdf8'
-                                : hasDuplicates
-                                  ? '1px solid rgba(245, 158, 11, 0.55)'
-                                  : hasSource
-                                    ? '1px solid #363636'
-                                    : '1px dashed #262626',
+                            : isEditMode
+                              ? '1px solid #38bdf8'
+                              : hasSource
+                                ? '1px solid #363636'
+                                : '1px dashed #262626',
                       borderRadius: '2px',
                       padding: '5px 6px',
                       display: 'flex',
@@ -1063,23 +1095,39 @@ export const DestinationSourcesPage: React.FC = () => {
                             ⋮⋮
                           </span>
                         )}
-                        {hasDuplicates && destFlow && (
+                        {hasShared && (
+                          <span
+                            role="img"
+                            data-testid={`dest-shared-icon-${dest.id}`}
+                            title={sharedTitle}
+                            aria-label={sharedTitle}
+                            style={{
+                              color: '#38bdf8',
+                              fontSize: '11px',
+                              lineHeight: 1,
+                              flexShrink: 0,
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        )}
+                        {badgeFlow && destFlow && (
                           <span
                             data-testid={`dest-dup-badge-${dest.id}`}
-                            title={destFlow.duplicateFlags.map((f) => f.description).join(' | ')}
+                            title={badgeFlow.description}
                             style={{
                               fontSize: '8px',
                               fontWeight: 800,
                               padding: '1px 4px',
                               borderRadius: '2px',
                               backgroundColor: hasSameCardDup
-                                ? 'rgba(245, 158, 11, 0.22)'
-                                : 'rgba(56, 189, 248, 0.16)',
-                              color: hasSameCardDup ? '#fbbf24' : '#7dd3fc',
+                                ? 'rgba(239, 68, 68, 0.22)'
+                                : 'rgba(245, 158, 11, 0.22)',
+                              color: hasSameCardDup ? '#fca5a5' : '#fbbf24',
                               border: `1px solid ${
                                 hasSameCardDup
-                                  ? 'rgba(245, 158, 11, 0.5)'
-                                  : 'rgba(56, 189, 248, 0.4)'
+                                  ? 'rgba(239, 68, 68, 0.6)'
+                                  : 'rgba(245, 158, 11, 0.5)'
                               }`,
                               fontFamily: 'monospace',
                               whiteSpace: 'nowrap',
@@ -1091,7 +1139,7 @@ export const DestinationSourcesPage: React.FC = () => {
                               display: 'inline-block',
                             }}
                           >
-                            ⚠ {formatCompactDuplicateBadge(destFlow.duplicateFlags[0])}
+                            ⚠ {formatCompactDuplicateBadge(badgeFlow)}
                           </span>
                         )}
                       </div>

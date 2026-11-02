@@ -883,3 +883,31 @@
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.7);
   }
 }
+
+/* Destination Windows Wall: same-card duplicate route (real problem).
+   Pulses border-color + inset shadow only, so nothing paints outside the card
+   and wall/neighbor overflow cannot clip it. */
+.dest-card--duplicate {
+  border: 1px solid #ef4444 !important;
+  animation: dest-dup-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dest-dup-pulse {
+  0%,
+  100% {
+    border-color: rgba(239, 68, 68, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.25);
+  }
+  50% {
+    border-color: #ef4444;
+    box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dest-card--duplicate {
+    animation: none !important;
+    border: 2px solid #ef4444 !important;
+    box-shadow: none !important;
+  }
+}

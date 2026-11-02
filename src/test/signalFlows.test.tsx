@@ -860,12 +860,23 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-06')).toBeInTheDocument();
     expect(screen.getByTestId('dest-dup-badge-DEST:MV-03-06')).toHaveTextContent('⚠ Dup (2×)');
 
+    // Duplicate (red, filterable) and Shared (info) are separate indicators, never combined
     const dupFilterBtn = screen.getByTestId('wall-duplicate-filter-btn');
+    expect(dupFilterBtn).toHaveTextContent(/Duplicate Inputs?/);
+    expect(dupFilterBtn).not.toHaveTextContent(/Shared/);
+    expect(screen.getByTestId('dest-card-DEST:MV-03-01')).toHaveClass('dest-card--duplicate');
+    expect(screen.getByTestId('dest-card-DEST:MV-03-02')).not.toHaveClass('dest-card--duplicate');
+    expect(screen.getByTestId('dest-shared-icon-DEST:MV-03-02')).toHaveAttribute(
+      'aria-label',
+      expect.stringContaining('Also routed on:')
+    );
+    expect(screen.getByTestId('wall-shared-indicator')).toHaveTextContent(/Shared Routes?/);
+
     fireEvent.click(dupFilterBtn);
 
-    // When duplicate filter is active, only destinations with duplicate flags are shown
+    // When duplicate filter is active, only same-card duplicate destinations are shown
     expect(screen.getByTestId('dest-card-DEST:MV-03-01')).toBeInTheDocument();
-    expect(screen.getByTestId('dest-card-DEST:MV-03-02')).toBeInTheDocument();
+    expect(screen.queryByTestId('dest-card-DEST:MV-03-02')).not.toBeInTheDocument();
     expect(screen.getByTestId('dest-card-DEST:MV-03-06')).toBeInTheDocument();
     expect(screen.queryByTestId('dest-card-DEST:MV-03-60')).not.toBeInTheDocument();
   });
@@ -979,9 +990,10 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     });
 
     // In All VIPs view, DEST:MV-02-01 renders a cross-MV shared badge
-    const badge0201 = await screen.findByTestId('dest-dup-badge-DEST:MV-02-01');
-    expect(badge0201).toBeInTheDocument();
-    expect(badge0201).toHaveTextContent('⚠ Shared (3 Inputs)');
+    const icon0201 = await screen.findByTestId('dest-shared-icon-DEST:MV-02-01');
+    expect(icon0201).toHaveAttribute('aria-label', expect.stringContaining('Also routed on:'));
+    expect(screen.queryByTestId('dest-dup-badge-DEST:MV-02-01')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-02-01')).not.toHaveClass('dest-card--duplicate');
 
     // Destination card for DEST:MV-02-01 must display destination identifier without collision
     const card0201 = screen.getByTestId('dest-card-DEST:MV-02-01');

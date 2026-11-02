@@ -1369,6 +1369,10 @@ export interface ResolvedDestinationSignalFlow {
   hasDuplicates: boolean;
   hasSameCardDuplicate: boolean;
   hasMultiTielineDuplicate: boolean;
+  /** Informational: source also routed on other cards (cross_mv_source / shared_upstream_origin). */
+  hasSharedRoute: boolean;
+  /** Descriptions of where else the route is used (from existing shared flags). */
+  sharedRouteContext: string[];
 }
 
 /**
@@ -1648,6 +1652,12 @@ export function resolveDestinationSignalFlows(
       hasDuplicates: duplicateFlags.length > 0,
       hasSameCardDuplicate: duplicateFlags.some((f) => f.kind === 'same_mv_card_source'),
       hasMultiTielineDuplicate: duplicateFlags.some((f) => f.kind === 'lawo_multi_tieline'),
+      hasSharedRoute: duplicateFlags.some(
+        (f) => f.kind === 'cross_mv_source' || f.kind === 'shared_upstream_origin'
+      ),
+      sharedRouteContext: duplicateFlags
+        .filter((f) => f.kind === 'cross_mv_source' || f.kind === 'shared_upstream_origin')
+        .flatMap((f) => f.relatedDestinationLabels),
     });
   }
 
