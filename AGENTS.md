@@ -138,6 +138,19 @@ For features involving source identity, source search, source routing, or source
 
 Do not inspect `DashboardPage.tsx`, `ProductionsPage.tsx`, or `LayoutAssignmentsPage.tsx` for source-display changes unless references or test failures indicate they are directly involved.
 
+### Source Directory Workbook & Authoritative vs. Derived Data
+
+- **Authoritative Workbook:** `data/VIP Tracker Source Directory.xlsx` is the authoritative reference workbook for external source inventories.
+- **Independent Workbook Inventories:** Logical inventories must remain independent unless application behavior explicitly requires a derived combination:
+  - Lawo Sources
+  - Lawo Processing Sources/Destinations
+  - Lawo Destinations / Lawo-to-Evertz Tielines
+  - Evertz Sources
+  - Evertz MV Inputs
+- **No Row-Position Flow Inference:** Do not infer signal relationships between entries merely because they share an Excel row; row position alone does not define signal flow.
+- **Traceable Display Names:** Operator-facing display names originating from the workbook must remain traceable to workbook values.
+- **Authoritative vs. Derived Separation:** Authoritative inventories must remain conceptually separate from derived application structures (e.g., authoritative workbook inventory vs. routing subset, combined routing catalog, persisted source collection, runtime selector result, or UI dropdown membership). A derived catalog may support routing, validation, persistence, or compatibility without determining membership of an authoritative UI inventory. Do not silently redefine an authoritative inventory to match an existing derived model.
+
 ### GitHub Repository Test Mocks
 
 - Mock responses for `GitHubClient.fetchFileContents` and GitHub `/contents/` endpoints must include `type: "file"`.
@@ -151,6 +164,7 @@ Do not inspect `DashboardPage.tsx`, `ProductionsPage.tsx`, or `LayoutAssignments
 - Read whole relevant sections once. Don't re-read the same file in small slices.
 - Skip components that are clearly unrelated to the task, like modals and pages that never reference the feature.
 - **Redundant reads:** Do not reread an unchanged file or range merely for reassurance. Reread only when the file changed, an earlier read lacked necessary context, another change may affect it, or a failure disproves the current understanding.
+- **Stop exploring once root cause is proven:** Once direct evidence establishes the root cause, immediately halt broad exploration. Read additional files only when necessary to: (1) implement the fix, (2) preserve directly affected behavior, (3) investigate a failure caused by the fix, or (4) validate the fix. Do not continue exploring adjacent architecture merely for reassurance or additional confidence.
 - **Current-state evidence over historical logs:** Current repository evidence takes priority over transcript archaeology. Before searching agent transcripts, JSONL files, task logs, or historical command outputs, inspect on-disk file content, absolute paths, active branch, `git status`, targeted tool output, and `git diff`. Search historical logs only when the task explicitly requires investigating a prior run or present-state evidence cannot resolve an anomaly.
 
 ### Pre-edit dependency mapping
@@ -187,6 +201,8 @@ At the end of an investigation/planning phase, briefly identify:
 Use this prediction to guide the implementation rather than discovering obvious test dependencies only after failures.
 
 - **Minimal UI test render scope:** Integration and component tests should render the minimal application state required to prove the behavior. For large surfaces (such as Signal Flows), prefer scoping routes/context to a focused `mvId`, `outputId`, or single Multiviewer (e.g. `MV-01`) rather than rendering `All VIPs` or the entire facility baseline. Reserve facility-wide rendering for tests explicitly asserting global cross-VIP behavior. Reduce irrelevant render scope, never assertions or coverage.
+- **User-observed runtime behavior overrides assumptions:** When the user reports that visible runtime behavior is incorrect, passing existing tests, correct generated-data counts, or an internally consistent architecture are not sufficient evidence that the behavior is correct. Trace the complete path as narrowly as possible: authoritative input → generated representation → runtime collection → selector/filter → rendered UI behavior. Validate the user-visible endpoint, not merely an upstream representation. If existing tests pass while user-observed application behavior is wrong, the tests likely encode the same incorrect assumption as the implementation. Do not preserve incorrect behavior merely because existing tests assert it; add or update a regression test representing the user's actual expected behavior.
+- **Exact membership validation for authoritative lists:** In inventories, dropdowns, option lists, and directories, matching counts alone are insufficient. When practical, compare exact identifiers or names and explicitly detect missing entries, extra entries, duplicates, altered display names, and incorrect category membership. For an authoritative inventory-backed dropdown, tests should ideally verify `actual option membership == authoritative inventory membership`. Counts supplement this comparison but must never replace it.
 - **Respect optional schema properties in assertions:** Test assertions must respect optional model properties (e.g. `snapshot.history?`). Use optional chaining (`snapshot.history?.length`), nullish defaults (`(snapshot.history ?? []).length`), or explicit defined-state assertions. Never use `any`, unsafe casts, or unjustified non-null assertions (`!`) merely to suppress strict TypeScript diagnostics.
 
 ### Cohesive edit passes
@@ -210,6 +226,8 @@ Use this prediction to guide the implementation rather than discovering obvious 
 - **Validation sequencing & non-redundancy:**
   - _During implementation:_ Run the smallest relevant targeted check (`npm run test -- <path>` or `npm run typecheck`) to answer the immediate question. Do not run `npm run validate` as an iterative diagnostic tool.
   - _Failure-driven troubleshooting:_ After a targeted failure, inspect the output and identify its likely root cause before rerunning the command. When a failure stems from an incorrect fixture, ID, selector, category, mapping, or type assumption, inspect the authoritative source, apply a materially justified fix, and rerun only after updating code. Do not cycle through guessed one-line changes followed by repeated test executions.
+  - _Failed or hung diagnostic methods:_ If an ad-hoc diagnostic command fails, hangs, or produces unusable output, do not repeatedly retry the same mechanism without a materially different reason. Switch to an already-supported project mechanism. For VIP Tracker TypeScript diagnostics, if ad-hoc `tsx -e` execution proves unreliable, prefer a focused temporary Vitest diagnostic test within the existing project environment. Remove any temporary diagnostic file/test before completion unless deliberately retained as a meaningful regression test. Never leave diagnostic artifacts in the commit.
+  - _Generated file validation:_ When modifying a generator or regenerating tracked repository output: (1) generate the artifact, (2) format or format-check the generated artifact as required, (3) regenerate once if needed to verify deterministic output and confirm no unexpected diff, and (4) run relevant tests. Do not wait until CI/deployment to discover that committed generated output violates repository formatting, and do not repeatedly regenerate once determinism is established.
   - _Final validation gate:_ Match final validation strictly to the Risk-Based Validation Matrix (Section 4). For Level 1 and Level 2 changes, targeted tests, typecheck, and lint provide conclusive evidence without running full repository validation. For Level 3 (high-risk or architectural) changes, run `npm run validate` ONCE as the final gate after targeted failures are resolved. Do not run individual full checks and then immediately duplicate them with `npm run validate`.
   - Documentation-only and trivial static-content changes require no application tests, typecheck, lint, build, or full validation.
 
@@ -226,10 +244,11 @@ Use this prediction to guide the implementation rather than discovering obvious 
 - No baseline test run before changes.
 - While iterating: run only the targeted test file.
 - Before commit: format touched files with Prettier, verify targeted checks, and execute the appropriate risk-based validation level from Section 4. Documentation-only changes do not require application tests, typecheck, or full validate.
-- When `npm run validate` is required (Level 3), run it in the foreground and wait for it to finish. Do not background it or poll task status.
+- **Background task polling discipline:** Avoid tight repeated polling of tests, builds, Git operations, or CI workflows. Do not produce long sequences of waiting/polling loops. Use foreground execution whenever possible (including Level 3 `npm run validate`). If a background task is genuinely necessary, inspect it only when useful or wait for completion notification rather than continuously polling.
 - Shell is Windows PowerShell: do not use `&&`. Run git add, commit, and push as separate commands and stop if any one fails.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
+- **Deployment vs. push distinction:** A successful commit and push proves only that the remote Git branch was updated, not that the deployed application contains that commit. When a task explicitly includes deployment or addresses an issue on live GitHub Pages: inspect the relevant CI/deployment workflow run, distinguish push success from deployment success, and do not claim the live app is fixed until the deployment containing the commit succeeds. (Do not require deployment verification for ordinary local-only tasks where deployment is out of scope.)
 - **Honest change attribution:** Final reports must distinguish between changes made during the current task, fixes already present in the baseline commit, editor-buffer-only differences, and uncommitted working-tree changes. Never claim a fix was implemented in the current task if `git diff` and `git status` show no corresponding change.
 - Final report: max 10 lines — files changed, validate result, commit hash.
 - Execution-time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. Execution time is an observation metric, not a performance target. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
@@ -271,6 +290,7 @@ Before completing any task:
 
 - [ ] Explicit distinction preserved between Outputs (`OUT:MV-XX-YY`), MV Inputs / Router Destinations (`DEST:MV-XX-YY`), and PIPs (`PIP-##`).
 - [ ] Multiview baseline preserved: 5 frames, 32 outputs, 264 destinations.
+- [ ] Authoritative workbook inventories in `data/VIP Tracker Source Directory.xlsx` remain conceptually distinct from derived routing structures.
 - [ ] Unassigned sources remain `null` (zero fabrication).
 - [ ] Domain logic in `src/domain/` remains independent of React and DOM.
 - [ ] No unintended files or generated build artifacts were introduced by the agent's work (never modify, delete, restore, or clean unrelated user changes merely to make the working tree clean).
