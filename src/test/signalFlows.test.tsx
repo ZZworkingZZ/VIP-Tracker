@@ -847,4 +847,53 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(screen.getByTestId('dest-card-DEST:MV-03-06')).toBeInTheDocument();
     expect(screen.queryByTestId('dest-card-DEST:MV-03-60')).not.toBeInTheDocument();
   });
+
+  it('37. aggregates applicable Destination Windows across all five VIP frames (264 windows) when All VIPs is selected', async () => {
+    const snapshot = createSignalFlowTestSnapshot();
+    const repo = new LocalTrackerRepository(snapshot);
+    renderWithProviders(<DestinationSourcesPage />, {
+      repository: repo,
+      route: '/sources?mvId=ALL',
+    });
+
+    // 1 & 3: Does not display only MV-01; displays all 264 applicable destination windows
+    expect(await screen.findByText(/Destination Windows Wall \(264 of 264\)/i)).toBeInTheDocument();
+
+    const destCards = screen.getAllByTestId(/^dest-card-DEST:MV-/);
+    expect(destCards).toHaveLength(264);
+
+    // 2 & 4: All five multiview IDs are represented with representative destinations
+    expect(screen.getByTestId('dest-card-DEST:MV-01-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-01-36')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-02-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-02-36')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-03-64')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-04-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-04-64')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-05-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-05-64')).toBeInTheDocument();
+
+    // 5: No destination is duplicated
+    const cardTestIds = destCards.map((c) => c.getAttribute('data-testid'));
+    const uniqueTestIds = new Set(cardTestIds);
+    expect(uniqueTestIds.size).toBe(264);
+
+    // 6: Representative destination retains its resolved current Signal Flow
+    // In createSignalFlowTestSnapshot(), DEST:MV-03-01 is routed to vCam 40
+    const destCard0301 = screen.getByTestId('dest-card-DEST:MV-03-01');
+    expect(within(destCard0301).getByText('vCam 40')).toBeInTheDocument();
+
+    // 7: Selecting an individual VIP switches to only that VIP's applicable inputs
+    const mv02Tab = screen.getByRole('tab', { name: /^MV-02/i });
+    fireEvent.click(mv02Tab);
+
+    expect(await screen.findByText(/Destination Windows Wall \(36 of 36\)/i)).toBeInTheDocument();
+    const mv02Cards = screen.getAllByTestId(/^dest-card-DEST:MV-/);
+    expect(mv02Cards).toHaveLength(36);
+    expect(screen.getByTestId('dest-card-DEST:MV-02-01')).toBeInTheDocument();
+    expect(screen.getByTestId('dest-card-DEST:MV-02-36')).toBeInTheDocument();
+    expect(screen.queryByTestId('dest-card-DEST:MV-01-01')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dest-card-DEST:MV-03-01')).not.toBeInTheDocument();
+  });
 });

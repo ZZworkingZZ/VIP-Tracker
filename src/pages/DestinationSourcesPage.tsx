@@ -96,11 +96,17 @@ export const DestinationSourcesPage: React.FC = () => {
     candidateMv && ['MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(candidateMv)
       ? (candidateMv as MultiviewId)
       : null;
+  const validInitialMvFilter =
+    candidateMv === 'ALL'
+      ? 'ALL'
+      : candidateMv && ['MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'].includes(candidateMv)
+        ? (candidateMv as MultiviewId)
+        : null;
   const focusedFlowKey = focusOutputId && focusPipId ? `${focusOutputId}:${focusPipId}` : null;
 
   const [viewMode, setViewMode] = useState<'flows' | 'display' | 'table'>('flows');
   const [selectedMvFilter, setSelectedMvFilter] = useState<MultiviewId | 'ALL'>(
-    validInitialMv ?? 'MV-01'
+    validInitialMvFilter ?? 'MV-01'
   );
   const [selectedMv, setSelectedMv] = useState<MultiviewId>(validInitialMv ?? 'MV-01');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -223,13 +229,13 @@ export const DestinationSourcesPage: React.FC = () => {
 
   const derivedDestinations = useMemo(() => {
     if (!snapshot) return [];
-    return selectDestinationsForMultiview(snapshot, selectedMv);
-  }, [snapshot, selectedMv]);
+    return selectDestinationsForMultiview(snapshot, selectedMvFilter);
+  }, [snapshot, selectedMvFilter]);
 
   const destSignalFlowsMap = useMemo(() => {
     if (!snapshot) return new Map<DestinationId, ResolvedDestinationSignalFlow>();
-    return resolveDestinationSignalFlows(snapshot, selectedMv);
-  }, [snapshot, selectedMv]);
+    return resolveDestinationSignalFlows(snapshot, selectedMvFilter);
+  }, [snapshot, selectedMvFilter]);
 
   const duplicateDestinationsCount = useMemo(() => {
     let count = 0;
@@ -854,7 +860,7 @@ export const DestinationSourcesPage: React.FC = () => {
          ==================================================================== */}
       {(viewMode === 'flows' || viewMode === 'display') && (
         <section
-          aria-label={`${selectedMv} Visual Destination Feed Wall`}
+          aria-label={`${selectedMvFilter === 'ALL' ? 'All VIPs' : selectedMv} Visual Destination Feed Wall`}
           data-testid="destination-windows-wall-section"
           style={{ marginBottom: '28px' }}
         >
@@ -873,7 +879,10 @@ export const DestinationSourcesPage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#cbd5e1', margin: 0 }}>
                   Destination Windows Wall ({filteredDestinations.length} of{' '}
-                  {currentMv.inputCapacity})
+                  {selectedMvFilter === 'ALL'
+                    ? snapshot.multiviews.reduce((sum, mv) => sum + mv.inputCapacity, 0)
+                    : currentMv.inputCapacity}
+                  )
                 </h2>
                 {duplicateDestinationsCount > 0 && (
                   <button
@@ -1601,8 +1610,13 @@ export const DestinationSourcesPage: React.FC = () => {
                           }}
                         >
                           <option value="">-- Output --</option>
-                          {mvOutputs
-                            .filter((o) => o.status !== 'Available' && Boolean(o.layoutName))
+                          {snapshot.outputs
+                            .filter(
+                              (o) =>
+                                o.multiviewId === selectedDestFlow.multiviewId &&
+                                o.status !== 'Available' &&
+                                Boolean(o.layoutName)
+                            )
                             .map((o) => (
                               <option key={o.id} value={o.id}>
                                 {formatOutputDisplay(o.id)} ({o.layoutName})

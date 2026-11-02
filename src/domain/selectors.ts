@@ -107,16 +107,25 @@ export function selectMultiviewSummaries(snapshot: TrackerSnapshot): MultiviewSu
 }
 
 /**
- * Selects and derives operational destination information for a selected multiview.
+ * Selects and derives operational destination information for a selected multiview or aggregated across All VIPs.
  * Correctly derives operational assignment without ambiguity. If multiple output ranges cover a destination,
  * it flags it as ambiguous and in conflict.
  */
 export function selectDestinationsForMultiview(
   snapshot: TrackerSnapshot,
-  multiviewId: MultiviewId
+  multiviewId?: MultiviewId | 'ALL'
 ): DerivedDestinationRow[] {
-  const mvOutputs = snapshot.outputs.filter((o) => o.multiviewId === multiviewId);
-  const mvDestinations = snapshot.destinations.filter((d) => d.multiviewId === multiviewId);
+  if (multiviewId === 'ALL') {
+    const mvs =
+      snapshot.multiviews && snapshot.multiviews.length > 0
+        ? snapshot.multiviews.map((m) => m.id)
+        : (['MV-01', 'MV-02', 'MV-03', 'MV-04', 'MV-05'] as const);
+    return mvs.flatMap((mvId) => selectDestinationsForMultiview(snapshot, mvId));
+  }
+
+  const targetMvId = multiviewId ?? 'MV-01';
+  const mvOutputs = snapshot.outputs.filter((o) => o.multiviewId === targetMvId);
+  const mvDestinations = snapshot.destinations.filter((d) => d.multiviewId === targetMvId);
   const sourceMap = new Map<string, Source>(snapshot.sources.map((s) => [s.id, s]));
 
   return mvDestinations.map((dest) => {
