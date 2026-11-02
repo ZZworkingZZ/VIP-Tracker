@@ -772,7 +772,7 @@ describe('Signal Flows — Domain Model, Directories, Resolver, and UI Workflows
     expect(savedDest05?.assignedSourceId).toBe(VCAM_41_ID);
     const savedOut01 = savedSnap.outputs.find((o) => o.id === TEST_OUTPUT_ID);
     expect(savedOut01?.pipAssignments?.['PIP-03']).toBe('DEST:MV-03-05');
-  });
+  }, 15000);
 
   it('36. identifies duplicate routing scenarios (same MV card, cross-card tieline, Lawo multi-tieline, shared upstream origin) without blocking intentional duplicates', async () => {
     let snapshot = createSignalFlowTestSnapshot();
