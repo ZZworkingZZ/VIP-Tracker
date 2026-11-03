@@ -214,7 +214,7 @@ describe('Storage Persistence & Reset', () => {
     const snap = await repo.getSnapshot();
 
     expect(snap.sources).toHaveLength(SEED_SOURCES.length);
-    expect(snap.sources).toHaveLength(712);
+    expect(snap.sources).toHaveLength(733);
     expect(snap.sources[0].id).toBe(SEED_SOURCES[0].id);
   });
 
@@ -237,13 +237,13 @@ describe('Storage Persistence & Reset', () => {
     const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
     const snap = await repo.getSnapshot();
 
-    expect(snap.sources).toHaveLength(712);
+    expect(snap.sources).toHaveLength(733);
     expect(snap.sources[0].id).toBe(SEED_SOURCES[0].id);
 
     // Storage is updated with sourceSeedVersion
     const updatedStorage = storage.load();
     expect(updatedStorage?.sourceSeedVersion).toBe(CURRENT_SOURCE_SEED_VERSION);
-    expect(updatedStorage?.sources).toHaveLength(712);
+    expect(updatedStorage?.sources).toHaveLength(733);
   });
 
   it('preserves subsequent user modifications and intentionally empty catalogs once seeded', async () => {
@@ -665,8 +665,8 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
     expect(savedDest1.assignedSourceId).not.toBe(swr201.id);
   });
 
-  it('confirms all 712 seeded sources retain upstreamSourceId: null before operator editing', () => {
-    expect(SEED_SOURCES).toHaveLength(712);
+  it('confirms all 733 seeded sources retain upstreamSourceId: null before operator editing', () => {
+    expect(SEED_SOURCES).toHaveLength(733);
     for (const s of SEED_SOURCES) {
       expect(s.upstreamSourceId).toBeNull();
     }
@@ -753,8 +753,8 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
       expect(updatedStorage?.sourceSeedVersion).toBe(4);
       expect(CURRENT_SOURCE_SEED_VERSION).toBe(4);
 
-      // 2. Missing current seed sources are appended (712 seed + 1 custom user source = 713)
-      expect(snapshot.sources).toHaveLength(713);
+      // 2. Missing current seed sources are appended (733 seed + 1 custom user source = 734)
+      expect(snapshot.sources).toHaveLength(734);
 
       // 3. Existing sources receive current authoritative classification metadata
       const vCam1 = snapshot.sources.find((s) => s.id === 'SRC:VCAM_01')!;
@@ -782,7 +782,7 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
       // 8. Loading the reconciled result again does not change source count (idempotence)
       const repoReloaded = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
       const snapshotReloaded = await repoReloaded.getSnapshot();
-      expect(snapshotReloaded.sources).toHaveLength(713);
+      expect(snapshotReloaded.sources).toHaveLength(734);
 
       // 9. Lawo Processing selector returns all 138 workbook-backed processing choices
       const processingOptions = getValidProcessingStageOptions(snapshot.sources);
@@ -791,7 +791,7 @@ describe('Phase 4C: Upstream Source Change Tracking & Persistence', () => {
 
       // 10. Lawo Source selector returns originating Lawo sources (307 routing options)
       const lawoOptions = getValidLawoSourceOptions(snapshot.sources);
-      expect(lawoOptions).toHaveLength(307);
+      expect(lawoOptions).toHaveLength(276);
       expect(lawoOptions.every((s) => s.routeRole === 'lawo_source')).toBe(true);
 
       // 11. Tieline / Evertz selector behavior remains correct (267 options)

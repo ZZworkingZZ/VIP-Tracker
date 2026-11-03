@@ -30,40 +30,41 @@ import { selectFilteredSources } from '../domain/selectors';
 describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)', () => {
   describe('1 & 2. Workbook Inventories Parsing & Non-fabrication', () => {
     it('parses exact counts for each independent inventory list from the workbook', () => {
-      expect(WORKBOOK_SOURCE_INVENTORY.lawoSources).toHaveLength(712);
+      expect(WORKBOOK_SOURCE_INVENTORY.lawoSources).toHaveLength(720);
       expect(WORKBOOK_SOURCE_INVENTORY.lawoProcessing).toHaveLength(138);
       expect(WORKBOOK_SOURCE_INVENTORY.lawoTielines).toHaveLength(117);
-      expect(WORKBOOK_SOURCE_INVENTORY.evertzSources).toHaveLength(267);
+      expect(WORKBOOK_SOURCE_INVENTORY.evertzSources).toHaveLength(319);
       expect(WORKBOOK_SOURCE_INVENTORY.evertzMvInputs).toHaveLength(264);
 
       // Verify authoritative independent seed collections
-      expect(SEED_LAWO_SOURCES).toHaveLength(712);
+      expect(SEED_LAWO_SOURCES).toHaveLength(720);
       expect(SEED_LAWO_PROCESSING_DEVICES).toHaveLength(138);
       expect(SEED_LAWO_TIELINES).toHaveLength(117);
-      expect(SEED_EVERTZ_SOURCES).toHaveLength(267);
+      expect(SEED_EVERTZ_SOURCES).toHaveLength(319);
       expect(SEED_EVERTZ_MV_INPUTS).toHaveLength(264);
-      expect(AUTHORITATIVE_INVENTORY_SOURCES).toHaveLength(1498);
+      expect(AUTHORITATIVE_INVENTORY_SOURCES).toHaveLength(1558);
 
       // Verify derived internal routing collections
-      expect(SEED_LAWO_ORIGIN_SOURCES).toHaveLength(307);
-      expect(SEED_ALL_SOURCES).toHaveLength(712);
-      expect(SEED_COMBINED_ROUTING_CATALOG).toHaveLength(712);
+      expect(SEED_LAWO_ORIGIN_SOURCES).toHaveLength(276);
+      expect(SEED_ALL_SOURCES).toHaveLength(733);
+      expect(SEED_COMBINED_ROUTING_CATALOG).toHaveLength(733);
 
-      expect(SOURCE_INVENTORY_METADATA.counts.lawoSources).toBe(712);
+      expect(SOURCE_INVENTORY_METADATA.counts.lawoSources).toBe(720);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoProcessing).toBe(138);
       expect(SOURCE_INVENTORY_METADATA.counts.lawoTielines).toBe(117);
-      expect(SOURCE_INVENTORY_METADATA.counts.evertzSources).toBe(267);
+      expect(SOURCE_INVENTORY_METADATA.counts.evertzSources).toBe(319);
       expect(SOURCE_INVENTORY_METADATA.counts.evertzMvInputs).toBe(264);
-      expect(SOURCE_INVENTORY_METADATA.counts.authoritativeTotal).toBe(1498);
-      expect(SOURCE_INVENTORY_METADATA.counts.unifiedSources).toBe(712);
+      expect(SOURCE_INVENTORY_METADATA.counts.authoritativeTotal).toBe(1558);
+      expect(SOURCE_INVENTORY_METADATA.counts.unifiedSources).toBe(733);
     });
 
     it('lists every Evertz Source in the Lawo Sources inventory with its sheet Type, without duplicating routing IDs', () => {
       const lawoByName = new Map(WORKBOOK_SOURCE_INVENTORY.lawoSources.map((s) => [s.name, s]));
       const evertz = WORKBOOK_SOURCE_INVENTORY.evertzSources;
-      expect(evertz).toHaveLength(267);
+      expect(evertz).toHaveLength(319);
       for (const e of evertz) {
-        expect(lawoByName.get(e.name)?.type, e.name).toBe(e.type);
+        // Evertz-only sources (e.g. PS5, NDI Bridge, vMix) are not listed in the Lawo Sources column
+        if (lawoByName.has(e.name)) expect(lawoByName.get(e.name)?.type, e.name).toBe(e.type);
       }
 
       const spot: Array<[string, string]> = [
@@ -119,7 +120,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       expect(evertzNames.has('TX TWD 8801')).toBe(true);
       expect(evertzNames.has('RX TWD 9901')).toBe(true);
       expect(evertzNames.has('Swr 201')).toBe(true);
-      expect(evertzNames.has('Caption Enc 01')).toBe(true);
+      expect(evertzNames.has('Caption Enc 101')).toBe(true);
       expect(evertzNames.has('MV 01-01')).toBe(true);
 
       // Lawo source names
@@ -165,8 +166,8 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
   });
 
   describe('5 & 6. Deterministic IDs & Duplicate Prevention', () => {
-    it('generates strictly unique, stable, deterministic IDs for all 712 unified sources', () => {
-      expect(SEED_ALL_SOURCES).toHaveLength(712);
+    it('generates strictly unique, stable, deterministic IDs for all 733 unified sources', () => {
+      expect(SEED_ALL_SOURCES).toHaveLength(733);
       const idSet = new Set<string>();
 
       for (const s of SEED_ALL_SOURCES) {
@@ -176,7 +177,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
         idSet.add(s.id);
       }
 
-      expect(idSet.size).toBe(712);
+      expect(idSet.size).toBe(733);
     });
 
     it('ensures zero duplicate display names within each discrete inventory list', () => {
@@ -218,12 +219,12 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       const lawoOrigin = SEED_ALL_SOURCES.filter((s) => s.routeRole === 'lawo_source');
       const processing = SEED_ALL_SOURCES.filter((s) => s.routeRole === 'processing');
 
-      expect(evertzOnly).toHaveLength(150);
+      expect(evertzOnly).toHaveLength(202);
       expect(tielines).toHaveLength(117);
-      expect(lawoOrigin).toHaveLength(307);
+      expect(lawoOrigin).toHaveLength(276);
       expect(processing).toHaveLength(138);
 
-      expect(evertzOnly.length + tielines.length + lawoOrigin.length + processing.length).toBe(712);
+      expect(evertzOnly.length + tielines.length + lawoOrigin.length + processing.length).toBe(733);
     });
 
     it('DOES NOT infer signal-flow relationships from Excel row position (Row 2 is not connected)', () => {
@@ -263,7 +264,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
     it('supports category filtering, inventory group filtering, and search in Source Directory', () => {
       // 1. All sources across the five authoritative inventories
       const all = selectFilteredSources(AUTHORITATIVE_INVENTORY_SOURCES, 'ALL', '');
-      expect(all).toHaveLength(1498);
+      expect(all).toHaveLength(1558);
 
       // 2. Filter by inventory group for all five authoritative inventories
       const lawoSources = selectFilteredSources(
@@ -272,7 +273,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
         '',
         'lawo-source'
       );
-      expect(lawoSources).toHaveLength(712);
+      expect(lawoSources).toHaveLength(720);
 
       const processing = selectFilteredSources(
         AUTHORITATIVE_INVENTORY_SOURCES,
@@ -296,7 +297,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
         '',
         'evertz-source'
       );
-      expect(evertz).toHaveLength(267);
+      expect(evertz).toHaveLength(319);
 
       const mvInputs = selectFilteredSources(
         AUTHORITATIVE_INVENTORY_SOURCES,
@@ -320,9 +321,9 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
 
       const inventorySelect = await screen.findByTestId('inventory-filter-select');
 
-      // 1. Lawo Sources (712)
+      // 1. Lawo Sources (720)
       fireEvent.change(inventorySelect, { target: { value: 'lawo-source' } });
-      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(712);
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(720);
 
       // 2. Lawo Processing (138)
       fireEvent.change(inventorySelect, { target: { value: 'lawo-processing' } });
@@ -332,9 +333,9 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       fireEvent.change(inventorySelect, { target: { value: 'lawo-destination/tieline' } });
       expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(117);
 
-      // 4. Evertz Sources (267)
+      // 4. Evertz Sources (319)
       fireEvent.change(inventorySelect, { target: { value: 'evertz-source' } });
-      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(267);
+      expect(screen.getAllByTestId(/^source-row-/)).toHaveLength(319);
 
       // 5. Evertz MV Inputs (264)
       fireEvent.change(inventorySelect, { target: { value: 'evertz-mv-input' } });
@@ -349,7 +350,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       const tielineOpts = getValidTielineOptions(SEED_SOURCES);
 
       // 1. Lawo source stage only contains originating Lawo sources
-      expect(lawoOpts).toHaveLength(307);
+      expect(lawoOpts).toHaveLength(276);
       expect(lawoOpts.every((s) => s.routeRole === 'lawo_source')).toBe(true);
 
       // 2. Processing stage only contains processing devices
@@ -357,7 +358,7 @@ describe('Source Inventory Workbook Ingestion & Invariants (Phase 6 Validation)'
       expect(procOpts.every((s) => s.routeRole === 'processing')).toBe(true);
 
       // 3. Tieline / Evertz stage only contains tielines and Evertz sources
-      expect(tielineOpts).toHaveLength(267);
+      expect(tielineOpts).toHaveLength(319);
       expect(
         tielineOpts.every((s) => s.routeRole === 'tieline' || s.routeRole === 'evertz_source')
       ).toBe(true);

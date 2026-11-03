@@ -33,12 +33,12 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
   for (const s of SEED_EVERTZ_SOURCES) combinedTielineEvertzMap.set(s.name, s.name);
   const excelCombinedTielineEvertzNames = Array.from(combinedTielineEvertzMap.values());
 
-  describe('1. Exact Name Comparison for Lawo Sources Dropdown (712 entries)', () => {
+  describe('1. Exact Name Comparison for Lawo Sources Dropdown (720 entries)', () => {
     it('matches exact name-set between Excel inventory and dropdown options without 307-origin subset reduction', () => {
       const dropdownSources = getAuthoritativeLawoDropdownSources(INITIAL_SNAPSHOT.sources);
       const dropdownNames = dropdownSources.map((s) => s.name);
 
-      expect(dropdownNames).toHaveLength(712);
+      expect(dropdownNames).toHaveLength(720);
       expect(dropdownNames.slice().sort()).toEqual(excelLawoNames.slice().sort());
 
       const excelSet = new Set(excelLawoNames);
@@ -87,14 +87,14 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
     });
   });
 
-  describe('3. Exact Name Comparison for Lawo Destination / Evertz Source Dropdown (267 entries)', () => {
+  describe('3. Exact Name Comparison for Lawo Destination / Evertz Source Dropdown (319 entries)', () => {
     it('matches intentionally combined tielines + Evertz sources inventory', () => {
-      expect(AUTHORITATIVE_TIELINE_AND_EVERTZ_SOURCES).toHaveLength(267);
+      expect(AUTHORITATIVE_TIELINE_AND_EVERTZ_SOURCES).toHaveLength(319);
 
       const dropdownSources = getAuthoritativeTielineDropdownSources(INITIAL_SNAPSHOT.sources);
       const dropdownNames = dropdownSources.map((s) => s.name);
 
-      expect(dropdownNames).toHaveLength(267);
+      expect(dropdownNames).toHaveLength(319);
       expect(dropdownNames.slice().sort()).toEqual(excelCombinedTielineEvertzNames.slice().sort());
 
       const authSet = new Set(excelCombinedTielineEvertzNames);
@@ -144,7 +144,7 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
   });
 
   describe('5. UI Dropdown Verification in DestinationSourcesPage', () => {
-    it('renders exact 711 Lawo source options (712 minus the row tieline) in the Signal Flow row dropdown', async () => {
+    it('renders exact 719 Lawo source options (720 minus the row tieline) in the Signal Flow row dropdown', async () => {
       const vCam40Id = createSourceId('vCam 40');
       const testSnapshot = {
         ...INITIAL_SNAPSHOT,
@@ -169,11 +169,11 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
 
       // The row's own tieline (vCam 40) is never offered as its own upstream Lawo source.
       const expectedNames = excelLawoNames.filter((n) => n !== 'vCam 40');
-      expect(options).toHaveLength(711);
+      expect(options).toHaveLength(719);
       expect(options.slice().sort()).toEqual(expectedNames.slice().sort());
     });
 
-    it('renders exact 267 Tieline / Evertz source options in the Signal Flow row dropdown', async () => {
+    it('renders exact 319 Tieline / Evertz source options in the Signal Flow row dropdown', async () => {
       const vCam40Id = createSourceId('vCam 40');
       const testSnapshot = {
         ...INITIAL_SNAPSHOT,
@@ -196,7 +196,7 @@ describe('Authoritative Signal Flows Dropdown Membership & Exact Name Reconcilia
         .filter((opt) => opt.value !== '')
         .map((opt) => opt.text);
 
-      expect(options).toHaveLength(267);
+      expect(options).toHaveLength(319);
       expect(options.slice().sort()).toEqual(excelCombinedTielineEvertzNames.slice().sort());
     });
 

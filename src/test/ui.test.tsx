@@ -142,7 +142,7 @@ describe('UI Integration Tests - Displays-First Operational Views', () => {
 
     expect(await screen.findByText('Source Directory')).toBeInTheDocument();
     expect(screen.getByText(/Showing/i)).toBeInTheDocument();
-    expect(screen.getAllByText('712').length).toBe(2);
+    expect(screen.getAllByText('733').length).toBe(2);
   });
 
   it('renders Source Directory page with accessible empty state for unpopulated sources', async () => {

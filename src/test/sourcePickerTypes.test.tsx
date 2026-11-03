@@ -17,7 +17,7 @@ interface SheetRow {
   readonly type?: string;
 }
 
-// Sheet Type columns (authoritative). The tieline picker lists all 267 Evertz sources.
+// Sheet Type columns (authoritative). The tieline picker lists all 319 Evertz sources.
 const SHEET: Record<SourcePickerRole, readonly SheetRow[]> = {
   lawoSource: WORKBOOK_SOURCE_INVENTORY.lawoSources,
   lawoProcessing: WORKBOOK_SOURCE_INVENTORY.lawoProcessing,
@@ -90,7 +90,13 @@ describe('Source picker chips use workbook Type columns', () => {
       Swr: 16,
       vPgm: 8,
       Caption: 3,
-      QC: 2,
+      QC: 4,
+      PS5: 4,
+      GFX: 24,
+      AJA: 6,
+      'On Air Mac': 4,
+      Presenter: 4,
+      vMix: 8,
     });
   });
 

@@ -100,8 +100,8 @@ describe('Phase 4C: Source Signal-Flow Editor UI & Workflows', () => {
     // Requirement 5: Current source (vCam 01) must NOT be present as an option
     expect(screen.queryByTestId('upstream-option-SRC:VCAM_01')).not.toBeInTheDocument();
 
-    // Requirement 3: Total eligible sources is 712 - 1 = 711
-    expect(screen.getByText(/711 of 711 eligible sources/i)).toBeInTheDocument();
+    // Requirement 3: Total eligible sources is 733 - 1 = 732
+    expect(screen.getByText(/732 of 732 eligible sources/i)).toBeInTheDocument();
 
     // Requirement 4: Search filters the selector by source name
     const searchInput = screen.getByTestId('upstream-source-search-input');

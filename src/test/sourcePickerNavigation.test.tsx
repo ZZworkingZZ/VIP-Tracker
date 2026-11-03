@@ -35,8 +35,8 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
         onSelectSource={vi.fn()}
       />
     );
-    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (712)');
-    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (420)');
+    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (720)');
+    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (428)');
     expect(screen.getByTestId('category-chip-reception')).toHaveTextContent('Reception (36)');
     expect(screen.getByTestId('category-chip-switcher')).toHaveTextContent('Switcher (37)');
     expect(screen.getByTestId('category-chip-virtual-camera')).toHaveTextContent(
@@ -64,13 +64,13 @@ describe('Source Navigation, Category Chips, and Type-Ahead Search', () => {
         onSelectSource={vi.fn()}
       />
     );
-    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (267)');
+    expect(screen.getByTestId('category-chip-all')).toHaveTextContent('All (319)');
     expect(screen.getByTestId('category-chip-virtual-camera')).toHaveTextContent(
       'Virtual Camera (56)'
     );
     expect(screen.getByTestId('category-chip-virtual-tie')).toHaveTextContent('Virtual Tie (37)');
-    // RX TWD 9901-9936 now classify as Reception; no Other entries remain in this list.
-    expect(screen.queryByTestId('category-chip-other')).toBeNull();
+    // RX TWD 9901-9936 classify as Reception; the 52 newer GFX/PS5/NDI/vMix/etc. sources fall under Other.
+    expect(screen.getByTestId('category-chip-other')).toHaveTextContent('Other (52)');
     expect(screen.getByTestId('category-chip-reception')).toHaveTextContent('Reception (36)');
     expect(screen.getByTestId('category-chip-transmission')).toHaveTextContent('Transmission (36)');
     expect(screen.getByTestId('category-chip-multiview')).toHaveTextContent('Multiview (32)');

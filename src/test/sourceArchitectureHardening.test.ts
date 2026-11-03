@@ -26,9 +26,9 @@ import { SourceId, PipId, createSourceId } from '../domain/identifiers';
 
 describe('Source Architecture Hardening — Pre-Lawo Import Audits & Invariants', () => {
   describe('Objective 1: Explicit Seed Classification', () => {
-    it('ensures all 712 authoritative seed sources have explicit routeRole and router classifications', () => {
+    it('ensures all 733 authoritative seed sources have explicit routeRole and router classifications', () => {
       expect(SEED_SOURCES).toHaveLength(RAW_SEED_SOURCE_NAMES.length);
-      expect(SEED_SOURCES).toHaveLength(712);
+      expect(SEED_SOURCES).toHaveLength(733);
 
       for (const s of SEED_SOURCES) {
         expect(s.id).toBe(createSourceId(s.name));
@@ -50,8 +50,8 @@ describe('Source Architecture Hardening — Pre-Lawo Import Audits & Invariants'
         tielines.length + evertzSources.length + lawoSources.length + processingSources.length
       ).toBe(SEED_SOURCES.length);
       expect(tielines.length).toBe(117);
-      expect(evertzSources.length).toBe(150);
-      expect(lawoSources.length).toBe(307);
+      expect(evertzSources.length).toBe(202);
+      expect(lawoSources.length).toBe(276);
       expect(processingSources.length).toBe(138);
     });
   });
@@ -320,7 +320,7 @@ describe('Source Architecture Hardening — Pre-Lawo Import Audits & Invariants'
       const repo = new LocalTrackerRepository(INITIAL_SNAPSHOT, storage);
       const snap = await repo.getSnapshot();
 
-      expect(snap.sources).toHaveLength(712);
+      expect(snap.sources).toHaveLength(733);
       const bars = snap.sources.find((s) => s.id === 'SRC:BARS')!;
       expect(bars).toBeDefined();
       // Should have been safely upgraded from initialSnapshot seed metadata

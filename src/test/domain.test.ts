@@ -830,7 +830,7 @@ describe('Source Graph Validation & Cycle Deduplication', () => {
 
 describe('Phase 4B — Authoritative Source Catalog Inventory & Seed Properties', () => {
   it('loads the full authoritative facility source inventory with exact count and no additional sources', () => {
-    expect(SEED_SOURCES).toHaveLength(712);
+    expect(SEED_SOURCES).toHaveLength(733);
 
     const virtualSources = SEED_SOURCES.filter((s) => s.sourceType === 'virtual');
     const processingSources = SEED_SOURCES.filter((s) => s.sourceType === 'processing');
@@ -838,7 +838,7 @@ describe('Phase 4B — Authoritative Source Catalog Inventory & Seed Properties'
 
     expect(virtualSources).toHaveLength(117);
     expect(processingSources).toHaveLength(138);
-    expect(originatingSources).toHaveLength(457);
+    expect(originatingSources).toHaveLength(478);
   });
 
   it('preserves representative exact source names without normalization or modification', () => {
@@ -899,7 +899,7 @@ describe('Phase 4B — Authoritative Source Catalog Inventory & Seed Properties'
 
   it('classifies all non-virtual sources as processing or originating', () => {
     const nonVirtual = SEED_SOURCES.filter((s) => s.sourceType !== 'virtual');
-    expect(nonVirtual).toHaveLength(595);
+    expect(nonVirtual).toHaveLength(616);
     for (const src of nonVirtual) {
       expect(src.sourceType === 'originating' || src.sourceType === 'processing').toBe(true);
     }
