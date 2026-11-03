@@ -911,3 +911,239 @@
     box-shadow: none !important;
   }
 }
+
+/* ==========================================================================
+   PIP tiles (LayoutRenderer card + detail modes)
+   Each tile is a size container. Text, padding and controls scale with the
+   tile via container units, and secondary content drops out in tiers so
+   nothing is clipped at the tile edge. Hidden text stays in title tooltips.
+   Tiles sit on a fixed black monitor canvas, so the palette is theme-independent.
+   ========================================================================== */
+.pip-tile {
+  container: pip / size;
+}
+
+.pip-inner {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(1px, 2cqh, 6px);
+  padding: clamp(1px, 3cqh, 8px) clamp(2px, 3cqw, 8px);
+  overflow: hidden;
+  font-family: var(--ev-font);
+}
+
+.pip-head {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(2px, 2cqw, 6px);
+  line-height: 1.2;
+}
+
+.pip-num {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: clamp(6px, min(6cqw, 11cqh), 13px);
+  font-weight: 800;
+  color: #f8fafc;
+  background-color: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 2px;
+  padding: 0.08em 0.35em;
+}
+
+.pip-num--empty {
+  color: #64748b;
+  background-color: transparent;
+  border-color: #2a2a2a;
+}
+
+.pip-actions {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(2px, 1.5cqw, 5px);
+}
+
+.pip-category {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(6px, min(4.5cqw, 9cqh), 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pip-flow-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  font-family: var(--ev-font);
+  font-size: clamp(6px, min(4.5cqw, 9cqh), 10px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #38bdf8;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #38bdf8;
+  border-radius: 2px;
+  padding: 0.15em 0.5em;
+  cursor: pointer;
+}
+
+.pip-flow-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+}
+
+.pip-flow-icon {
+  display: none;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.pip-clear-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: clamp(8px, min(6cqw, 11cqh), 12px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pip-dot {
+  flex: 0 0 auto;
+  width: clamp(3px, 3cqw, 5px);
+  height: clamp(3px, 3cqw, 5px);
+  border-radius: 50%;
+}
+
+.pip-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.pip-body > * {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.pip-alias {
+  font-size: clamp(6px, min(5.5cqw, 10cqh), 14px);
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.pip-name {
+  font-size: clamp(7px, min(7.5cqw, 14cqh), 28px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.pip-name--empty {
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0;
+  color: #475569;
+  font-size: clamp(6px, min(5cqw, 10cqh), 12px);
+}
+
+.pip-input {
+  font-size: clamp(6px, min(5cqw, 9cqh), 11px);
+  color: #94a3b8;
+}
+
+.pip-input--primary {
+  font-size: clamp(7px, min(6.5cqw, 12cqh), 16px);
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.pip-status {
+  font-size: clamp(6px, min(4.5cqw, 8cqh), 10px);
+  color: #cbd5e1;
+}
+
+.pip-status--muted {
+  font-style: italic;
+  color: #64748b;
+}
+
+.pip-tally {
+  flex: 0 0 auto;
+  height: clamp(2px, 2cqh, 3px);
+  width: 100%;
+  border-radius: 1px;
+  opacity: 0.9;
+}
+
+/* Medium tiles: drop status line and the "Input" suffix, flow button becomes an icon. */
+@container pip (max-width: 179px) or (max-height: 99px) {
+  .pip-status,
+  .pip-input-suffix,
+  .pip-category {
+    display: none;
+  }
+
+  .pip-flow-icon {
+    display: inline-block;
+  }
+
+  .pip-flow-text {
+    display: none;
+  }
+}
+
+/* Small tiles: PIP number, source name and the icon button only. */
+@container pip (max-width: 119px) or (max-height: 59px) {
+  .pip-alias,
+  .pip-input {
+    display: none;
+  }
+
+  .pip-input--primary {
+    display: block;
+  }
+
+  .pip-inner {
+    padding: 1px 2px;
+  }
+}
+
+/* Tiny tiles: no room for a button; the detail modal and tooltip remain. */
+@container pip (max-width: 39px) {
+  .pip-flow-btn {
+    display: none;
+  }
+}

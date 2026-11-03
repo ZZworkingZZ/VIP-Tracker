@@ -41,6 +41,18 @@ export interface LayoutRendererProps {
   readonly isDraggingInput?: boolean;
 }
 
+/** MV input name. The " Input" suffix is dropped by CSS at medium tile sizes; full text stays in the tooltip. */
+const PipInputLabel: React.FC<{ label: string; primary?: boolean }> = ({ label, primary }) => {
+  const suffix = ' Input';
+  const hasSuffix = label.endsWith(suffix);
+  return (
+    <span className={`pip-input ${primary ? 'pip-input--primary' : ''}`.trim()} title={label}>
+      {hasSuffix ? label.slice(0, -suffix.length) : label}
+      {hasSuffix && <span className="pip-input-suffix">{suffix}</span>}
+    </span>
+  );
+};
+
 export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
   layout,
   windowsData = [],
@@ -184,9 +196,13 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               setInternalDraggingPipId(null);
               setDragOverPipId(null);
             }}
-            className={`layout-window ${onClickWindow ? 'interactive' : ''} ${
-              isHighlighted ? 'highlighted' : ''
-            } ${showDropTargets ? 'drop-target-active' : ''} ${isDragOver ? 'drag-over' : ''}`.trim()}
+            className={`layout-window ${mode === 'thumbnail' ? '' : 'pip-tile'} ${
+              onClickWindow ? 'interactive' : ''
+            } ${isHighlighted ? 'highlighted' : ''} ${
+              showDropTargets ? 'drop-target-active' : ''
+            } ${isDragOver ? 'drag-over' : ''}`
+              .replace(/\s+/g, ' ')
+              .trim()}
             style={{
               position: 'absolute',
               left: `${win.x}%`,
@@ -194,7 +210,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               width: `${win.width}%`,
               height: `${win.height}%`,
               boxSizing: 'border-box',
-              padding: mode === 'thumbnail' ? '2px' : isHighDensity ? '1px' : '3px 4px',
+              padding: mode === 'thumbnail' ? '2px' : 0,
               border: isDragOver
                 ? '2px solid #38bdf8'
                 : isHighlighted
@@ -248,40 +264,34 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
               </div>
             )}
 
-            {/* CARD MODE (Evertz Miniature Display Card) */}
-            {mode === 'card' && (
-              <>
-                {/* Header: PIP ID on left, Flow button + status dot on right */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    lineHeight: 1,
-                    gap: '2px',
-                  }}
-                >
+            {/* CARD + DETAIL MODES: one container-query driven tile (see .pip-* in components.css) */}
+            {mode !== 'thumbnail' && (
+              <div className={`pip-inner pip-inner--${mode}`}>
+                <div className="pip-head">
                   <span
-                    style={{
-                      fontSize: isHighDensity ? '7px' : '9px',
-                      fontFamily: 'var(--ev-font)',
-                      fontWeight: 700,
-                      color: hasInput ? '#cbd5e1' : '#555555',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
+                    className={`pip-num ${hasInput ? '' : 'pip-num--empty'}`.trim()}
+                    title={pipId}
                   >
                     {pipId}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <div className="pip-actions">
+                    {mode === 'detail' && winData?.sourceCategory && (
+                      <span
+                        className="pip-category"
+                        title={winData.sourceCategory}
+                        style={{ color: categoryColor || '#38bdf8' }}
+                      >
+                        {winData.sourceCategory}
+                      </span>
+                    )}
                     {onViewSignalFlow && (
                       <button
                         type="button"
+                        className="pip-flow-btn"
                         data-testid={
                           winData?.outputId
-                            ? `view-signal-flow-btn-${winData.outputId}-${pipId}`
-                            : `view-signal-flow-btn-${pipId}`
+                            ? `${mode === 'detail' ? 'detail-' : ''}view-signal-flow-btn-${winData.outputId}-${pipId}`
+                            : `${mode === 'detail' ? 'detail-' : ''}view-signal-flow-btn-${pipId}`
                         }
                         aria-label={`View Signal Flow for ${pipId}`}
                         title="View Signal Flow"
@@ -289,390 +299,98 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                           e.stopPropagation();
                           onViewSignalFlow(pipId, winData);
                         }}
-                        style={{
-                          background: 'rgba(15, 23, 42, 0.85)',
-                          border: '1px solid #334155',
-                          borderRadius: '2px',
-                          color: '#38bdf8',
-                          fontSize: isHighDensity ? '6px' : '7px',
-                          fontFamily: 'var(--ev-font)',
-                          fontWeight: 700,
-                          padding: '1px 3px',
-                          lineHeight: 1,
-                          cursor: 'pointer',
-                        }}
                       >
-                        Flow
+                        <svg
+                          className="pip-flow-icon"
+                          viewBox="0 0 12 12"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            d="M1 6h8M6 2.5 9.5 6 6 9.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span className="pip-flow-text">
+                          {mode === 'detail' ? 'View Signal Flow' : 'Flow'}
+                        </span>
                       </button>
                     )}
-                    {categoryColor && !isHighDensity && (
-                      <span
-                        style={{
-                          width: '4px',
-                          height: '4px',
-                          borderRadius: '50%',
-                          backgroundColor: categoryColor,
-                          display: 'inline-block',
+                    {mode === 'detail' && isEditable && hasInput && onClearPip && (
+                      <button
+                        type="button"
+                        className="pip-clear-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClearPip(pipId);
                         }}
+                        title={`Clear MV Input from ${pipId}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                    {mode === 'card' && categoryColor && (
+                      <span
+                        className="pip-dot"
+                        style={{ backgroundColor: categoryColor }}
+                        aria-hidden="true"
                       />
                     )}
                   </div>
                 </div>
 
-                {/* Body: Stacked UMD/Alias at top, Routed Source Name & Compact Signal Flow */}
-                <div
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center',
-                    padding: isHighDensity ? '0' : '1px 0',
-                    overflow: 'hidden',
-                  }}
-                >
+                <div className="pip-body">
                   {hasSource ? (
                     <>
                       {winData?.sourceAlias && (
                         <span
-                          data-testid={`pip-source-alias-${pipId}`}
-                          style={{
-                            fontFamily: 'var(--ev-font)',
-                            fontWeight: 700,
-                            fontSize: isHighDensity
-                              ? '6px'
-                              : layout.windowCount <= 4
-                                ? '10px'
-                                : '8px',
-                            color: '#38bdf8',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                          }}
+                          className="pip-alias"
+                          data-testid={`${mode === 'detail' ? 'detail-' : ''}pip-source-alias-${pipId}`}
+                          title={winData.sourceAlias}
                         >
                           {winData.sourceAlias}
                         </span>
                       )}
-                      <span
-                        style={{
-                          fontFamily: 'var(--ev-font)',
-                          fontWeight: 700,
-                          fontSize: isHighDensity
-                            ? '7px'
-                            : layout.windowCount <= 4
-                              ? '12px'
-                              : '10px',
-                          color: '#f4f4f4',
-                          letterSpacing: '-0.2px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '100%',
-                        }}
-                      >
+                      <span className="pip-name" title={winData?.sourceName ?? undefined}>
                         {winData?.sourceName}
                       </span>
-                      {winData?.resolvedFlowSummary && !isHighDensity && (
+                      {mode === 'detail' && hasInput && inputLabel && (
+                        <PipInputLabel label={inputLabel} />
+                      )}
+                      {winData?.resolvedFlowSummary && (
                         <span
-                          data-testid={`pip-compact-flow-${pipId}`}
-                          style={{
-                            fontFamily: 'var(--ev-font)',
-                            fontWeight: 500,
-                            fontSize: layout.windowCount <= 4 ? '8px' : '7px',
-                            color: '#94a3b8',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%',
-                          }}
+                          className="pip-status"
+                          data-testid={`${mode === 'detail' ? 'detail-' : ''}pip-compact-flow-${pipId}`}
+                          title={winData.resolvedFlowSummary}
                         >
                           {winData.resolvedFlowSummary}
                         </span>
                       )}
                     </>
                   ) : hasInput ? (
-                    <span
-                      style={{
-                        fontSize: isHighDensity ? '6px' : '8px',
-                        color: '#94a3b8',
-                        fontFamily: 'var(--ev-font)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      {inputLabel || 'MV Input'}
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        color: 'rgba(255, 255, 255, 0.15)',
-                        fontSize: isHighDensity ? '6px' : '9px',
-                        fontFamily: 'var(--ev-font)',
-                      }}
-                    >
-                      —
-                    </span>
-                  )}
-                </div>
-
-                {/* Footer tally line */}
-                {categoryColor && (
-                  <div
-                    style={{
-                      height: '2px',
-                      width: '100%',
-                      backgroundColor: categoryColor,
-                      opacity: 0.85,
-                      borderRadius: '1px',
-                    }}
-                  />
-                )}
-              </>
-            )}
-
-            {/* DETAIL MODE (Full-size Output Inspection Modal) */}
-            {mode === 'detail' && (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  padding: '6px',
-                }}
-              >
-                {/* Header: PIP ID + MV Input + Category/Actions */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span
-                      style={{
-                        fontFamily: 'var(--ev-font)',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        color: '#f8fafc',
-                        backgroundColor: '#1e293b',
-                        padding: '2px 5px',
-                        borderRadius: '2px',
-                        border: '1px solid #475569',
-                      }}
-                    >
-                      {pipId}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: 'var(--ev-font)',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        color: hasInput ? '#cbd5e1' : '#64748b',
-                        backgroundColor: hasInput ? '#1f1f1f' : '#141414',
-                        padding: '2px 5px',
-                        borderRadius: '2px',
-                        border: '1px solid #333333',
-                        maxWidth: '110px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {hasInput ? inputLabel || 'MV Input' : 'No MV Input assigned'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {onViewSignalFlow && (
-                      <button
-                        type="button"
-                        data-testid={
-                          winData?.outputId
-                            ? `detail-view-signal-flow-btn-${winData.outputId}-${pipId}`
-                            : `detail-view-signal-flow-btn-${pipId}`
-                        }
-                        aria-label={`View Signal Flow for ${pipId}`}
-                        title="View Signal Flow"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onViewSignalFlow(pipId, winData);
-                        }}
-                        style={{
-                          background: 'rgba(15, 23, 42, 0.9)',
-                          border: '1px solid #38bdf8',
-                          borderRadius: '2px',
-                          color: '#38bdf8',
-                          fontSize: '9px',
-                          fontFamily: 'var(--ev-font)',
-                          fontWeight: 700,
-                          padding: '1px 4px',
-                          lineHeight: 1.2,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        View Signal Flow
-                      </button>
-                    )}
-                    {winData?.sourceCategory && (
-                      <span
-                        style={{
-                          fontSize: '9px',
-                          fontWeight: 700,
-                          color: categoryColor || '#38bdf8',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        {winData.sourceCategory}
-                      </span>
-                    )}
-                    {isEditable && hasInput && onClearPip && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onClearPip(pipId);
-                        }}
-                        title={`Clear MV Input from ${pipId}`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '0 2px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Body: Stacked UMD/Alias at top, Source Name, Compact Flow, and MV Input */}
-                <div
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '6px 0',
-                    textAlign: 'center',
-                  }}
-                >
-                  {hasInput ? (
-                    hasSource ? (
-                      <>
-                        {winData?.sourceAlias && (
-                          <span
-                            data-testid={`detail-pip-source-alias-${pipId}`}
-                            style={{
-                              fontFamily: 'var(--ev-font)',
-                              fontSize: layout.windowCount <= 4 ? '13px' : '11px',
-                              fontWeight: 700,
-                              color: '#38bdf8',
-                              marginBottom: '1px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              maxWidth: '95%',
-                            }}
-                          >
-                            {winData.sourceAlias}
-                          </span>
-                        )}
-                        <span
-                          style={{
-                            fontFamily: 'var(--ev-font)',
-                            fontSize: layout.windowCount <= 4 ? '18px' : '14px',
-                            fontWeight: 800,
-                            color: '#ffffff',
-                            letterSpacing: '-0.3px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '95%',
-                          }}
-                        >
-                          {winData?.sourceName}
-                        </span>
-                        {winData?.resolvedFlowSummary && (
-                          <span
-                            data-testid={`detail-pip-compact-flow-${pipId}`}
-                            style={{
-                              fontFamily: 'var(--ev-font)',
-                              fontSize: '10px',
-                              color: '#cbd5e1',
-                              marginTop: '2px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              maxWidth: '95%',
-                            }}
-                          >
-                            {winData.resolvedFlowSummary}
-                          </span>
-                        )}
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            color: '#94a3b8',
-                            marginTop: '2px',
-                          }}
-                        >
-                          {inputLabel}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          style={{
-                            fontSize: layout.windowCount <= 4 ? '13px' : '11px',
-                            fontWeight: 600,
-                            color: '#cbd5e1',
-                          }}
-                        >
-                          {inputLabel}
-                        </span>
-                        <span
-                          style={{
-                            color: '#64748b',
-                            fontSize: '10px',
-                            fontStyle: 'italic',
-                            marginTop: '2px',
-                          }}
-                        >
+                    <>
+                      <PipInputLabel label={inputLabel || 'MV Input'} primary />
+                      {mode === 'detail' && (
+                        <span className="pip-status pip-status--muted" title="No routed Source">
                           No routed Source
                         </span>
-                      </>
-                    )
-                  ) : (
-                    <div style={{ color: '#475569', fontSize: '11px', fontStyle: 'italic' }}>
+                      )}
+                    </>
+                  ) : mode === 'detail' ? (
+                    <span className="pip-name pip-name--empty" title="No MV Input assigned">
                       No MV Input assigned
-                    </div>
+                    </span>
+                  ) : (
+                    <span className="pip-name pip-name--empty">—</span>
                   )}
                 </div>
 
                 {categoryColor && (
-                  <div
-                    style={{
-                      height: '3px',
-                      width: '100%',
-                      backgroundColor: categoryColor,
-                      borderRadius: '1px',
-                    }}
-                  />
+                  <div className="pip-tally" style={{ backgroundColor: categoryColor }} />
                 )}
               </div>
             )}
