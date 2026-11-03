@@ -464,11 +464,11 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
 
     // 22. Basic 5 geometry remains unchanged
-    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 51.07, width: 31.2, height: 31.2 });
   });
 
   it('correctly models Basic 8 BOX as symmetric 4x2 grid of equal 16:9 windows matching real Evertz layout', () => {
@@ -608,19 +608,19 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
 
     // 23. Basic 5 remains unchanged
-    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 51.07, width: 31.2, height: 31.2 });
 
     // 24. Basic 6 remains unchanged
-    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 51.07, width: 31.2, height: 31.2 });
   });
 
   it('correctly models Basic 7 BOX as symmetric 4-over-3 grid of equal 16:9 windows', () => {
@@ -749,29 +749,29 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
 
     // 21. Basic 5 remains unchanged
-    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 51.07, width: 31.2, height: 31.2 });
 
     // 22. Basic 6 remains unchanged
-    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 51.07, width: 31.2, height: 31.2 });
 
     // 23. Basic 8 remains unchanged
-    expect(LAYOUT_8_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[1]).toMatchObject({ x: 26.3, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[2]).toMatchObject({ x: 50.6, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[3]).toMatchObject({ x: 74.9, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[4]).toMatchObject({ x: 2.0, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[5]).toMatchObject({ x: 26.3, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[6]).toMatchObject({ x: 50.6, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[7]).toMatchObject({ x: 74.9, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[0]).toMatchObject({ x: 2.0, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[1]).toMatchObject({ x: 26.3, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[2]).toMatchObject({ x: 50.6, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[3]).toMatchObject({ x: 74.9, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[4]).toMatchObject({ x: 2.0, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[5]).toMatchObject({ x: 26.3, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[6]).toMatchObject({ x: 50.6, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[7]).toMatchObject({ x: 74.9, y: 51.07, width: 23.1, height: 23.1 });
   });
 
   it('correctly models Basic 10 BOX as 2 large 16:9 upper windows over 8 small 16:9 lower windows matching real Evertz layout', () => {
@@ -888,35 +888,50 @@ describe('Layout Definitions Domain Logic', () => {
     expect(LAYOUT_4_BOX.windows[2]).toMatchObject({ x: 0, y: 50, width: 50, height: 50 });
     expect(LAYOUT_4_BOX.windows[3]).toMatchObject({ x: 50, y: 50, width: 50, height: 50 });
 
-    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[3]).toMatchObject({ x: 18.2, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_5_BOX.windows[4]).toMatchObject({ x: 50.6, y: 51.07, width: 31.2, height: 31.2 });
 
-    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 15.0, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 53.8, width: 31.2, height: 31.2 });
-    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 53.8, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[0]).toMatchObject({ x: 2.0, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[1]).toMatchObject({ x: 34.4, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[2]).toMatchObject({ x: 66.8, y: 17.73, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[3]).toMatchObject({ x: 2.0, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[4]).toMatchObject({ x: 34.4, y: 51.07, width: 31.2, height: 31.2 });
+    expect(LAYOUT_6_BOX.windows[5]).toMatchObject({ x: 66.8, y: 51.07, width: 31.2, height: 31.2 });
 
-    expect(LAYOUT_7_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[1]).toMatchObject({ x: 26.3, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[2]).toMatchObject({ x: 50.6, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[3]).toMatchObject({ x: 74.9, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[4]).toMatchObject({ x: 14.15, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[5]).toMatchObject({ x: 38.45, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_7_BOX.windows[6]).toMatchObject({ x: 62.75, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_7_BOX.windows[0]).toMatchObject({ x: 2.0, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_7_BOX.windows[1]).toMatchObject({ x: 26.3, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_7_BOX.windows[2]).toMatchObject({ x: 50.6, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_7_BOX.windows[3]).toMatchObject({ x: 74.9, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_7_BOX.windows[4]).toMatchObject({
+      x: 14.15,
+      y: 51.07,
+      width: 23.1,
+      height: 23.1,
+    });
+    expect(LAYOUT_7_BOX.windows[5]).toMatchObject({
+      x: 38.45,
+      y: 51.07,
+      width: 23.1,
+      height: 23.1,
+    });
+    expect(LAYOUT_7_BOX.windows[6]).toMatchObject({
+      x: 62.75,
+      y: 51.07,
+      width: 23.1,
+      height: 23.1,
+    });
 
-    expect(LAYOUT_8_BOX.windows[0]).toMatchObject({ x: 2.0, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[1]).toMatchObject({ x: 26.3, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[2]).toMatchObject({ x: 50.6, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[3]).toMatchObject({ x: 74.9, y: 15.0, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[4]).toMatchObject({ x: 2.0, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[5]).toMatchObject({ x: 26.3, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[6]).toMatchObject({ x: 50.6, y: 53.8, width: 23.1, height: 23.1 });
-    expect(LAYOUT_8_BOX.windows[7]).toMatchObject({ x: 74.9, y: 53.8, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[0]).toMatchObject({ x: 2.0, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[1]).toMatchObject({ x: 26.3, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[2]).toMatchObject({ x: 50.6, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[3]).toMatchObject({ x: 74.9, y: 25.83, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[4]).toMatchObject({ x: 2.0, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[5]).toMatchObject({ x: 26.3, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[6]).toMatchObject({ x: 50.6, y: 51.07, width: 23.1, height: 23.1 });
+    expect(LAYOUT_8_BOX.windows[7]).toMatchObject({ x: 74.9, y: 51.07, width: 23.1, height: 23.1 });
   });
 
   it('correctly models 9 BOX as 3x3 uniform grid', () => {
@@ -1087,4 +1102,49 @@ describe('Layout Definitions Domain Logic', () => {
     expect(getLayoutDefinition('   ')).toBeNull();
     expect(getLayoutDefinition('NON_EXISTENT_NAME')).toBeNull();
   });
+});
+
+describe('5/6/7/8 BOX vertical geometry', () => {
+  const cases: ReadonlyArray<[string, LayoutDefinition, number]> = [
+    ['5 BOX', LAYOUT_5_BOX, 5],
+    ['6 BOX', LAYOUT_6_BOX, 6],
+    ['7 BOX', LAYOUT_7_BOX, 7],
+    ['8 BOX', LAYOUT_8_BOX, 8],
+  ];
+
+  it.each(cases)(
+    '%s keeps window order, centers its two rows vertically and has no overlaps',
+    (_name, layout, count) => {
+      const wins = layout.windows;
+      expect(wins.map((w) => w.id)).toEqual(Array.from({ length: count }, (_, i) => `w-${i + 1}`));
+      expect(wins.map((w) => w.destinationOffset)).toEqual(
+        Array.from({ length: count }, (_, i) => i)
+      );
+
+      const topY = Math.min(...wins.map((w) => w.y));
+      const bottomY = Math.max(...wins.map((w) => w.y));
+      const h = wins[0].height;
+      const topMargin = topY;
+      const bottomMargin = 100 - (bottomY + h);
+      expect(Math.abs(topMargin - bottomMargin)).toBeLessThan(0.02);
+
+      // Vertical gap (in % of height) equals the horizontal gap (in % of width) in 16:9 pixels.
+      const hGap = wins[1].x - (wins[0].x + wins[0].width);
+      const vGap = bottomY - (topY + h);
+      expect(Math.abs(vGap - hGap * (16 / 9))).toBeLessThan(0.02);
+
+      for (let i = 0; i < wins.length; i++) {
+        for (let j = i + 1; j < wins.length; j++) {
+          const a = wins[i];
+          const b = wins[j];
+          const overlaps =
+            a.x < b.x + b.width &&
+            b.x < a.x + a.width &&
+            a.y < b.y + b.height &&
+            b.y < a.y + a.height;
+          expect(overlaps).toBe(false);
+        }
+      }
+    }
+  );
 });

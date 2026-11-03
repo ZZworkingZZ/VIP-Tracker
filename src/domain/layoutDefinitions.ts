@@ -118,11 +118,11 @@ export const LAYOUT_5_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '3-over-2 layout with three equal upper windows and two centered lower windows',
   windows: [
-    { id: 'w-1', x: 2.0, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 0 },
-    { id: 'w-2', x: 34.4, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 1 },
-    { id: 'w-3', x: 66.8, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 2 },
-    { id: 'w-4', x: 18.2, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 3 },
-    { id: 'w-5', x: 50.6, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 4 },
+    { id: 'w-1', x: 2.0, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 0 },
+    { id: 'w-2', x: 34.4, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 1 },
+    { id: 'w-3', x: 66.8, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 2 },
+    { id: 'w-4', x: 18.2, y: 51.07, width: 31.2, height: 31.2, destinationOffset: 3 },
+    { id: 'w-5', x: 50.6, y: 51.07, width: 31.2, height: 31.2, destinationOffset: 4 },
   ],
 };
 
@@ -137,12 +137,12 @@ export const LAYOUT_6_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '3 columns by 2 rows uniform grid',
   windows: [
-    { id: 'w-1', x: 2.0, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 0 },
-    { id: 'w-2', x: 34.4, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 1 },
-    { id: 'w-3', x: 66.8, y: 15.0, width: 31.2, height: 31.2, destinationOffset: 2 },
-    { id: 'w-4', x: 2.0, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 3 },
-    { id: 'w-5', x: 34.4, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 4 },
-    { id: 'w-6', x: 66.8, y: 53.8, width: 31.2, height: 31.2, destinationOffset: 5 },
+    { id: 'w-1', x: 2.0, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 0 },
+    { id: 'w-2', x: 34.4, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 1 },
+    { id: 'w-3', x: 66.8, y: 17.73, width: 31.2, height: 31.2, destinationOffset: 2 },
+    { id: 'w-4', x: 2.0, y: 51.07, width: 31.2, height: 31.2, destinationOffset: 3 },
+    { id: 'w-5', x: 34.4, y: 51.07, width: 31.2, height: 31.2, destinationOffset: 4 },
+    { id: 'w-6', x: 66.8, y: 51.07, width: 31.2, height: 31.2, destinationOffset: 5 },
   ],
 };
 
@@ -157,13 +157,13 @@ export const LAYOUT_7_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '4-over-3 layout with four equal upper windows and three centered lower windows',
   windows: [
-    { id: 'w-1', x: 2.0, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 0 },
-    { id: 'w-2', x: 26.3, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 1 },
-    { id: 'w-3', x: 50.6, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 2 },
-    { id: 'w-4', x: 74.9, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 3 },
-    { id: 'w-5', x: 14.15, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 4 },
-    { id: 'w-6', x: 38.45, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 5 },
-    { id: 'w-7', x: 62.75, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 6 },
+    { id: 'w-1', x: 2.0, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 0 },
+    { id: 'w-2', x: 26.3, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 1 },
+    { id: 'w-3', x: 50.6, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 2 },
+    { id: 'w-4', x: 74.9, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 3 },
+    { id: 'w-5', x: 14.15, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 4 },
+    { id: 'w-6', x: 38.45, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 5 },
+    { id: 'w-7', x: 62.75, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 6 },
   ],
 };
 
@@ -178,14 +178,14 @@ export const LAYOUT_8_BOX: LayoutDefinition = {
   category: 'Standard Grid',
   description: '4 columns by 2 rows uniform grid',
   windows: [
-    { id: 'w-1', x: 2.0, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 0 },
-    { id: 'w-2', x: 26.3, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 1 },
-    { id: 'w-3', x: 50.6, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 2 },
-    { id: 'w-4', x: 74.9, y: 15.0, width: 23.1, height: 23.1, destinationOffset: 3 },
-    { id: 'w-5', x: 2.0, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 4 },
-    { id: 'w-6', x: 26.3, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 5 },
-    { id: 'w-7', x: 50.6, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 6 },
-    { id: 'w-8', x: 74.9, y: 53.8, width: 23.1, height: 23.1, destinationOffset: 7 },
+    { id: 'w-1', x: 2.0, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 0 },
+    { id: 'w-2', x: 26.3, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 1 },
+    { id: 'w-3', x: 50.6, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 2 },
+    { id: 'w-4', x: 74.9, y: 25.83, width: 23.1, height: 23.1, destinationOffset: 3 },
+    { id: 'w-5', x: 2.0, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 4 },
+    { id: 'w-6', x: 26.3, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 5 },
+    { id: 'w-7', x: 50.6, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 6 },
+    { id: 'w-8', x: 74.9, y: 51.07, width: 23.1, height: 23.1, destinationOffset: 7 },
   ],
 };
 
