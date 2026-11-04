@@ -4,7 +4,7 @@ import {
   LayoutWindowDefinition,
   getWindowPipId,
 } from '../../domain/layoutDefinitions';
-import { SourceCategory, getSourceCategoryColor } from '../../domain/sourceCategories';
+import { SourceCategory } from '../../domain/sourceCategories';
 import { PipId, DestinationId } from '../../domain/identifiers';
 import { formatSourceNameWithAlias } from '../../domain/models';
 
@@ -109,9 +109,6 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
           dataByPipOrOffset.get(pipId) ?? dataByPipOrOffset.get(String(win.destinationOffset));
         const hasInput = Boolean(winData?.destinationId || winData?.destinationNumber);
         const hasSource = Boolean(winData?.sourceName);
-        const categoryColor = winData?.sourceCategory
-          ? getSourceCategoryColor(winData.sourceCategory)
-          : undefined;
         const isHighlighted = highlightWindowId === win.id || highlightWindowId === pipId;
         const isDragOver = dragOverPipId === pipId;
 
@@ -276,11 +273,7 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                   </span>
                   <div className="pip-actions">
                     {mode === 'detail' && winData?.sourceCategory && (
-                      <span
-                        className="pip-category"
-                        title={winData.sourceCategory}
-                        style={{ color: categoryColor || '#38bdf8' }}
-                      >
+                      <span className="pip-category" title={winData.sourceCategory}>
                         {winData.sourceCategory}
                       </span>
                     )}
@@ -381,10 +374,6 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                     <span className="pip-name pip-name--empty">—</span>
                   )}
                 </div>
-
-                {categoryColor && (
-                  <div className="pip-tally" style={{ backgroundColor: categoryColor }} />
-                )}
               </div>
             )}
           </div>

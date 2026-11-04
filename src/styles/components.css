@@ -984,6 +984,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  color: #cbd5e1;
 }
 
 .pip-flow-btn {
@@ -1091,14 +1092,6 @@
 .pip-status--muted {
   font-style: italic;
   color: #64748b;
-}
-
-.pip-tally {
-  flex: 0 0 auto;
-  height: clamp(2px, 2cqh, 3px);
-  width: 100%;
-  border-radius: 1px;
-  opacity: 0.9;
 }
 
 /* Medium tiles: drop status line and the "Input" suffix, flow button becomes an icon. */
