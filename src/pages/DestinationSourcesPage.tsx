@@ -24,7 +24,7 @@ import {
   getSourceAlias,
   formatSourceCompact,
 } from '../domain/models';
-import { SOURCE_CATEGORIES, getSourceCategoryColor } from '../domain/sourceCategories';
+import { SOURCE_CATEGORIES } from '../domain/sourceCategories';
 import {
   resolveAllPipSignalFlows,
   resolveDestinationSignalFlows,
@@ -992,9 +992,6 @@ export const DestinationSourcesPage: React.FC = () => {
                 const badgeFlow =
                   destFlow?.duplicateFlags.find((f) => f.kind === 'same_mv_card_source') ??
                   destFlow?.duplicateFlags.find((f) => f.kind === 'lawo_multi_tieline');
-                const categoryColor = row.source?.category
-                  ? getSourceCategoryColor(row.source.category)
-                  : undefined;
                 const effectiveAlias = destFlow?.alias ?? getSourceAlias(row.source);
                 const showLawoSource = Boolean(
                   destFlow?.lawoSource && (!row.source || destFlow.lawoSource.id !== row.source.id)
@@ -1070,7 +1067,7 @@ export const DestinationSourcesPage: React.FC = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    {/* Top Status Strip: Drag Handle, Warning Badges, Category Dot */}
+                    {/* Top Status Strip: Drag Handle, Warning Badges */}
                     <div
                       style={{
                         display: 'flex',
@@ -1153,18 +1150,6 @@ export const DestinationSourcesPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      {categoryColor && (
-                        <span
-                          style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: categoryColor,
-                            flexShrink: 0,
-                          }}
-                          title={row.source?.category}
-                        />
-                      )}
                     </div>
 
                     {/* Signal Flow Path: Top -> Bottom */}

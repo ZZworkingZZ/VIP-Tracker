@@ -333,13 +333,6 @@ export const LayoutRenderer: React.FC<LayoutRendererProps> = ({
                         ×
                       </button>
                     )}
-                    {mode === 'card' && categoryColor && (
-                      <span
-                        className="pip-dot"
-                        style={{ backgroundColor: categoryColor }}
-                        aria-hidden="true"
-                      />
-                    )}
                   </div>
                 </div>
 

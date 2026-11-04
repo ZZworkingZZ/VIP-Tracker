@@ -1029,13 +1029,6 @@
   line-height: 1;
 }
 
-.pip-dot {
-  flex: 0 0 auto;
-  width: clamp(3px, 3cqw, 5px);
-  height: clamp(3px, 3cqw, 5px);
-  border-radius: 50%;
-}
-
 .pip-body {
   flex: 1 1 auto;
   min-width: 0;
