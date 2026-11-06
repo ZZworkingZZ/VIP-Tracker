@@ -98,7 +98,7 @@ Use only the verified commands defined in `package.json`:
 - Never use Z:\ or any mirror/validation copy. Never copy files between workspaces. The "no copying between workspaces" rule refers to old mirrors (Z:\, C:\temp); it does not apply to the data repo.
 - Never write, log, or commit GitHub tokens in either repo.
 - Session start: `git pull --ff-only`. If it fails, STOP and report — do not merge or rebase on your own.
-- Session end: all work committed and pushed. Unfinished work goes on a `wip/<feature>` branch, not main.
+- Session end: completed work is committed and pushed. If it is intended for the live GitHub Pages app, also verify the `Deploy GitHub Pages` run was created for the pushed commit SHA and completed successfully (see "Deployment verification after production pushes"). Unfinished work goes on a `wip/<feature>` branch, not main.
 
 ### Editor State vs. Repository State
 
@@ -114,10 +114,11 @@ When the editor reports an on-disk file is newer, compare the editor buffer to d
 
 ## Architecture map (read only what the task touches)
 
-- Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, operatorRoster.ts, attribution.ts, feedback.ts
+- Domain (pure TS): src/domain/ — models.ts, diff.ts, selectors.ts, operator.ts, operatorRoster.ts, attribution.ts, feedback.ts, signalFlow.ts (flow resolution, authoritative dropdown option selectors, lock helpers), allSignalFlows.ts (All Signal Flows: tracked tieline → Lawo source rows derived from persisted records, filter/sort)
 - Persistence: src/services/ — TrackerRepository.ts, LocalTrackerRepository.ts, storage.ts, operatorStorage.ts
 - State: src/app/TrackerRepositoryContext.tsx, src/app/context.ts, src/hooks/useTracker.ts
 - UI: src/components/layout/ (AppShell, AppHeader, OperatorModal), src/components/multiview/ (OutputDetailModal, OutputDisplayCard, ReviewChangesModal, EditModeBanner)
+- Signal Flows UI: src/components/signalFlow/ (AllSignalFlowsView.tsx — the All Signal Flows view). Signal-flow tracking is no longer exclusively under components/multiview/; per-output flow UI (e.g. SourceSignalFlowModal) remains there.
 - Pages: src/pages/ — DashboardPage.tsx (includes the operational status strip / top stats: VIP Cards count), LayoutAssignmentsPage.tsx, DestinationSourcesPage.tsx, NotFoundPage.tsx, ProductionsPage.tsx, SourceDirectoryPage.tsx
 - Styles: src/styles/components.css
 - Tests: src/test/ (UI tests: use src/test/helpers/renderWithProviders.tsx; do not hand-build providers.)
@@ -248,7 +249,14 @@ Use this prediction to guide the implementation rather than discovering obvious 
 - Shell is Windows PowerShell: do not use `&&`. Run git add, commit, and push as separate commands and stop if any one fails.
 - Browser verification: skip unless I ask or the change is visual/layout. Max one browser session.
 - Commit and push in one step. If git does not finish within 60s, STOP and report. Do not poll.
-- **Deployment vs. push distinction:** A successful commit and push proves only that the remote Git branch was updated, not that the deployed application contains that commit. When a task explicitly includes deployment or addresses an issue on live GitHub Pages: inspect the relevant CI/deployment workflow run, distinguish push success from deployment success, and do not claim the live app is fixed until the deployment containing the commit succeeds. (Do not require deployment verification for ordinary local-only tasks where deployment is out of scope.)
+- **Deployment verification after production pushes:** A successful `git push` proves only that the remote branch was updated. It does NOT prove the GitHub Pages deployment contains that commit. After pushing a completed application change to `main` that is intended for the live GitHub Pages instance, verify both stages separately:
+  1. **Remote branch:** Confirm GitHub `main` contains the expected commit SHA using direct remote evidence (e.g. `git ls-remote origin refs/heads/main`), not only the local `origin/main` tracking ref.
+  2. **Deployment trigger:** Confirm GitHub Actions created a `Deploy GitHub Pages` workflow run for that exact SHA, targeting `main`. Do not report the live app as deployed until the Pages deployment containing that SHA succeeds.
+  - Final status must be exactly one of: `PUSH PASS / DEPLOYMENT PASS`, `PUSH PASS / DEPLOYMENT PENDING`, `PUSH PASS / DEPLOYMENT TRIGGER FAIL`, `PUSH FAIL`.
+  - **Commit on `main` but no workflow run created:** Do NOT create an empty/no-op commit, repeat the push, amend, rebase, force-push, or modify application code to retrigger deployment. Verify `.github/workflows/deploy-pages.yml` is active and that the commit should satisfy its `push` trigger on `main`, then manually dispatch `Deploy GitHub Pages` against `main` (the workflow supports `workflow_dispatch`). Verify the dispatched run targets the expected SHA and completes successfully.
+  - **Workflow starts but fails:** Report the failing job/step and diagnose it as a deployment failure. Do not describe it as a failed push when the remote branch update succeeded.
+  - Follow the background-polling rule above: check Actions when useful or after completion, not continuously.
+  - Required for application changes intended for the live VIP Tracker. Not required for documentation-only tasks, local-only or uncommitted work, `wip/` branches, or tasks explicitly outside deployment scope.
 - **Honest change attribution:** Final reports must distinguish between changes made during the current task, fixes already present in the baseline commit, editor-buffer-only differences, and uncommitted working-tree changes. Never claim a fix was implemented in the current task if `git diff` and `git status` show no corresponding change.
 - Final report: max 10 lines — files changed, validate result, commit hash.
 - Execution-time reporting: Record start time immediately before beginning work and end time after all requested work/validation completes. Calculate actual elapsed wall-clock time (never estimate), including commands, tests, validation, and Git operations. Execution time is an observation metric, not a performance target. The final line of every completed task response must be `Total time: X min Y sec` (or `Total time: X sec` if under one minute).
