@@ -13,6 +13,7 @@ import {
   formatInputDisplay,
 } from '../domain/identifiers';
 import { selectDestinationsForMultiview, formatLastChanged } from '../domain/selectors';
+import { AllSignalFlowsView } from '../components/signalFlow/AllSignalFlowsView';
 import { OutputDisplayCard } from '../components/multiview/OutputDisplayCard';
 import { OutputDetailModal } from '../components/multiview/OutputDetailModal';
 import { SourceRoutingSelectorModal } from '../components/multiview/SourceRoutingSelectorModal';
@@ -107,6 +108,7 @@ export const DestinationSourcesPage: React.FC = () => {
         : null;
   const focusedFlowKey = focusOutputId && focusPipId ? `${focusOutputId}:${focusPipId}` : null;
 
+  const [pageTab, setPageTab] = useState<'mv' | 'all'>('mv');
   const [viewMode, setViewMode] = useState<'flows' | 'display' | 'table'>('flows');
   const { lastSpecificMv, setLastSpecificMv } = useLastSpecificMv();
   const [selectedMvFilter, setSelectedMvFilter] = useState<MultiviewId | 'ALL'>(
@@ -591,8 +593,8 @@ export const DestinationSourcesPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="destination-sources-page signal-flows-page">
+  const pageHeader = (
+    <>
       <header className="page-header" style={{ marginBottom: '1rem' }}>
         <div
           style={{
@@ -639,52 +641,75 @@ export const DestinationSourcesPage: React.FC = () => {
               </button>
             )}
 
-            <div className="view-mode-toggle" role="group" aria-label="View Mode">
+            <div className="view-mode-toggle" role="group" aria-label="Signal Flows Scope">
               <button
                 type="button"
-                className={`toggle-btn ${viewMode === 'flows' ? 'active' : ''}`}
-                onClick={() => setViewMode('flows')}
+                className={`toggle-btn ${pageTab === 'mv' ? 'active' : ''}`}
+                data-testid="tab-mv-signal-flows"
+                onClick={() => setPageTab('mv')}
               >
-                Signal Flows
+                MV Signal Flows
               </button>
               <button
                 type="button"
-                className={`toggle-btn ${viewMode === 'display' ? 'active' : ''}`}
-                onClick={() => setViewMode('display')}
+                className={`toggle-btn ${pageTab === 'all' ? 'active' : ''}`}
+                data-testid="tab-all-signal-flows"
+                onClick={() => setPageTab('all')}
               >
-                Visual Display
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                onClick={() => setViewMode('table')}
-              >
-                Table View
+                All Signal Flows
               </button>
             </div>
 
-            <button
-              type="button"
-              className={`toggle-btn ${isEditMode ? 'active' : ''}`}
-              onClick={handleToggleEditMode}
-              disabled={isReadOnly}
-              data-testid="toggle-edit-mode-btn"
-              style={{
-                borderColor: isEditMode ? '#38bdf8' : undefined,
-                color: isReadOnly ? '#64748b' : isEditMode ? '#38bdf8' : undefined,
-                fontWeight: 700,
-                cursor: isReadOnly ? 'not-allowed' : 'pointer',
-              }}
-              title={
-                isReadOnly
-                  ? 'Editing is disabled in shared read-only mode'
-                  : isEditMode
-                    ? 'Exit edit mode'
-                    : 'Enter edit mode to modify destination routing'
-              }
-            >
-              {isReadOnly ? '🔒 Read-Only' : isEditMode ? '✓ Editing Mode' : '✎ Edit Matrix'}
-            </button>
+            {pageTab === 'mv' && (
+              <div className="view-mode-toggle" role="group" aria-label="View Mode">
+                <button
+                  type="button"
+                  className={`toggle-btn ${viewMode === 'flows' ? 'active' : ''}`}
+                  onClick={() => setViewMode('flows')}
+                >
+                  Signal Flows
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${viewMode === 'display' ? 'active' : ''}`}
+                  onClick={() => setViewMode('display')}
+                >
+                  Visual Display
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                >
+                  Table View
+                </button>
+              </div>
+            )}
+
+            {pageTab === 'mv' && (
+              <button
+                type="button"
+                className={`toggle-btn ${isEditMode ? 'active' : ''}`}
+                onClick={handleToggleEditMode}
+                disabled={isReadOnly}
+                data-testid="toggle-edit-mode-btn"
+                style={{
+                  borderColor: isEditMode ? '#38bdf8' : undefined,
+                  color: isReadOnly ? '#64748b' : isEditMode ? '#38bdf8' : undefined,
+                  fontWeight: 700,
+                  cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                }}
+                title={
+                  isReadOnly
+                    ? 'Editing is disabled in shared read-only mode'
+                    : isEditMode
+                      ? 'Exit edit mode'
+                      : 'Enter edit mode to modify destination routing'
+                }
+              >
+                {isReadOnly ? '🔒 Read-Only' : isEditMode ? '✓ Editing Mode' : '✎ Edit Matrix'}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -731,6 +756,27 @@ export const DestinationSourcesPage: React.FC = () => {
           </button>
         </div>
       )}
+    </>
+  );
+
+  if (pageTab === 'all') {
+    return (
+      <div className="destination-sources-page signal-flows-page">
+        {pageHeader}
+        <AllSignalFlowsView
+          snapshot={snapshot}
+          isReadOnly={isReadOnly}
+          isSaving={isSaving}
+          commitSignalFlowChange={commitSignalFlowChange}
+          onFeedback={setFeedbackBanner}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="destination-sources-page signal-flows-page">
+      {pageHeader}
 
       {/* Directory Data Notice when dedicated Lawo source directory has not yet been populated */}
       {viewMode === 'flows' && !hasDedicatedLawoDirectory && (
