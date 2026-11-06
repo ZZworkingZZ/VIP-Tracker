@@ -413,9 +413,9 @@ describe('Phase 2: GitHubTrackerRepository — Safe Read Foundation', () => {
       code: 'UNSUPPORTED_ENCODING',
     });
 
-    // 14b: Content encoding is not base64
+    // 14b: Genuinely unsupported content encoding (e.g. gzip)
     const badEncodingFetch = createMockFetch({
-      body: { type: 'file', content: 'raw', encoding: 'none', sha: '123', path: 'data.json' },
+      body: { type: 'file', content: 'raw', encoding: 'gzip', sha: '123', path: 'data.json' },
     });
     const repoBadEncoding = new GitHubTrackerRepository({
       tokenProvider: () => 'synth-token',
@@ -423,6 +423,165 @@ describe('Phase 2: GitHubTrackerRepository — Safe Read Foundation', () => {
     });
     await expect(repoBadEncoding.getSnapshot()).rejects.toMatchObject({
       code: 'UNSUPPORTED_ENCODING',
+    });
+  });
+
+  it('14c. Successfully loads raw JSON content when encoding is "none" or omitted', async () => {
+    const payload = createSyntheticSnapshotPayload();
+    const rawJsonFetch = createMockFetch({
+      body: {
+        type: 'file',
+        content: JSON.stringify(payload),
+        encoding: 'none',
+        sha: 'synth-raw-sha',
+        path: 'data/tracker.json',
+      },
+    });
+    const repo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synth-token',
+      fetchFn: rawJsonFetch,
+    });
+
+    const snapshot = await repo.getSnapshot();
+    expect(snapshot.multiviews).toHaveLength(1);
+    expect(snapshot.destinations).toHaveLength(2);
+    expect(repo.getLastLoadedSha()).toBe('synth-raw-sha');
+  });
+
+  it('14d. Successfully loads file > 1MB via Git Blobs API when Contents API returns encoding: "none" and empty content', async () => {
+    const payload = createSyntheticSnapshotPayload();
+    const jsonStr = JSON.stringify(payload);
+    const base64 = Buffer.from(jsonStr, 'utf8').toString('base64');
+    const blobSha = 'blob-sha-large-file-12345';
+
+    // Mock fetch routing: first call to contents API returns encoding: "none" and content: ""
+    // Second call to git blobs API returns encoding: "base64" and the large file content
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/git/blobs/')) {
+        return {
+          status: 200,
+          ok: true,
+          headers: { get: () => null },
+          text: async () =>
+            JSON.stringify({
+              sha: blobSha,
+              size: 1129961,
+              encoding: 'base64',
+              content: base64,
+            }),
+          json: async () => ({
+            sha: blobSha,
+            size: 1129961,
+            encoding: 'base64',
+            content: base64,
+          }),
+        };
+      }
+      return {
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        text: async () =>
+          JSON.stringify({
+            type: 'file',
+            name: 'tracker.json',
+            path: 'data/tracker.json',
+            sha: blobSha,
+            size: 1129961,
+            content: '',
+            encoding: 'none',
+            git_url: `https://api.github.com/repos/ZZworkingZZ/VIP-Tracker-Data/git/blobs/${blobSha}`,
+          }),
+        json: async () => ({
+          type: 'file',
+          name: 'tracker.json',
+          path: 'data/tracker.json',
+          sha: blobSha,
+          size: 1129961,
+          content: '',
+          encoding: 'none',
+          git_url: `https://api.github.com/repos/ZZworkingZZ/VIP-Tracker-Data/git/blobs/${blobSha}`,
+        }),
+      };
+    });
+
+    const repo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synth-token',
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const snapshot = await repo.getSnapshot();
+    expect(snapshot.multiviews).toHaveLength(1);
+    expect(snapshot.destinations).toHaveLength(2);
+    expect(repo.getLastLoadedSha()).toBe(blobSha);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('14e. Rejects raw unencoded non-JSON content with INVALID_JSON even if encoding is "none"', async () => {
+    const rawMalformedFetch = createMockFetch({
+      body: {
+        type: 'file',
+        content: '<html><body>502 Bad Gateway</body></html>',
+        encoding: 'none',
+        sha: '123',
+        path: 'data/tracker.json',
+      },
+    });
+    const repo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synth-token',
+      fetchFn: rawMalformedFetch,
+    });
+
+    await expect(repo.getSnapshot()).rejects.toMatchObject({
+      code: 'INVALID_JSON',
+    });
+  });
+
+  it('14f. Rejects response when encoding is "none", content is empty, and Git Blobs fetch fails', async () => {
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/git/blobs/')) {
+        return {
+          status: 404,
+          ok: false,
+          headers: { get: () => null },
+          text: async () => JSON.stringify({ message: 'Not Found' }),
+          json: async () => ({ message: 'Not Found' }),
+        };
+      }
+      return {
+        status: 200,
+        ok: true,
+        headers: { get: () => null },
+        text: async () =>
+          JSON.stringify({
+            type: 'file',
+            name: 'tracker.json',
+            path: 'data/tracker.json',
+            sha: 'missing-blob-sha',
+            size: 1129961,
+            content: '',
+            encoding: 'none',
+          }),
+        json: async () => ({
+          type: 'file',
+          name: 'tracker.json',
+          path: 'data/tracker.json',
+          sha: 'missing-blob-sha',
+          size: 1129961,
+          content: '',
+          encoding: 'none',
+        }),
+      };
+    });
+
+    const repo = new GitHubTrackerRepository({
+      tokenProvider: () => 'synth-token',
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    await expect(repo.getSnapshot()).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
     });
   });
 

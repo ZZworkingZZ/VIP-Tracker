@@ -34,6 +34,8 @@ export interface GitHubFileContentResponse {
   encoding: string;
   type: string;
   size?: number;
+  git_url?: string;
+  download_url?: string | null;
 }
 
 export interface GitHubFilePayload {
@@ -302,32 +304,6 @@ export class GitHubClient {
       );
     }
 
-    if (fileResp.encoding !== 'base64') {
-      throw new GitHubTrackerRepositoryError(
-        `Unsupported content encoding for ${this.config.path}: ${fileResp.encoding ?? 'none'}.`,
-        {
-          code: 'UNSUPPORTED_ENCODING',
-          owner: this.config.owner,
-          repo: this.config.repo,
-          path: this.config.path,
-          branch: this.config.branch,
-        }
-      );
-    }
-
-    if (typeof fileResp.content !== 'string' || !fileResp.content.trim()) {
-      throw new GitHubTrackerRepositoryError(
-        `GitHub response for ${this.config.path} contains empty or missing content.`,
-        {
-          code: 'MALFORMED_RESPONSE',
-          owner: this.config.owner,
-          repo: this.config.repo,
-          path: this.config.path,
-          branch: this.config.branch,
-        }
-      );
-    }
-
     if (typeof fileResp.sha !== 'string' || !fileResp.sha) {
       throw new GitHubTrackerRepositoryError(
         `GitHub response for ${this.config.path} is missing file SHA.`,
@@ -341,19 +317,62 @@ export class GitHubClient {
       );
     }
 
+    const rawEncoding = fileResp.encoding;
+    const normalizedEncoding =
+      typeof rawEncoding === 'string' ? rawEncoding.trim().toLowerCase() : 'none';
+
     let decodedContent: string;
-    try {
-      decodedContent = decodeGitHubBase64(fileResp.content);
-    } catch (decodeErr) {
+
+    if (normalizedEncoding === 'base64') {
+      if (typeof fileResp.content !== 'string' || !fileResp.content.trim()) {
+        throw new GitHubTrackerRepositoryError(
+          `GitHub response for ${this.config.path} contains empty or missing content.`,
+          {
+            code: 'MALFORMED_RESPONSE',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+          }
+        );
+      }
+
+      try {
+        decodedContent = decodeGitHubBase64(fileResp.content);
+      } catch (decodeErr) {
+        throw new GitHubTrackerRepositoryError(
+          `Failed to decode Base64 file content: ${decodeErr instanceof Error ? decodeErr.message : String(decodeErr)}`,
+          {
+            code: 'INVALID_BASE64',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+            cause: decodeErr,
+          }
+        );
+      }
+    } else if (
+      normalizedEncoding === 'none' ||
+      normalizedEncoding === 'utf-8' ||
+      normalizedEncoding === 'utf8'
+    ) {
+      if (typeof fileResp.content === 'string' && fileResp.content.trim().length > 0) {
+        decodedContent = fileResp.content;
+      } else {
+        // GitHub Contents API returns encoding: "none" and content: "" for files > 1 MB.
+        // Fetch file content via Git Blobs API using blob SHA.
+        decodedContent = await this.fetchBlobContent(fileResp.sha, headers);
+      }
+    } else {
       throw new GitHubTrackerRepositoryError(
-        `Failed to decode Base64 file content: ${decodeErr instanceof Error ? decodeErr.message : String(decodeErr)}`,
+        `Unsupported content encoding for ${this.config.path}: ${rawEncoding ?? 'none'}.`,
         {
-          code: 'INVALID_BASE64',
+          code: 'UNSUPPORTED_ENCODING',
           owner: this.config.owner,
           repo: this.config.repo,
           path: this.config.path,
           branch: this.config.branch,
-          cause: decodeErr,
         }
       );
     }
@@ -364,6 +383,156 @@ export class GitHubClient {
       path: this.config.path,
       branch: this.config.branch,
     };
+  }
+
+  private async fetchBlobContent(sha: string, headers: Record<string, string>): Promise<string> {
+    const blobUrl = `https://api.github.com/repos/${encodeURIComponent(this.config.owner)}/${encodeURIComponent(this.config.repo)}/git/blobs/${encodeURIComponent(sha)}`;
+
+    let response: Response;
+    try {
+      response = await this.fetchFn(blobUrl, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+    } catch (networkErr) {
+      throw new GitHubTrackerRepositoryError(
+        `Network error fetching blob for ${this.config.path} from ${this.config.owner}/${this.config.repo}: ${sanitizeErrorText(networkErr instanceof Error ? networkErr.message : String(networkErr))}`,
+        {
+          code: 'NETWORK_ERROR',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+          cause: networkErr,
+        }
+      );
+    }
+
+    if (!response.ok) {
+      const status = response.status;
+      let isRateLimit = false;
+      const rateLimitRemaining = response.headers?.get?.('x-ratelimit-remaining');
+      if (rateLimitRemaining === '0' || status === 429) {
+        isRateLimit = true;
+      }
+
+      let responseText = '';
+      try {
+        responseText = await response.text();
+        if (/rate limit/i.test(responseText)) {
+          isRateLimit = true;
+        }
+      } catch {
+        // Ignore response text read errors
+      }
+
+      let code: GitHubTrackerErrorCode = 'NETWORK_ERROR';
+      let message = `GitHub blob request failed with HTTP ${status}`;
+
+      if (status === 401) {
+        code = 'AUTHENTICATION_FAILED';
+        message = `Authentication failed for repository ${this.config.owner}/${this.config.repo} (HTTP 401).`;
+      } else if (status === 403) {
+        if (isRateLimit) {
+          code = 'RATE_LIMITED';
+          message = `GitHub API rate limit exceeded for ${this.config.owner}/${this.config.repo} (HTTP 403).`;
+        } else {
+          code = 'AUTHORIZATION_FAILED';
+          message = `Access forbidden to repository ${this.config.owner}/${this.config.repo} (HTTP 403).`;
+        }
+      } else if (status === 404) {
+        code = 'NOT_FOUND';
+        message = `Repository or blob not found: ${this.config.owner}/${this.config.repo} blob ${sha} (HTTP 404).`;
+      }
+
+      throw new GitHubTrackerRepositoryError(message, {
+        code,
+        status,
+        owner: this.config.owner,
+        repo: this.config.repo,
+        path: this.config.path,
+        branch: this.config.branch,
+      });
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new GitHubTrackerRepositoryError(
+        `Failed to parse JSON response from GitHub for blob ${sha} of ${this.config.path}.`,
+        {
+          code: 'MALFORMED_RESPONSE',
+          status: response.status,
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new GitHubTrackerRepositoryError(
+        `Malformed GitHub response for blob ${sha} of ${this.config.path}: expected blob object.`,
+        {
+          code: 'MALFORMED_RESPONSE',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
+
+    const blobResp = payload as { content?: string; encoding?: string; sha?: string };
+    if (typeof blobResp.content !== 'string' || !blobResp.content.trim()) {
+      throw new GitHubTrackerRepositoryError(
+        `GitHub blob response for ${this.config.path} contains empty or missing content.`,
+        {
+          code: 'MALFORMED_RESPONSE',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
+
+    const blobEncoding =
+      typeof blobResp.encoding === 'string' ? blobResp.encoding.trim().toLowerCase() : 'none';
+
+    if (blobEncoding === 'base64') {
+      try {
+        return decodeGitHubBase64(blobResp.content);
+      } catch (decodeErr) {
+        throw new GitHubTrackerRepositoryError(
+          `Failed to decode Base64 file content from blob: ${decodeErr instanceof Error ? decodeErr.message : String(decodeErr)}`,
+          {
+            code: 'INVALID_BASE64',
+            owner: this.config.owner,
+            repo: this.config.repo,
+            path: this.config.path,
+            branch: this.config.branch,
+            cause: decodeErr,
+          }
+        );
+      }
+    } else if (blobEncoding === 'none' || blobEncoding === 'utf-8' || blobEncoding === 'utf8') {
+      return blobResp.content;
+    } else {
+      throw new GitHubTrackerRepositoryError(
+        `Unsupported blob content encoding for ${this.config.path}: ${blobResp.encoding ?? 'none'}.`,
+        {
+          code: 'UNSUPPORTED_ENCODING',
+          owner: this.config.owner,
+          repo: this.config.repo,
+          path: this.config.path,
+          branch: this.config.branch,
+        }
+      );
+    }
   }
 
   async updateFileContents(options: GitHubUpdateFileOptions): Promise<GitHubUpdateFileResult> {
